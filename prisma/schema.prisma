@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  VIEWER
+}
+
+model tbl_outlet {
+  id           Int        @id @default(autoincrement())
+  uuid         String     @unique @db.Char(36)
+  name         String     @db.VarChar(255)
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+  deleted_at   DateTime?
+
+  karyawan     tbl_karyawan[]
+  kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
+}
+
+model tbl_karyawan {
+  id                  Int         @id @default(autoincrement())
+  uuid                String      @unique @db.Char(36)
+  uuid_outlet         String      @db.Char(36)
+  name                String      @db.VarChar(255)
+  username            String      @unique @db.VarChar(100)
+  password            String?     @db.Text
+  is_username_change  Boolean     @default(false)
+  is_password_change  Boolean     @default(false)
+  avatar              String?     @db.Text
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+  deleted_at          DateTime?
+
+  outlet              tbl_outlet  @relation(fields: [uuid_outlet], references: [uuid])
+
+  @@index([uuid_outlet])
+}
+
+model tbl_admin {
+  id                  Int         @id @default(autoincrement())
+  uuid                String      @unique @db.Char(36)
+  name                String      @db.VarChar(255)
+  username            String      @unique @db.VarChar(100)
+  password            String?     @db.Text
+  is_username_change  Boolean     @default(false)
+  is_password_change  Boolean     @default(false)
+  role                Role
+  avatar              String?     @db.Text
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+  deleted_at          DateTime?
+}
+
+model tbl_kepuasan_internal {
+  id                  Int         @id @default(autoincrement())
+  date                DateTime    @unique
+  puas                Int         @default(0)
+  tidak_puas          Int         @default(0)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  deleted_at          DateTime?
+}
+
+model tbl_kepatuhan_sop_cctv {
+  id                  Int         @id @default(autoincrement())
+  uuid_outlet         String      @db.Char(36)
+  date                DateTime
+  total               Int         @default(0)
+  total_point         Int         @default(0)
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+  deleted_at          DateTime?
+
+  outlet              tbl_outlet  @relation(fields: [uuid_outlet], references: [uuid])
+
+  @@unique([uuid_outlet, date])
+}
+
