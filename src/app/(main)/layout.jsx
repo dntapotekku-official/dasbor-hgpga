@@ -20,6 +20,9 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         </div>
+        <footer className="mt-auto border-t px-4 py-4 text-center text-xs text-muted-foreground md:px-6">
+          Dikembangkan oleh <span className="font-semibold"> Tim DnT ApotekKu.</span>
+        </footer>
       </SidebarInset>
     </SidebarProvider>
   );
