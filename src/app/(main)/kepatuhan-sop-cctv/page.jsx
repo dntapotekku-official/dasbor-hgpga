@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts";
 import {
   ChevronsUpDownIcon,
   ChevronDownIcon,
+  MoveRightIcon,
   SearchIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,7 +49,7 @@ const default_outlet = { value: "semua-outlet", label: "Semua Outlet" };
 
 const chart_config = {
   total: {
-    label: "Poin",
+    label: "Total",
     color: "#2563eb",
   },
   total_point: {
@@ -58,7 +59,7 @@ const chart_config = {
 };
 
 const chart_series = [
-  { key: "total", label: "Poin", className: "bg-blue-600" },
+  { key: "total", label: "Total", className: "bg-blue-600" },
   { key: "total_point", label: "Total Poin", className: "bg-amber-500" },
 ];
 
@@ -311,7 +312,7 @@ export default function KepatuhanSopCctvPage() {
                 ))}
               </div>
             </div>
-            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(150px,170px)_minmax(150px,170px)_auto] sm:items-end lg:w-auto">
+            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(320px,360px)_auto] sm:items-end lg:w-auto">
               <div className="flex min-w-0 flex-col gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   Outlet
@@ -377,25 +378,28 @@ export default function KepatuhanSopCctvPage() {
               </div>
               <div className="flex min-w-0 flex-col gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Tanggal Awal
+                  Rentang Tanggal
                 </span>
-                <Input
-                  type="date"
-                  value={start_date}
-                  onChange={(event) => setStartDate(event.target.value)}
-                  className="bg-card"
-                />
-              </div>
-              <div className="flex min-w-0 flex-col gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Tanggal Akhir
-                </span>
-                <Input
-                  type="date"
-                  value={end_date}
-                  onChange={(event) => setEndDate(event.target.value)}
-                  className="bg-card"
-                />
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+                  <Input
+                    type="date"
+                    value={start_date}
+                    onChange={(event) => setStartDate(event.target.value)}
+                    className="bg-card"
+                    aria-label="Mulai tanggal"
+                  />
+                  <div className="flex items-center justify-center text-muted-foreground">
+                    <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                    <span className="sr-only">sampai</span>
+                  </div>
+                  <Input
+                    type="date"
+                    value={end_date}
+                    onChange={(event) => setEndDate(event.target.value)}
+                    className="bg-card"
+                    aria-label="Sampai tanggal"
+                  />
+                </div>
               </div>
               <Button
                 type="button"

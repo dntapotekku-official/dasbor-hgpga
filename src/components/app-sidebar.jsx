@@ -106,7 +106,7 @@ export function AppSidebar({
                 alt="HGPGA"
                 width={120}
                 height={83}
-                className="h-auto w-[96px] object-contain"
+                className="h-auto w-[76px] object-contain"
                 priority
               />
             </SidebarMenuButton>

@@ -76,7 +76,7 @@ export default function KepatuhanSopCctvDashboardCard() {
   const chart_data = [
     {
       key: "total",
-      label: "Poin",
+      label: "Total",
       value: Number(dashboard_data.summary?.total) || 0,
       fill: "#2563eb",
     },
