@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import OutletTable from "./components/outlet-table";
@@ -107,7 +108,14 @@ export default function PengaturanPage() {
               onClick={syncOutletKaryawanHandler}
               disabled={sync_status === "loading"}
             >
-              {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
+              {sync_status === "loading" ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Menyinkronkan...
+                </>
+              ) : (
+                "Sinkron"
+              )}
             </Button>
           }
         />

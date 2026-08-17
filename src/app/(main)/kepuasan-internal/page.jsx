@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, UsersRoundIcon } from "lucide-react";
 import { toast } from "sonner";
 import PageHeading from "@/components/page-heading";
 import ChartBarMultiple from "./components/chart-bar-multiple";
@@ -33,6 +33,25 @@ const filterDataByYear = (chart_data, selected_year) => {
     chart_data: chart_data.chart_data.filter((item) =>
       item.month.startsWith(`${selected_year}-`),
     ),
+  };
+};
+
+const getRespondentStat = (chart_data) => {
+  const latest_month = chart_data?.chart_data?.at(-1);
+  const series = chart_data?.series ?? [];
+
+  if (!latest_month || !series.length) {
+    return null;
+  }
+
+  const total = series.reduce(
+    (sum, item) => sum + (Number(latest_month[item.key]) || 0),
+    0,
+  );
+
+  return {
+    value: total.toLocaleString("id-ID"),
+    label: "InsanKu mengisi bulan ini.",
   };
 };
 
@@ -121,6 +140,10 @@ export default function KepuasanInternalPage() {
     () => filterDataByYear(chart_data, selected_year),
     [chart_data, selected_year],
   );
+  const respondent_stat = useMemo(
+    () => getRespondentStat(filtered_data),
+    [filtered_data],
+  );
 
   const syncKepuasanInternalHandler = async () => {
     try {
@@ -167,6 +190,23 @@ export default function KepuasanInternalPage() {
         <PageHeading
           title="Kepuasan Internal"
           description="Pantau tren jawaban puas dan tidak puas dari monthly review."
+          action={
+            respondent_stat ? (
+              <div className="flex min-w-44 items-center gap-3 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-primary">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                  <UsersRoundIcon className="size-4" />
+                </div>
+                <div>
+                  <div className="text-lg font-semibold leading-none">
+                    {respondent_stat.value}
+                  </div>
+                  <div className="mt-1 text-xs font-medium leading-tight">
+                    {respondent_stat.label}
+                  </div>
+                </div>
+              </div>
+            ) : null
+          }
         />
       </div>
       <div className="space-y-4 px-4 lg:px-6">
@@ -219,7 +259,14 @@ export default function KepuasanInternalPage() {
               disabled={sync_status === "loading"}
               className="w-full sm:w-auto"
             >
-              {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
+              {sync_status === "loading" ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Menyinkronkan...
+                </>
+              ) : (
+                "Sinkron"
+              )}
             </Button>
           }
           chartData={filtered_data?.chart_data ?? []}

@@ -45,7 +45,6 @@ export default function ChartBarMultiple({
       ];
     }),
   );
-
   if (!chartData.length || !series.length) {
     return (
       <Card className="border-t-4 border-t-primary">

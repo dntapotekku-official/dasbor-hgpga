@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts";
 import {
   ChevronsUpDownIcon,
   ChevronDownIcon,
+  Loader2Icon,
   MoveRightIcon,
   SearchIcon,
 } from "lucide-react";
@@ -406,7 +407,14 @@ export default function KepatuhanSopCctvPage() {
                 onClick={syncKepatuhanSopCCTVHandler}
                 disabled={sync_status === "loading"}
               >
-                {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
+                {sync_status === "loading" ? (
+                  <>
+                    <Loader2Icon className="size-4 animate-spin" />
+                    Menyinkronkan...
+                  </>
+                ) : (
+                  "Sinkron"
+                )}
               </Button>
             </div>
           </CardHeader>
