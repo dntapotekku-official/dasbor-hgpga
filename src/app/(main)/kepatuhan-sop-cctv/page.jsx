@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts";
 import {
-  Building2Icon,
-  CalendarDaysIcon,
   ChevronsUpDownIcon,
   ChevronDownIcon,
   SearchIcon,
@@ -242,7 +240,13 @@ export default function KepatuhanSopCctvPage() {
     try {
       setSyncStatus("loading");
 
-      const params = {
+      const sync_params = {
+        tanggal_awal: start_date,
+        tanggal_akhir: end_date,
+        id_outlet:
+          active_outlet === default_outlet.value ? undefined : active_outlet,
+      };
+      const cache_params = {
         tanggal_awal: start_date,
         tanggal_akhir: end_date,
         uuid_outlet:
@@ -253,7 +257,7 @@ export default function KepatuhanSopCctvPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(params),
+        body: JSON.stringify(sync_params),
       });
       const payload = await response.json();
       const response_data = {
@@ -268,7 +272,7 @@ export default function KepatuhanSopCctvPage() {
       }
 
       clearKepatuhanSopCctvCache();
-      primeKepatuhanSopCctvCache(params, response_data);
+      primeKepatuhanSopCctvCache(cache_params, response_data);
       setDashboardData((current_data) =>
         normalizeDashboardData(response_data.data, current_data?.outlet_options),
       );
@@ -291,15 +295,6 @@ export default function KepatuhanSopCctvPage() {
         <PageHeading
           title="Kepatuhan SOP CCTV"
           description="Pantau kepatuhan SOP CCTV hari terkini berdasarkan outlet."
-          action={
-            <Button
-              type="button"
-              onClick={syncKepatuhanSopCCTVHandler}
-              disabled={sync_status === "loading"}
-            >
-              {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
-            </Button>
-          }
         />
       </div>
       <div className="space-y-4 px-4 lg:px-6">
@@ -307,7 +302,7 @@ export default function KepatuhanSopCctvPage() {
           <CardHeader className="grid gap-4 border-b pb-5 lg:grid-cols-[1fr_auto] lg:items-start">
             <div>
               <CardTitle className="text-xl">Tren Harian</CardTitle>
-              <div className="mt-4 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
                 {chart_series.map((item) => (
                   <div key={item.key} className="flex items-center gap-2">
                     <span className={`size-4 rounded-full ${item.className}`} />
@@ -316,7 +311,7 @@ export default function KepatuhanSopCctvPage() {
                 ))}
               </div>
             </div>
-            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(150px,170px)_minmax(150px,170px)] sm:items-start lg:w-auto">
+            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(150px,170px)_minmax(150px,170px)_auto] sm:items-end lg:w-auto">
               <div className="flex min-w-0 flex-col gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   Outlet
@@ -336,14 +331,11 @@ export default function KepatuhanSopCctvPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-10 w-full justify-between bg-card"
+                        className="w-full justify-between bg-card"
                       />
                     }
                   >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Building2Icon className="size-4 shrink-0" />
-                      <span className="truncate">{selected_outlet_label}</span>
-                    </span>
+                    <span className="truncate">{selected_outlet_label}</span>
                     <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[320px]">
@@ -387,30 +379,31 @@ export default function KepatuhanSopCctvPage() {
                 <span className="text-xs font-medium text-muted-foreground">
                   Tanggal Awal
                 </span>
-                <div className="relative">
-                  <CalendarDaysIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={start_date}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    className="h-10 bg-card pl-8"
-                  />
-                </div>
+                <Input
+                  type="date"
+                  value={start_date}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className="bg-card"
+                />
               </div>
               <div className="flex min-w-0 flex-col gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   Tanggal Akhir
                 </span>
-                <div className="relative">
-                  <CalendarDaysIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={end_date}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    className="h-10 bg-card pl-8"
-                  />
-                </div>
+                <Input
+                  type="date"
+                  value={end_date}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="bg-card"
+                />
               </div>
+              <Button
+                type="button"
+                onClick={syncKepatuhanSopCCTVHandler}
+                disabled={sync_status === "loading"}
+              >
+                {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-5 pt-5">

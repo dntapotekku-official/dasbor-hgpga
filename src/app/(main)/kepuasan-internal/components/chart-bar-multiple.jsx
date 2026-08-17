@@ -54,7 +54,7 @@ export default function ChartBarMultiple({
             <CardTitle className="text-xl">{title}</CardTitle>
           </div>
           {filter || action ? (
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-end">
               {filter ? <div className="w-full sm:w-auto">{filter}</div> : null}
               {action ? <div className="w-full sm:w-auto">{action}</div> : null}
             </div>
@@ -74,7 +74,7 @@ export default function ChartBarMultiple({
       <CardHeader className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-xl">{title}</CardTitle>
-          <div className="mt-4 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
             {series.map((item) => {
               const normalized_label = item.label.toLowerCase();
               const is_negative =
@@ -100,7 +100,7 @@ export default function ChartBarMultiple({
           </div>
         </div>
         {filter || action ? (
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-end">
             {filter ? <div className="w-full sm:w-auto">{filter}</div> : null}
             {action ? <div className="w-full sm:w-auto">{action}</div> : null}
           </div>

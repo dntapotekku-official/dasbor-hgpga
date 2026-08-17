@@ -14,10 +14,12 @@ export const GET = async (request) => {
     }
 
     const { searchParams } = new URL(request.url);
+    const outlet_id =
+      searchParams.get("uuid_outlet") ?? searchParams.get("id_outlet") ?? undefined;
     const result = await getKepatuhanSopCCTVChart({
       tanggal_awal: searchParams.get("tanggal_awal") ?? undefined,
       tanggal_akhir: searchParams.get("tanggal_akhir") ?? undefined,
-      uuid_outlet: searchParams.get("uuid_outlet") ?? undefined,
+      uuid_outlet: outlet_id,
     });
 
     return NextResponse.json(
@@ -51,7 +53,7 @@ export const POST = async (request) => {
     const result = await syncKepatuhanSopCCTV({
       tanggal_awal: body?.tanggal_awal,
       tanggal_akhir: body?.tanggal_akhir,
-      uuid_outlet: body?.uuid_outlet,
+      id_outlet: body?.id_outlet ?? body?.uuid_outlet,
     });
 
     return NextResponse.json(result);

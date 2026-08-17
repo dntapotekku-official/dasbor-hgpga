@@ -127,7 +127,7 @@ export async function getKepatuhanSopCCTVChart({
 export async function syncKepatuhanSopCCTV({
   tanggal_awal,
   tanggal_akhir,
-  uuid_outlet,
+  id_outlet,
 } = {}) {
   const default_dates = getDefaultDateParams();
   const start_date = tanggal_awal ?? default_dates.tanggal_awal;
@@ -165,8 +165,8 @@ export async function syncKepatuhanSopCCTV({
       tanggal_akhir: date,
     });
 
-    if (uuid_outlet) {
-      search_params.set("uuid_outlet", uuid_outlet);
+    if (id_outlet) {
+      search_params.set("id_outlet", id_outlet);
     }
 
     const result = await fetch(
@@ -276,7 +276,7 @@ export async function syncKepatuhanSopCCTV({
   const chart_result = await getKepatuhanSopCCTVChart({
     tanggal_awal: start_date,
     tanggal_akhir: end_date,
-    uuid_outlet,
+    uuid_outlet: id_outlet,
   });
 
   return {

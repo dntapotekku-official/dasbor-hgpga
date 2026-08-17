@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDaysIcon, ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import { toast } from "sonner";
 import PageHeading from "@/components/page-heading";
 import ChartBarMultiple from "./components/chart-bar-multiple";
@@ -129,6 +129,12 @@ export default function KepuasanInternalPage() {
 
       const response = await fetch("/api/kepuasan-internal", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tahun: selected_year,
+        }),
       });
       const payload = await response.json();
 
@@ -161,15 +167,6 @@ export default function KepuasanInternalPage() {
         <PageHeading
           title="Kepuasan Internal"
           description="Pantau tren jawaban puas dan tidak puas dari monthly review."
-          action={
-            <Button
-              type="button"
-              onClick={syncKepuasanInternalHandler}
-              disabled={sync_status === "loading"}
-            >
-              {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
-            </Button>
-          }
         />
       </div>
       <div className="space-y-4 px-4 lg:px-6">
@@ -190,10 +187,7 @@ export default function KepuasanInternalPage() {
                     />
                   }
                 >
-                  <span className="flex items-center gap-2">
-                    <CalendarDaysIcon className="size-4" />
-                    {selected_year}
-                  </span>
+                  <span>{selected_year}</span>
                   <ChevronDownIcon className="size-4 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[170px]">
@@ -217,6 +211,16 @@ export default function KepuasanInternalPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+          }
+          action={
+            <Button
+              type="button"
+              onClick={syncKepuasanInternalHandler}
+              disabled={sync_status === "loading"}
+              className="w-full sm:w-auto"
+            >
+              {sync_status === "loading" ? "Menyinkronkan..." : "Sinkron"}
+            </Button>
           }
           chartData={filtered_data?.chart_data ?? []}
           series={filtered_data?.series ?? chart_data?.series ?? []}

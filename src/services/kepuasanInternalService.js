@@ -56,8 +56,24 @@ export async function getKepuasanInternalChart({ year } = {}) {
   };
 }
 
-export async function syncKepuasanInternal() {
-  const result = await fetch(process.env.KEPUASAN_INTERNAL_API_URL, {
+export async function syncKepuasanInternal({ tahun } = {}) {
+  if (!process.env.KEPUASAN_INTERNAL_API_URL) {
+    throw new Error("KEPUASAN_INTERNAL_API_URL belum dikonfigurasi.");
+  }
+
+  const search_params = new URLSearchParams();
+
+  if (tahun) {
+    search_params.set("tahun", tahun);
+  }
+
+  const query = search_params.toString();
+  const url = `${process.env.KEPUASAN_INTERNAL_API_URL}${
+    query
+      ? `${process.env.KEPUASAN_INTERNAL_API_URL.includes("?") ? "&" : "?"}${query}`
+      : ""
+  }`;
+  const result = await fetch(url, {
     headers: {
       "x-api-key": process.env.KEPUASAN_INTERNAL_API_KEY,
     },
