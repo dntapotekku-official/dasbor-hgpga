@@ -39,7 +39,7 @@ export function getKepatuhanSopCctvFromDb({
 
   const request = fetch(`/api/kepatuhan-sop-cctv?${search_params.toString()}`, {
     method: "GET",
-    cache: "force-cache",
+    cache: "no-store",
   })
     .then(async (response) => {
       const payload = await response.json();

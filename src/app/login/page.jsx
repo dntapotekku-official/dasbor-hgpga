@@ -111,8 +111,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <CardDescription className="mt-3 text-center">
-            Lupa kata sandi? 
-            <span className="font-semibold"> hubungi administrator.</span>
+            Lupa kata sandi? hubungi administrator.
           </CardDescription>
         </CardContent>
         </Card>

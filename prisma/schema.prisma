@@ -13,39 +13,40 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  VIEWER
+  admin
+  viewer
+  member
 }
 
 model tbl_outlet {
   id           Int        @id @default(autoincrement())
   uuid         String     @unique @db.Char(36)
   name         String     @db.VarChar(255)
+  is_skip_sync    Boolean    @default(false)
   created_at   DateTime   @default(now())
   updated_at   DateTime   @updatedAt
   deleted_at   DateTime?
 
-  karyawan     tbl_karyawan[]
   kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
+  outlet_karyawan    tbl_outlet_karyawan[]
 }
 
 model tbl_karyawan {
   id                  Int         @id @default(autoincrement())
   uuid                String      @unique @db.Char(36)
-  uuid_outlet         String      @db.Char(36)
   name                String      @db.VarChar(255)
   username            String      @unique @db.VarChar(100)
   password            String?     @db.Text
   is_username_change  Boolean     @default(false)
   is_password_change  Boolean     @default(false)
   avatar              String?     @db.Text
+  is_skip_sync           Boolean     @default(false)
+  role                Role
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
   deleted_at          DateTime?
 
-  outlet              tbl_outlet  @relation(fields: [uuid_outlet], references: [uuid])
-
-  @@index([uuid_outlet])
+  outlet_karyawan     tbl_outlet_karyawan[]
 }
 
 model tbl_admin {
@@ -65,6 +66,7 @@ model tbl_admin {
 
 model tbl_kepuasan_internal {
   id                  Int         @id @default(autoincrement())
+  uuid                String      @unique @db.Char(36)
   date                DateTime    @unique
   puas                Int         @default(0)
   tidak_puas          Int         @default(0)
@@ -75,6 +77,7 @@ model tbl_kepuasan_internal {
 
 model tbl_kepatuhan_sop_cctv {
   id                  Int         @id @default(autoincrement())
+  uuid                String      @unique @db.Char(36)
   uuid_outlet         String      @db.Char(36)
   date                DateTime
   total               Int         @default(0)
@@ -88,3 +91,20 @@ model tbl_kepatuhan_sop_cctv {
   @@unique([uuid_outlet, date])
 }
 
+model tbl_outlet_karyawan {
+  id                  Int          @id @default(autoincrement())
+  uuid                String       @unique @db.Char(36)
+  uuid_outlet         String       @db.Char(36)
+  uuid_karyawan       String       @db.Char(36)
+  is_skip_sync           Boolean      @default(false)
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+  deleted_at          DateTime?
+
+  outlet              tbl_outlet   @relation(fields: [uuid_outlet], references: [uuid])
+  karyawan            tbl_karyawan @relation(fields: [uuid_karyawan], references: [uuid])
+
+  @@unique([uuid_outlet, uuid_karyawan])
+  @@index([uuid_outlet])
+  @@index([uuid_karyawan])
+}

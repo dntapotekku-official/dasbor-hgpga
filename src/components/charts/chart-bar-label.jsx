@@ -32,6 +32,30 @@ const chartConfig = {
   },
 };
 
+const format_number = (value) => Number(value || 0).toLocaleString("id-ID");
+
+function render_value_label({ value, x, y, width, height }) {
+  if (value == null) {
+    return null;
+  }
+
+  const numeric_value = Number(value) || 0;
+  const label_x = numeric_value < 0 ? x - 8 : x + width + 8;
+  const text_anchor = numeric_value < 0 ? "end" : "start";
+
+  return (
+    <text
+      x={label_x}
+      y={y + height / 2}
+      dy={4}
+      textAnchor={text_anchor}
+      className="fill-foreground text-xs"
+    >
+      {format_number(numeric_value)}
+    </text>
+  );
+}
+
 export function ChartBarLabel({
   title = "Distribusi Respon",
   description = "Bulan berjalan",
@@ -61,7 +85,7 @@ export function ChartBarLabel({
   }, [data]);
 
   const has_series = chart_data.length > 0;
-  const has_data = chart_data.some((item) => item.value > 0);
+  const has_data = chart_data.some((item) => item.value !== 0);
 
   return (
     <Card className="flex h-full flex-col">
@@ -108,14 +132,7 @@ export function ChartBarLabel({
                 content={<ChartTooltipContent hideLabel />}
               />
               <Bar dataKey="value" radius={5}>
-                <LabelList
-                  dataKey="value"
-                  position="right"
-                  offset={12}
-                  className="fill-foreground"
-                  fontSize={12}
-                  formatter={(value) => Number(value || 0).toLocaleString("id-ID")}
-                />
+                <LabelList dataKey="value" content={render_value_label} />
                 {chart_data.map((item) => (
                   <Cell key={item.key} fill={item.fill} />
                 ))}

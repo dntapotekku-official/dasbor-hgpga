@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts";
 import {
   ChevronsUpDownIcon,
   ChevronDownIcon,
@@ -17,6 +16,7 @@ import {
   primeKepatuhanSopCctvCache,
 } from "@/lib/kepatuhanSopCctvClient";
 import PageHeading from "@/components/page-heading";
+import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,11 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartTooltipContent } from "@/components/ui/chart";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,20 +44,14 @@ import {
 
 const default_outlet = { value: "semua-outlet", label: "Semua Outlet" };
 
-const chart_config = {
-  total: {
-    label: "Total",
-    color: "#2563eb",
-  },
-  total_point: {
+const chart_series = [
+  { key: "total", label: "Total", color: "#2563eb", className: "bg-blue-600" },
+  {
+    key: "total_point",
     label: "Total Poin",
     color: "#f59e0b",
+    className: "bg-amber-500",
   },
-};
-
-const chart_series = [
-  { key: "total", label: "Total", className: "bg-blue-600" },
-  { key: "total_point", label: "Total Poin", className: "bg-amber-500" },
 ];
 
 const normalizeDashboardData = (payload, fallback_outlet_options = []) => {
@@ -71,6 +61,8 @@ const normalizeDashboardData = (payload, fallback_outlet_options = []) => {
     ? payload.outlet_options
     : rows.map((item) => ({
         value: item.uuid_outlet,
+        uuid_outlet: item.uuid_outlet,
+        id_outlet: item.uuid_outlet,
         label: item.nama_outlet,
       }));
   const outlet_options = Array.from(
@@ -88,7 +80,7 @@ const normalizeDashboardData = (payload, fallback_outlet_options = []) => {
   };
 };
 
-const formatNumber = (value) => Number(value || 0).toLocaleString("id-ID");
+const format_number = (value) => Number(value || 0).toLocaleString("id-ID");
 
 const formatChartDate = (value) => {
   const date = new Date(`${value}T00:00:00`);
@@ -130,6 +122,8 @@ export default function KepatuhanSopCctvPage() {
       ?.filter((item) => item?.value && item?.label)
       .map((item) => ({
         value: item.value,
+        uuid_outlet: item.uuid_outlet ?? item.value,
+        id_outlet: item.id_outlet ?? item.value,
         label: item.label,
       })) ?? [];
 
@@ -143,6 +137,8 @@ export default function KepatuhanSopCctvPage() {
   const selected_outlet_label =
     outlet_options.find((outlet) => outlet.value === active_outlet)?.label ??
     default_outlet.label;
+  const selected_outlet_option =
+    outlet_options.find((outlet) => outlet.value === active_outlet) ?? null;
   const filtered_outlet_options = outlet_options.filter((outlet) =>
     outlet.label.toLowerCase().includes(outlet_search.trim().toLowerCase()),
   );
@@ -246,7 +242,7 @@ export default function KepatuhanSopCctvPage() {
         tanggal_awal: start_date,
         tanggal_akhir: end_date,
         id_outlet:
-          active_outlet === default_outlet.value ? undefined : active_outlet,
+          active_outlet === default_outlet.value ? undefined : selected_outlet_option?.id_outlet,
       };
       const cache_params = {
         tanggal_awal: start_date,
@@ -419,64 +415,29 @@ export default function KepatuhanSopCctvPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-5 pt-5">
-            {chart_data.length ? (
-              <div className="rounded-lg border p-4">
-                <ChartContainer
-                  config={chart_config}
-                  className="aspect-auto h-[240px] w-full"
-                >
-                  <BarChart
-                    accessibilityLayer
-                    data={chart_data}
-                    margin={{ top: 20, left: 12, right: 12 }}
-                  >
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={10}
-                      minTickGap={24}
-                      tickFormatter={formatChartDate}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={
-                        <ChartTooltipContent
-                          indicator="dashed"
-                          labelFormatter={formatChartDate}
-                        />
-                      }
-                    />
-                    <Bar
-                      dataKey="total"
-                      fill="var(--color-total)"
-                      radius={8}
-                    >
-                      <LabelList
-                        position="top"
-                        offset={12}
-                        className="fill-foreground"
-                        fontSize={12}
-                        formatter={formatNumber}
-                      />
-                    </Bar>
-                    <Bar
-                      dataKey="total_point"
-                      fill="var(--color-total_point)"
-                      radius={8}
-                    >
-                      <LabelList
-                        position="top"
-                        offset={12}
-                        className="fill-foreground"
-                        fontSize={12}
-                        formatter={formatNumber}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
-              </div>
+            {chart_data.length || !table_rows.length ? (
+              <ChartBarMultiple
+                renderCard={false}
+                chartData={chart_data}
+                series={chart_series}
+                xDataKey="date"
+                xTickFormatter={formatChartDate}
+                chartClassName="aspect-auto h-[240px] w-full"
+                wrapperClassName="rounded-lg border p-4"
+                emptyMessage={
+                  view_state === "loading"
+                    ? "Memuat data kepatuhan SOP CCTV..."
+                    : view_state === "error"
+                      ? "Gagal memuat data kepatuhan SOP CCTV."
+                      : "Data kepatuhan SOP CCTV belum tersedia."
+                }
+                tooltipContent={
+                  <ChartTooltipContent
+                    indicator="dashed"
+                    labelFormatter={formatChartDate}
+                  />
+                }
+              />
             ) : null}
             {table_rows.length ? (
               <div>
@@ -523,10 +484,10 @@ export default function KepatuhanSopCctvPage() {
                             {item.nama_outlet}
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatNumber(item.total)}
+                            {format_number(item.total)}
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatNumber(item.total_point)}
+                            {format_number(item.total_point)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -534,15 +495,7 @@ export default function KepatuhanSopCctvPage() {
                   </Table>
                 </div>
               </div>
-            ) : (
-              <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed bg-muted/40 px-6 text-center text-sm text-muted-foreground">
-                {view_state === "loading"
-                  ? "Memuat data kepatuhan SOP CCTV..."
-                  : view_state === "error"
-                    ? "Gagal memuat data kepatuhan SOP CCTV."
-                    : "Data kepatuhan SOP CCTV belum tersedia."}
-              </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>

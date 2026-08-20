@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 export async function getKepuasanInternalChart({ year } = {}) {
@@ -56,15 +57,15 @@ export async function getKepuasanInternalChart({ year } = {}) {
   };
 }
 
-export async function syncKepuasanInternal({ tahun } = {}) {
+export async function syncKepuasanInternal({ year } = {}) {
   if (!process.env.KEPUASAN_INTERNAL_API_URL) {
     throw new Error("KEPUASAN_INTERNAL_API_URL belum dikonfigurasi.");
   }
 
   const search_params = new URLSearchParams();
 
-  if (tahun) {
-    search_params.set("tahun", tahun);
+  if (year) {
+    search_params.set("year", year);
   }
 
   const query = search_params.toString();
@@ -137,7 +138,10 @@ export async function syncKepuasanInternal({ tahun } = {}) {
           tidak_puas: item.tidak_puas,
           deleted_at: null,
         },
-        create: item,
+        create: {
+          uuid: randomUUID(),
+          ...item,
+        },
       }),
     ),
   );

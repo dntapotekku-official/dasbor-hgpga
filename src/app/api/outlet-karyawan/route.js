@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncOutletKaryawan, getOutletKaryawan } from "@/services/outletKaryawanService";
+import { syncOutletKaryawan } from "@/services/outletKaryawanService";
 import { requireSession } from "@/lib/auth";
 
 export const POST = async () => {
@@ -18,40 +18,15 @@ export const POST = async () => {
 
     return NextResponse.json({
       success: true,
-      data: data.data
+      data: data.data,
     });
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
-        message: "Terjadi kesalahan pada server.",
+        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
-}
-
-export const GET = async () => {
-  try {
-    const unauthorized_response = await requireSession();
-
-    if (unauthorized_response) {
-      return unauthorized_response;
-    }
-
-    const data = await getOutletKaryawan();
-
-    return NextResponse.json({
-      success: true,
-      data: data
-    })
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Terjadi kesalahan pada server.",
-      },
-      { status: 500 }
-    );
-  }
-}
+};

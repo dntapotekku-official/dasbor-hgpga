@@ -14,7 +14,7 @@ export const GET = async (request) => {
     }
 
     const { searchParams } = new URL(request.url);
-    const year = searchParams.get("year") ?? searchParams.get("tahun") ?? undefined;
+    const year = searchParams.get("year") ?? undefined;
     const result = await getKepuasanInternalChart({ year });
 
     return NextResponse.json(
@@ -46,7 +46,7 @@ export const POST = async (request) => {
 
     const body = await request.json().catch(() => ({}));
     const result = await syncKepuasanInternal({
-      tahun: body?.tahun ?? body?.year,
+      year: body?.year,
     });
 
     return NextResponse.json(result);

@@ -1,164 +1,140 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-
-function dedupeByUuid(items) {
-  return Array.from(
-    new Map(items.map((item) => [item.uuid, item])).values(),
-  );
-}
+import {
+  build_relation_key,
+  fetch_karyawan_payload,
+  fetch_outlet_karyawan_payload,
+  fetch_outlet_payload,
+  normalize_karyawan_rows,
+  normalize_outlet_karyawan_rows,
+  normalize_outlet_rows,
+} from "@/services/pengaturanSharedService";
 
 export async function syncOutletKaryawan() {
-  const result = await fetch(process.env.OUTLET_SLIPGAJI_API_URL, {
-    headers: {
-      "x-api-key": process.env.SLIPGAJI_AUDIT_API_KEY,
+  const [outlet_payload, karyawan_payload, outlet_karyawan_payload] =
+    await Promise.all([
+      fetch_outlet_payload(),
+      fetch_karyawan_payload(),
+      fetch_outlet_karyawan_payload(),
+    ]);
+  const unique_outlet = normalize_outlet_rows(outlet_payload);
+  const unique_karyawan = normalize_karyawan_rows(karyawan_payload);
+  const valid_outlet_uuid_set = new Set(
+    unique_outlet.map((item) => item.uuid),
+  );
+  const valid_karyawan_uuid_set = new Set(
+    unique_karyawan.map((item) => item.uuid),
+  );
+  const { placement_rows, valid_rows, unique_rows } =
+    normalize_outlet_karyawan_rows({
+      outlet_karyawan_payload,
+      valid_outlet_uuid_set,
+      valid_karyawan_uuid_set,
+    });
+  const existing_karyawan = await prisma.tbl_karyawan.findMany({
+    where: {
+      deleted_at: null,
+    },
+    select: {
+      uuid: true,
     },
   });
-
-  if (!result.ok) {
-    throw new Error(`Gagal menyinkronkan data outlet beserta karyawan: ${result.status}`);
-  }
-
-  const data = await result.json();
-  const outlet_payload = data?.data && typeof data.data === "object"
-    ? data.data
-    : data;
-
-  if (!outlet_payload || typeof outlet_payload !== "object") {
-    throw new Error("Format response outlet-karyawan tidak valid.");
-  }
-
-  const data_outlet = [];
-  const data_karyawan = [];
-
-  Object.entries(outlet_payload).forEach(([key, value]) => {
-    const [uuid, ...nama_outlet_parts] = key.split("_");
-    const nama_outlet = nama_outlet_parts.join("_");
-
-    data_outlet.push({
-      uuid,
-      name: nama_outlet,
-    });
-
-    if (!Array.isArray(value)) {
-      throw new Error(`Format karyawan untuk outlet ${key} tidak valid.`);
-    }
-
-    value.forEach((karyawan) => {
-      const username = karyawan.username?.trim();
-
-      data_karyawan.push({
-        uuid: karyawan.id_karyawans,
-        uuid_outlet: uuid,
-        name: karyawan.nama?.trim() || "-",
-        username: username || `user_${karyawan.id_karyawans}`,
-        password: karyawan.password ?? null,
-        is_username_change: false,
-        is_password_change: false,
-        avatar: karyawan.foto_profile ?? null,
-      });
-    });
+  const existing_karyawan_uuid_set = new Set(
+    existing_karyawan.map((item) => item.uuid),
+  );
+  const existing_relations = await prisma.tbl_outlet_karyawan.findMany({
+    where: {
+      deleted_at: null,
+    },
+    select: {
+      uuid_outlet: true,
+      uuid_karyawan: true,
+      is_skip_sync: true,
+    },
   });
-
-  const unique_outlet = dedupeByUuid(data_outlet);
-  const unique_karyawan = dedupeByUuid(data_karyawan);
-
-  const existing_outlet = await prisma.tbl_outlet.findMany({
-    select: { uuid: true },
-  });
-
-  const existing_karyawan = await prisma.tbl_karyawan.findMany({
-    select: { uuid: true },
-  });
-
-  const existing_outlet_set = new Set(existing_outlet.map((item) => item.uuid));
-  const existing_karyawan_set = new Set(existing_karyawan.map((item) => item.uuid));
-
-  const new_outlet = unique_outlet.filter((item) => !existing_outlet_set.has(item.uuid));
-  const update_outlet = unique_outlet.filter((item) => existing_outlet_set.has(item.uuid));
-
-  const new_karyawan = unique_karyawan.filter((item) => !existing_karyawan_set.has(item.uuid));
-  const update_karyawan = unique_karyawan.filter((item) => existing_karyawan_set.has(item.uuid));
+  const skipped_placement_karyawan_uuid_set = new Set(
+    existing_relations
+      .filter((item) => item.is_skip_sync)
+      .map((item) => item.uuid_karyawan),
+  );
+  const syncable_outlet_karyawan = unique_rows
+    .filter((item) => existing_karyawan_uuid_set.has(item.uuid_karyawan))
+    .filter((item) => !skipped_placement_karyawan_uuid_set.has(item.uuid_karyawan));
 
   await prisma.$transaction(async (tx) => {
-    if (new_outlet.length > 0) {
-      await tx.tbl_outlet.createMany({
-        data: new_outlet,
-        skipDuplicates: true,
-      });
-    }
-
-    if (new_karyawan.length > 0) {
-      await tx.tbl_karyawan.createMany({
-        data: new_karyawan,
-        skipDuplicates: true,
-      });
-    }
-
-    await Promise.all(
-      update_outlet.map((item) =>
-        tx.tbl_outlet.update({
-          where: { uuid: item.uuid },
-          data: {
-            name: item.name,
-            deleted_at: null,
-          },
-        }),
-      ),
-    );
-
-    await Promise.all(
-      update_karyawan.map((item) =>
-        tx.tbl_karyawan.update({
-          where: { uuid: item.uuid },
-          data: {
+    for (const item of syncable_outlet_karyawan) {
+      await tx.tbl_outlet_karyawan.upsert({
+        where: {
+          uuid_outlet_uuid_karyawan: {
             uuid_outlet: item.uuid_outlet,
-            name: item.name,
-            username: item.username,
-            password: item.password,
-            avatar: item.avatar,
-            deleted_at: null,
+            uuid_karyawan: item.uuid_karyawan,
           },
-        }),
-      ),
+        },
+        update: {
+          deleted_at: null,
+        },
+        create: {
+          uuid: randomUUID(),
+          uuid_outlet: item.uuid_outlet,
+          uuid_karyawan: item.uuid_karyawan,
+        },
+      });
+    }
+
+    const current_relations = await tx.tbl_outlet_karyawan.findMany({
+      where: {
+        uuid_karyawan: {
+          notIn: Array.from(skipped_placement_karyawan_uuid_set),
+        },
+        deleted_at: null,
+      },
+      select: {
+        uuid_outlet: true,
+        uuid_karyawan: true,
+        is_skip_sync: true,
+      },
+    });
+    const incoming_relation_key_set = new Set(
+      syncable_outlet_karyawan.map((item) => build_relation_key(item)),
     );
+    const removed_relation_keys = current_relations
+      .filter((item) => !item.is_skip_sync)
+      .filter((item) => !incoming_relation_key_set.has(build_relation_key(item)))
+      .map((item) => build_relation_key(item));
+
+    if (removed_relation_keys.length > 0) {
+      await Promise.all(
+        removed_relation_keys.map((relation_key) => {
+          const [uuid_outlet, uuid_karyawan] = relation_key.split(":");
+
+          return tx.tbl_outlet_karyawan.updateMany({
+            where: {
+              uuid_outlet,
+              uuid_karyawan,
+              deleted_at: null,
+              is_skip_sync: false,
+            },
+            data: {
+              deleted_at: new Date(),
+            },
+          });
+        }),
+      );
+    }
   });
 
   return {
     success: true,
     data: {
-      data_outlet: unique_outlet,
-      data_karyawan: unique_karyawan,
+      data_outlet_karyawan: unique_rows,
     },
     summary: {
-      inserted_outlet: new_outlet.length,
-      updated_outlet: update_outlet.length,
-      inserted_karyawan: new_karyawan.length,
-      updated_karyawan: update_karyawan.length,
+      synced_outlet_karyawan: syncable_outlet_karyawan.length,
+      skipped_outlet_karyawan:
+        placement_rows.length -
+        valid_rows.length +
+        skipped_placement_karyawan_uuid_set.size +
+        (unique_rows.length - syncable_outlet_karyawan.length),
     },
-  };
-}
-
-export async function getOutletKaryawan() {
-  const [data_outlet, data_karyawan] = await Promise.all([
-    prisma.tbl_outlet.findMany(),
-    prisma.tbl_karyawan.findMany({
-      select: {
-        uuid: true,
-        name: true,
-        username: true,
-        outlet: {
-          select: { name: true },
-        },
-      },
-    }),
-  ]);
-
-  return {
-    data_outlet,
-    data_karyawan: data_karyawan.map((item) => ({
-      uuid: item.uuid,
-      name: item.name,
-      username: item.username,
-      outlet_name: item.outlet?.name ?? "-",
-    })),
   };
 }

@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, Loader2Icon, UsersRoundIcon } from "lucide-react";
 import { toast } from "sonner";
+import {
+  clear_kepuasan_internal_cache,
+  get_kepuasan_internal_from_db,
+} from "@/lib/kepuasanInternalClient";
 import PageHeading from "@/components/page-heading";
-import ChartBarMultiple from "./components/chart-bar-multiple";
+import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +27,7 @@ const getYearOptions = (chart_data) => {
   return years.length ? years.sort().reverse() : [getFallbackYear()];
 };
 
-const filterDataByYear = (chart_data, selected_year) => {
+const filterDataByYear = (chart_data, selectedYear) => {
   if (!chart_data?.chart_data?.length || !chart_data?.series?.length) {
     return null;
   }
@@ -31,7 +35,7 @@ const filterDataByYear = (chart_data, selected_year) => {
   return {
     ...chart_data,
     chart_data: chart_data.chart_data.filter((item) =>
-      item.month.startsWith(`${selected_year}-`),
+      item.month.startsWith(`${selectedYear}-`),
     ),
   };
 };
@@ -60,40 +64,16 @@ export default function KepuasanInternalPage() {
   const [error_message, setErrorMessage] = useState("");
   const [is_loading, setIsLoading] = useState(true);
   const [sync_status, setSyncStatus] = useState("idle");
-  const [selected_year, setSelectedYear] = useState(getFallbackYear());
-
-  const fetchKepuasanInternal = async (year) => {
-    const search_params = new URLSearchParams();
-
-    if (year) {
-      search_params.set("year", year);
-    }
-
-    const query = search_params.toString();
-    const response = await fetch(`/api/kepuasan-internal${query ? `?${query}` : ""}`);
-    const payload = await response.json();
-
-    if (!response.ok || !payload.success) {
-      return {
-        success: false,
-        message: payload.message || "Data kepuasan internal belum tersedia.",
-        data: null,
-      };
-    }
-
-    return {
-      success: true,
-      message: "",
-      data: payload.data,
-    };
-  };
+  const [selectedYear, setSelectedYear] = useState(getFallbackYear());
 
   useEffect(() => {
     let is_active = true;
 
     const run = async () => {
       try {
-        const response_data = await fetchKepuasanInternal(selected_year);
+        const response_data = await get_kepuasan_internal_from_db({
+          year: selectedYear,
+        });
 
         if (!is_active) {
           return;
@@ -109,7 +89,7 @@ export default function KepuasanInternalPage() {
         setErrorMessage("");
 
         const next_year_options = getYearOptions(response_data.data);
-        if (!next_year_options.includes(selected_year)) {
+        if (!next_year_options.includes(selectedYear)) {
           setSelectedYear(next_year_options[0]);
         }
       } catch (error) {
@@ -133,12 +113,12 @@ export default function KepuasanInternalPage() {
     return () => {
       is_active = false;
     };
-  }, [selected_year]);
+  }, [selectedYear]);
 
   const year_options = useMemo(() => getYearOptions(chart_data), [chart_data]);
   const filtered_data = useMemo(
-    () => filterDataByYear(chart_data, selected_year),
-    [chart_data, selected_year],
+    () => filterDataByYear(chart_data, selectedYear),
+    [chart_data, selectedYear],
   );
   const respondent_stat = useMemo(
     () => getRespondentStat(filtered_data),
@@ -156,18 +136,25 @@ export default function KepuasanInternalPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tahun: selected_year,
+          year: selectedYear,
         }),
       });
       const payload = await response.json();
+      const response_data = {
+        success: response.ok && payload.success,
+        status: response.status,
+        message: payload.message || "Sinkronisasi kepuasan internal gagal dijalankan.",
+        data: payload.data,
+      };
 
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.message || "Sinkronisasi gagal dijalankan.");
+      if (!response_data.success) {
+        throw new Error(response_data.message);
       }
 
-      toast.success(payload.message || "Sinkronisasi kepuasan internal berhasil.");
-
-      const latest_response = await fetchKepuasanInternal(selected_year);
+      clear_kepuasan_internal_cache();
+      const latest_response = await get_kepuasan_internal_from_db({
+        year: selectedYear,
+      });
 
       if (!latest_response.success) {
         setChartData(null);
@@ -177,6 +164,9 @@ export default function KepuasanInternalPage() {
 
       setChartData(latest_response.data);
       setErrorMessage("");
+      toast.success(
+        response_data.message || "Sinkronisasi kepuasan internal berhasil.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Terjadi kesalahan saat sinkronisasi.");
     } finally {
@@ -227,12 +217,12 @@ export default function KepuasanInternalPage() {
                     />
                   }
                 >
-                  <span>{selected_year}</span>
+                  <span>{selectedYear}</span>
                   <ChevronDownIcon className="size-4 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[170px]">
                   <DropdownMenuRadioGroup
-                    value={selected_year}
+                    value={selectedYear}
                     onValueChange={(year) => {
                       setIsLoading(true);
                       setSelectedYear(year);
@@ -277,9 +267,6 @@ export default function KepuasanInternalPage() {
               : error_message || "Belum ada data kepuasan internal."
           }
         />
-        {!is_loading && error_message ? (
-          <p className="text-sm text-destructive">{error_message}</p>
-        ) : null}
       </div>
     </>
   );

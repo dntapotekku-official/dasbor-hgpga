@@ -54,8 +54,8 @@ const data = {
       ),
     },
     {
-      title: "Gofitku",
-      url: "/gofitku",
+      title: "Penjualan GoFitKu",
+      url: "/penjualan-gofitku",
       icon: (
         <DumbbellIcon />
       ),
@@ -83,10 +83,24 @@ const data = {
     },
     {
       title: "Pengaturan",
-      url: "/pengaturan",
+      url: "/pengaturan/data-outlet",
       icon: (
         <Settings2Icon />
       ),
+      items: [
+        {
+          title: "Data Admin",
+          url: "/pengaturan/data-admin",
+        },
+        {
+          title: "Data Outlet",
+          url: "/pengaturan/data-outlet",
+        },
+        {
+          title: "Data Karyawan",
+          url: "/pengaturan/data-karyawan",
+        },
+      ],
     },
   ],
 }

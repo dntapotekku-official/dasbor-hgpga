@@ -1,7 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 function formatDateParam(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function to_negative_value(value) {
+  const numeric_value = Math.abs(Number(value) || 0);
+
+  return numeric_value === 0 ? 0 : -numeric_value;
 }
 
 function getDefaultDateParams() {
@@ -71,6 +78,8 @@ export async function getKepatuhanSopCCTVChart({
   ]);
   const outlet_options = outlet_rows.map((item) => ({
     value: item.uuid,
+    uuid_outlet: item.uuid,
+    id_outlet: item.uuid,
     label: item.name,
   }));
 
@@ -101,9 +110,9 @@ export async function getKepatuhanSopCCTVChart({
     };
 
     chart_value.total += Number(item.total) || 0;
-    chart_value.total_point += Number(item.total_point) || 0;
+    chart_value.total_point += to_negative_value(item.total_point);
     outlet_value.total += Number(item.total) || 0;
-    outlet_value.total_point += Number(item.total_point) || 0;
+    outlet_value.total_point += to_negative_value(item.total_point);
     chart_map.set(chart_key, chart_value);
     outlet_map.set(item.uuid_outlet, outlet_value);
   }
@@ -208,7 +217,7 @@ export async function syncKepatuhanSopCCTV({
         uuid_outlet: item.id_outlet,
         date: new Date(`${date}T00:00:00.000Z`),
         total: Number(item.total) || 0,
-        total_point: Number(item.total_point) || 0,
+        total_point: to_negative_value(item.total_point),
       });
     }
   }
@@ -264,6 +273,7 @@ export async function syncKepatuhanSopCCTV({
           deleted_at: null,
         },
         create: {
+          uuid: randomUUID(),
           uuid_outlet: item.uuid_outlet,
           date: item.date,
           total: item.total,
