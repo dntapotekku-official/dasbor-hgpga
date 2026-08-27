@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
+import OptionDropdown from "@/components/option-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -25,33 +25,23 @@ function build_draft(item, fields) {
         ? Array.isArray(item?.[field.key])
           ? item[field.key]
           : []
+        : field.type === "placement-list"
+          ? Array.isArray(item?.[field.key])
+            ? item[field.key].map((placement, index) => ({
+                uuid: String(placement?.uuid ?? "").trim(),
+                outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+                key: String(placement?.uuid ?? `${field.key}-${index}`),
+              }))
+            : []
         : field.type === "select"
           ? String(item?.[field.key] ?? field.options?.[0]?.value ?? "").toLowerCase()
+        : field.type === "number"
+          ? String(item?.[field.key] ?? "")
         : Array.isArray(item?.[field.key])
           ? item[field.key].join("\n")
         : String(item?.[field.key] ?? ""),
     ]),
   );
-}
-
-function get_selected_option_labels(options = [], selected_values = []) {
-  const selected_value_set = new Set(selected_values);
-
-  return options
-    .filter((option) => selected_value_set.has(option.value))
-    .map((option) => option.label);
-}
-
-function get_field_disabled(field, draft) {
-  return typeof field.disabled === "function"
-    ? Boolean(field.disabled(draft))
-    : Boolean(field.disabled);
-}
-
-function get_field_helper(field, draft) {
-  return typeof field.helper === "function"
-    ? field.helper(draft)
-    : field.helper;
 }
 
 export default function PengaturanRowSheet({
@@ -64,9 +54,27 @@ export default function PengaturanRowSheet({
   on_save,
 }) {
   const [draft, setDraft] = useState(() => build_draft(item, fields));
-  const [openFieldKey, setOpenFieldKey] = useState(null);
-  const [fieldSearch, setFieldSearch] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [open_field_key, setOpenFieldKey] = useState(null);
+  const [field_search, setFieldSearch] = useState({});
+  const [is_submitting, setIsSubmitting] = useState(false);
+
+  const reset_sheet_state = () => {
+    setDraft(build_draft(item, fields));
+    setOpenFieldKey(null);
+    setFieldSearch({});
+  };
+
+  const handle_open_change = (next_open) => {
+    if (is_submitting && !next_open) {
+      return;
+    }
+
+    if (!next_open) {
+      reset_sheet_state();
+    }
+
+    on_open_change(next_open);
+  };
 
   const handle_save = async () => {
     setIsSubmitting(true);
@@ -85,6 +93,13 @@ export default function PengaturanRowSheet({
                 .filter(Boolean)
             : field.type === "multiselect"
               ? draft[field.key]
+              : field.type === "placement-list"
+                ? (Array.isArray(draft[field.key]) ? draft[field.key] : [])
+                    .map((placement) => ({
+                      uuid: String(placement?.uuid ?? "").trim(),
+                      outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+                    }))
+                    .filter((placement) => placement.outlet_uuid)
               : field.type === "select"
                 ? String(draft[field.key] ?? "").trim()
               : draft[field.key].trim(),
@@ -94,6 +109,7 @@ export default function PengaturanRowSheet({
 
     try {
       await on_save(next_item);
+      reset_sheet_state();
       on_open_change(false);
     } catch (error) {
       toast.error(
@@ -107,16 +123,21 @@ export default function PengaturanRowSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={on_open_change}>
-      <SheetContent className="w-full sm:max-w-lg">
+    <Sheet open={open} onOpenChange={handle_open_change}>
+      <SheetContent className="w-full sm:max-w-lg" showCloseButton={!is_submitting}>
         <SheetHeader className="border-b pb-4">
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
           {fields.map((field) => {
-            const is_disabled = get_field_disabled(field, draft);
-            const field_helper = get_field_helper(field, draft);
+            const is_disabled =
+              typeof field.disabled === "function"
+                ? Boolean(field.disabled(draft))
+                : Boolean(field.disabled);
+            const field_helper =
+              typeof field.helper === "function"
+                ? field.helper(draft)
+                : field.helper;
 
             return (
             <div key={field.key} className="space-y-2">
@@ -165,11 +186,11 @@ export default function PengaturanRowSheet({
                 <div className="relative">
                   {Array.isArray(draft[field.key]) && draft[field.key].length > 0 ? (
                     <ul className="mb-2 list-disc space-y-1 pl-4 text-sm text-foreground">
-                      {get_selected_option_labels(field.options, draft[field.key]).map(
-                        (option_label) => (
-                          <li key={`${field.key}-${option_label}`}>{option_label}</li>
-                        ),
-                      )}
+                      {(field.options ?? [])
+                        .filter((option) => draft[field.key].includes(option.value))
+                        .map((option) => (
+                          <li key={`${field.key}-${option.value}`}>{option.label}</li>
+                        ))}
                     </ul>
                   ) : null}
                   <button
@@ -196,17 +217,17 @@ export default function PengaturanRowSheet({
                   >
                     <span className="truncate text-foreground">
                       {Array.isArray(draft[field.key]) && draft[field.key].length > 0
-                        ? `${draft[field.key].length} outlet dipilih`
+                        ? `${draft[field.key].length} ${field.selection_label ?? "item"} dipilih`
                         : field.placeholder}
                     </span>
                     <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
                   </button>
-                  {openFieldKey === field.key ? (
+                  {open_field_key === field.key ? (
                     <div className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-2 shadow-lg">
                       <div className="relative p-1">
                         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          value={fieldSearch[field.key] ?? ""}
+                          value={field_search[field.key] ?? ""}
                           onChange={(event) =>
                             setFieldSearch((current) => ({
                               ...current,
@@ -214,7 +235,7 @@ export default function PengaturanRowSheet({
                             }))
                           }
                           onKeyDown={(event) => event.stopPropagation()}
-                          placeholder="Cari outlet..."
+                          placeholder={field.search_placeholder ?? "Cari item..."}
                           className="h-9 pl-8"
                         />
                       </div>
@@ -222,7 +243,7 @@ export default function PengaturanRowSheet({
                         ?.filter((option) =>
                           option.label
                             .toLowerCase()
-                            .includes((fieldSearch[field.key] ?? "").trim().toLowerCase()),
+                            .includes((field_search[field.key] ?? "").trim().toLowerCase()),
                         )
                         .map((option) => {
                         const selected = draft[field.key]?.includes(option.value);
@@ -250,64 +271,145 @@ export default function PengaturanRowSheet({
                         ?.filter((option) =>
                           option.label
                             .toLowerCase()
-                            .includes((fieldSearch[field.key] ?? "").trim().toLowerCase()),
+                            .includes((field_search[field.key] ?? "").trim().toLowerCase()),
                         )
                         .length ? (
                         <div className="px-2 py-3 text-center text-sm text-muted-foreground">
-                          Outlet tidak ditemukan.
+                          {field.empty_search_message ?? "Data tidak ditemukan."}
                         </div>
                       ) : null}
                     </div>
                   ) : null}
                 </div>
-              ) : field.type === "select" ? (
-                <div className="relative">
-                  <button
-                    type="button"
-                    id={field.key}
-                    disabled={is_disabled}
-                    onClick={() =>
-                      setOpenFieldKey((current) =>
-                        current === field.key ? null : field.key,
-                      )
-                    }
-                    className={`flex w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 ${
-                      is_disabled ? "cursor-not-allowed opacity-60" : ""
-                    }`}
-                  >
-                    <span className="truncate text-foreground">
-                      {field.options?.find((option) => option.value === draft[field.key])?.label ??
-                        field.placeholder}
-                    </span>
-                    <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
-                  </button>
-                  {openFieldKey === field.key ? (
-                    <div className="absolute z-20 mt-2 w-full rounded-lg border bg-popover p-2 shadow-lg">
-                      {field.options?.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setDraft((current) => ({
-                              ...current,
-                              [field.key]: option.value,
-                            }));
-                            setOpenFieldKey(null);
-                          }}
-                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+              ) : field.type === "placement-list" ? (
+                <div className="space-y-3">
+                  {Array.isArray(draft[field.key]) && draft[field.key].length > 0 ? (
+                    draft[field.key].map((placement, index) => {
+                      const current_value = String(placement?.outlet_uuid ?? "").trim();
+                      const selected_outlet_values = new Set(
+                        (draft[field.key] ?? [])
+                          .map((item) => String(item?.outlet_uuid ?? "").trim())
+                          .filter(Boolean),
+                      );
+
+                      return (
+                        <div
+                          key={placement.key ?? `${field.key}-${index}`}
+                          className="flex items-center gap-2"
                         >
-                          <span>{option.label}</span>
-                          {draft[field.key] === option.value ? (
-                            <CheckIcon className="size-4 text-primary" />
-                          ) : null}
-                        </button>
-                      ))}
+                          <div className="min-w-0 flex-1">
+                            <OptionDropdown
+                              id={`${field.key}-${index}`}
+                              value={current_value}
+                              options={[
+                                {
+                                  value: "",
+                                  label: "Pilih outlet",
+                                },
+                                ...(
+                                  field.options?.filter((option) => {
+                                    const is_selected_elsewhere =
+                                      selected_outlet_values.has(option.value) &&
+                                      option.value !== current_value;
+
+                                    return !is_selected_elsewhere;
+                                  }) ?? []
+                                ),
+                              ]}
+                              onValueChange={(next_value) =>
+                                setDraft((current) => ({
+                                  ...current,
+                                  [field.key]: (current[field.key] ?? []).map((item, item_index) =>
+                                    item_index === index
+                                      ? {
+                                          ...item,
+                                          outlet_uuid: next_value,
+                                        }
+                                      : item,
+                                  ),
+                                }))
+                              }
+                              disabled={is_disabled}
+                              ariaLabel={`Pilih outlet penempatan ${index + 1}`}
+                              searchable
+                              searchPlaceholder="Cari outlet..."
+                              emptyMessage="Outlet tidak ditemukan."
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="delete"
+                            size="icon-sm"
+                            className="shrink-0"
+                            disabled={is_disabled}
+                            onClick={() =>
+                              setDraft((current) => ({
+                                ...current,
+                                [field.key]: (current[field.key] ?? []).filter(
+                                  (_, item_index) => item_index !== index,
+                                ),
+                              }))
+                            }
+                          >
+                            <Trash2Icon className="size-4" />
+                            <span className="sr-only">Hapus penempatan</span>
+                          </Button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="rounded-lg border border-dashed bg-muted/40 px-3 py-4 text-sm text-muted-foreground">
+                      Belum ada penempatan outlet.
                     </div>
-                  ) : null}
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      is_disabled ||
+                      (Array.isArray(field.options) &&
+                        (draft[field.key] ?? []).length >= field.options.length)
+                    }
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        [field.key]: [
+                          ...(current[field.key] ?? []),
+                          {
+                            uuid: "",
+                            outlet_uuid: "",
+                            key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                          },
+                        ],
+                      }))
+                    }
+                    className="w-full"
+                  >
+                    <PlusIcon className="size-4" />
+                    Tambah Penempatan
+                  </Button>
                 </div>
+              ) : field.type === "select" ? (
+                <OptionDropdown
+                  id={field.key}
+                  value={String(draft[field.key] ?? "")}
+                  options={field.options ?? []}
+                  onValueChange={(next_value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      [field.key]: next_value,
+                    }))
+                  }
+                  disabled={is_disabled}
+                  ariaLabel={field.aria_label ?? field.label}
+                  searchable={field.searchable}
+                  searchPlaceholder={field.search_placeholder}
+                  emptyMessage={field.empty_search_message}
+                />
               ) : (
                 <Input
                   id={field.key}
+                  type={field.input_type ?? field.type ?? "text"}
                   value={draft[field.key] ?? ""}
                   disabled={is_disabled}
                   onChange={(event) =>
@@ -317,6 +419,8 @@ export default function PengaturanRowSheet({
                     }))
                   }
                   placeholder={field.placeholder}
+                  min={field.min}
+                  step={field.step}
                 />
               )}
               {field_helper ? (
@@ -330,7 +434,7 @@ export default function PengaturanRowSheet({
           <Button
             type="button"
             onClick={handle_save}
-            disabled={isSubmitting}
+            disabled={is_submitting}
             className="w-full"
           >
             Simpan Perubahan

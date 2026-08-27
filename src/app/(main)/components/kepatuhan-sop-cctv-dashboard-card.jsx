@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRightIcon,
   Building2Icon,
+  CctvIcon,
   ChevronDownIcon,
   SearchIcon,
 } from "lucide-react";
@@ -32,14 +33,13 @@ const default_outlet = { value: "semua-outlet", label: "Semua Outlet" };
 const format_number = (value) => Number(value || 0).toLocaleString("id-ID");
 
 export default function KepatuhanSopCctvDashboardCard() {
-  const current_month_range = useMemo(() => {
+  const current_day_range = useMemo(() => {
     const today = new Date();
+    const today_param = today.toISOString().slice(0, 10);
 
     return {
-      tanggal_awal: new Date(today.getFullYear(), today.getMonth(), 1)
-        .toISOString()
-        .slice(0, 10),
-      tanggal_akhir: today.toISOString().slice(0, 10),
+      tanggal_awal: today_param,
+      tanggal_akhir: today_param,
       label: new Intl.DateTimeFormat("id-ID", {
         weekday: "long",
         day: "numeric",
@@ -90,10 +90,50 @@ export default function KepatuhanSopCctvDashboardCard() {
 
     const run = async () => {
       try {
+        const response = await fetch("/api/outlet", {
+          method: "GET",
+          cache: "no-store",
+        });
+        const payload = await response.json();
+
+        if (!is_active || !response.ok || !payload.success) {
+          return;
+        }
+
+        const outlet_options_from_payload = Array.isArray(payload.data?.data_outlet)
+          ? payload.data.data_outlet.map((item) => ({
+              value: item.uuid,
+              label: item.name,
+            }))
+          : [];
+
+        setDashboardData((current_data) => ({
+          ...current_data,
+          outlet_options: outlet_options_from_payload.filter(
+            (item) => item?.value && item?.label,
+          ),
+        }));
+      } catch {
+        // Dropdown outlet boleh kosong kalau API outlet gagal, data utama tetap dicoba.
+      }
+    };
+
+    void run();
+
+    return () => {
+      is_active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let is_active = true;
+
+    const run = async () => {
+      try {
         setEmptyMessage("Memuat data kepatuhan SOP CCTV...");
         const response = await getKepatuhanSopCctvFromDb({
-          tanggal_awal: current_month_range.tanggal_awal,
-          tanggal_akhir: current_month_range.tanggal_akhir,
+          tanggal_awal: current_day_range.tanggal_awal,
+          tanggal_akhir: current_day_range.tanggal_akhir,
           uuid_outlet:
             active_outlet === default_outlet.value ? undefined : active_outlet,
         });
@@ -104,7 +144,7 @@ export default function KepatuhanSopCctvDashboardCard() {
 
         if (!response.success) {
           setDashboardData((current_data) => ({
-            outlet_options: current_data.outlet_options,
+            ...current_data,
             summary: {
               total: 0,
               total_point: 0,
@@ -123,13 +163,10 @@ export default function KepatuhanSopCctvDashboardCard() {
             }));
 
         setDashboardData((current_data) => ({
-          outlet_options: Array.from(
-            new Map(
-              [...current_data.outlet_options, ...outlet_options_from_payload]
-                .filter((item) => item?.value && item?.label)
-                .map((item) => [item.value, item]),
-            ).values(),
-          ),
+          ...current_data,
+          outlet_options: current_data.outlet_options.length
+            ? current_data.outlet_options
+            : outlet_options_from_payload,
           summary: {
             total: Number(response.data?.summary?.total) || 0,
             total_point: Number(response.data?.summary?.total_point) || 0,
@@ -152,15 +189,24 @@ export default function KepatuhanSopCctvDashboardCard() {
     return () => {
       is_active = false;
     };
-  }, [active_outlet, current_month_range.tanggal_akhir, current_month_range.tanggal_awal]);
+  }, [active_outlet, current_day_range.tanggal_akhir, current_day_range.tanggal_awal]);
 
   return (
-    <Card className="flex flex-col self-start">
-      <CardHeader className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
+    <Card className="flex flex-col self-start gap-0">
+      <CardHeader>
         <div className="grid auto-rows-min gap-1">
-          <CardTitle>Kepatuhan SOP CCTV</CardTitle>
-          <CardDescription>{current_month_range.label}</CardDescription>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50">
+              <CctvIcon className="size-5 text-rose-700" />
+            </div>
+            <div className="grid auto-rows-min gap-1">
+              <CardTitle>Kepatuhan SOP CCTV</CardTitle>
+              <CardDescription>{current_day_range.label}</CardDescription>
+            </div>
+          </div>
         </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
         <div className="w-full sm:w-auto">
           <div className="flex min-w-0 flex-col gap-2">
             <span className="text-xs font-medium text-muted-foreground">Outlet</span>
@@ -227,8 +273,6 @@ export default function KepatuhanSopCctvDashboardCard() {
             </DropdownMenu>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
         {has_data ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex min-h-[120px] flex-col justify-center rounded-lg border border-blue-200 bg-blue-50 p-6">
@@ -250,12 +294,12 @@ export default function KepatuhanSopCctvDashboardCard() {
           </div>
         )}
       </CardContent>
-      <CardFooter className="p-0">
+      <CardFooter className="p-2">
         <Button
           nativeButton={false}
           variant="ghost"
           size="sm"
-          className="h-10 w-full rounded-none"
+          className="h-8 w-full rounded-md"
           render={<Link href="/kepatuhan-sop-cctv" />}
         >
           Lihat Detail

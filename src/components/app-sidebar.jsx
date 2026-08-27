@@ -3,8 +3,10 @@
 import Image from "next/image"
 import Link from "next/link"
 
+import { useAuth } from "@/components/auth-provider"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
+import { hasRoleAccess, normalizeRole } from "@/lib/role"
 import {
   Sidebar,
   SidebarContent,
@@ -19,18 +21,14 @@ import {
   BadgeDollarSignIcon,
   ChartBarIcon,
   CctvIcon,
-  DumbbellIcon,
-  GraduationCapIcon,
+  ClipboardCheckIcon,
   IdCardIcon,
   LayoutDashboardIcon,
+  PillBottleIcon,
   Settings2Icon,
 } from "lucide-react"
 
 const data = {
-  user: {
-    name: "Admin HGPGA",
-    email: "admin",
-  },
   navMain: [
     {
       title: "Dasbor",
@@ -38,6 +36,7 @@ const data = {
       icon: (
         <LayoutDashboardIcon />
       ),
+      roles: ["admin", "viewer", "member"],
     },
     {
       title: "Kepuasan Internal",
@@ -45,6 +44,7 @@ const data = {
       icon: (
         <ChartBarIcon />
       ),
+      roles: ["admin", "viewer"],
     },
     {
       title: "Kepatuhan SOP CCTV",
@@ -52,27 +52,32 @@ const data = {
       icon: (
         <CctvIcon />
       ),
+      roles: ["admin", "viewer"],
     },
     {
       title: "Penjualan GoFitKu",
       url: "/penjualan-gofitku",
       icon: (
-        <DumbbellIcon />
+        <PillBottleIcon />
       ),
+      roles: ["admin", "viewer", "member"],
     },
     {
-      title: "Nilai Transaksi",
-      url: "/nilai-transaksi",
+      title: "Nilai Transaksi & Basket Size",
+      url: "/nilai-transaksi-basket-size",
       icon: (
         <BadgeDollarSignIcon />
       ),
+      roles: ["admin", "viewer", "member"],
     },
     {
       title: "Nilai Magang",
       url: "/nilai-magang",
       icon: (
-        <GraduationCapIcon />
+        <ClipboardCheckIcon />
       ),
+      roles: ["admin", "viewer"],
+      disabled: true,
     },
     {
       title: "Atribut InsanKu",
@@ -80,33 +85,67 @@ const data = {
       icon: (
         <IdCardIcon />
       ),
+      roles: ["admin", "viewer"],
+      disabled: true,
     },
     {
       title: "Pengaturan",
-      url: "/pengaturan/data-outlet",
       icon: (
         <Settings2Icon />
       ),
+      roles: ["admin"],
       items: [
         {
-          title: "Data Admin",
-          url: "/pengaturan/data-admin",
+          title: "Pengguna",
+          url: "/pengaturan/pengguna",
+          roles: ["admin"],
         },
         {
-          title: "Data Outlet",
-          url: "/pengaturan/data-outlet",
+          title: "Outlet",
+          url: "/pengaturan/outlet",
+          roles: ["admin"],
         },
         {
-          title: "Data Karyawan",
-          url: "/pengaturan/data-karyawan",
+          title: "API API",
+          url: "/pengaturan/api-ai",
+          roles: ["admin"],
+        },
+        {
+          title: "Produk Gofitku",
+          url: "/pengaturan/produk-gofitku",
+          roles: ["admin"],
+        },
+        {
+          title: "Target",
+          url: "/pengaturan/target",
+          roles: ["admin"],
         },
       ],
     },
   ],
 }
+
 export function AppSidebar({
   ...props
 }) {
+  const { user } = useAuth()
+  const current_user = {
+    name: user?.name ?? "User HGPGA",
+    username: user?.username ?? user?.role ?? "user",
+  };
+  const normalized_role = normalizeRole(user?.role ?? "member");
+  const nav_items = data.navMain
+    .filter((item) => !item.roles || hasRoleAccess(normalized_role, item.roles))
+    .map((item) => ({
+      ...item,
+      items: Array.isArray(item.items)
+        ? item.items.filter(
+            (child_item) =>
+              !child_item.roles || hasRoleAccess(normalized_role, child_item.roles),
+          )
+        : undefined,
+    }));
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -128,10 +167,10 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={nav_items} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={current_user} />
       </SidebarFooter>
     </Sidebar>
   );

@@ -8,21 +8,26 @@ export async function getKepuasanInternalChart({ year } = {}) {
     throw new Error("Tahun tidak valid.");
   }
 
-  const rows = await prisma.tbl_kepuasan_internal.findMany({
-    where: {
-      deleted_at: null,
-      ...(parsed_year
-        ? {
-            date: {
-              gte: new Date(Date.UTC(parsed_year, 0, 1)),
-              lt: new Date(Date.UTC(parsed_year + 1, 0, 1)),
-            },
-          }
-        : {}),
-    },
-    orderBy: { date: "asc" },
-    select: { date: true, puas: true, tidak_puas: true },
-  });
+  const [rows, total_karyawan] = await Promise.all([
+    prisma.tbl_kepuasan_internal.findMany({
+      where: {
+        deleted_at: null,
+        ...(parsed_year
+          ? {
+              date: {
+                gte: new Date(Date.UTC(parsed_year, 0, 1)),
+                lt: new Date(Date.UTC(parsed_year + 1, 0, 1)),
+              },
+            }
+          : {}),
+      },
+      orderBy: { date: "asc" },
+      select: { date: true, puas: true, tidak_puas: true },
+    }),
+    prisma.tbl_karyawan.count({
+      where: { deleted_at: null },
+    }),
+  ]);
 
   if (!rows.length) {
     return {
@@ -52,6 +57,7 @@ export async function getKepuasanInternalChart({ year } = {}) {
         month: labels[index],
         puas: item.puas,
         tidak_puas: item.tidak_puas,
+        total_karyawan,
       })),
     },
   };

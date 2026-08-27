@@ -19,7 +19,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { EllipsisVerticalIcon, LogOutIcon } from "lucide-react"
+import { EllipsisVerticalIcon, LogOutIcon, UserIcon } from "lucide-react"
 
 export function NavUser({
   user
@@ -59,13 +59,13 @@ export function NavUser({
             }>
             <Avatar className="size-8 rounded-lg border border-white/15">
               <AvatarFallback className="rounded-lg bg-white/12 text-white">
-                HG
+                <UserIcon className="size-4" />
               </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs text-white/60">
-                {user.email}
+                {user.username}
               </span>
             </div>
             <EllipsisVerticalIcon className="ml-auto size-4 text-white/70" />
@@ -79,13 +79,13 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="size-8 rounded-lg">
                   <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                    HG
+                    <UserIcon className="size-4" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {user.email}
+                    {user.username}
                   </span>
                 </div>
               </div>

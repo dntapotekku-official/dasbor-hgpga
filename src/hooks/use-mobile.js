@@ -3,7 +3,7 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState(() => {
+  const [is_mobile, setIsMobile] = React.useState(() => {
     if (typeof window === "undefined") {
       return false
     }
@@ -20,5 +20,5 @@ export function useIsMobile() {
     return () => mql.removeEventListener("change", onChange);
   }, [])
 
-  return isMobile
+  return is_mobile
 }

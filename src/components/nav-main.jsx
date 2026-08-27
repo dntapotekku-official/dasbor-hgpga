@@ -16,15 +16,15 @@ import {
 export function NavMain({ items }) {
   const pathname = usePathname();
 
-  const is_active_item = (url) => {
-    if (url === "/") {
+  const is_active_item = (url, { exact = false } = {}) => {
+    if (url === "/" || exact) {
       return pathname === url;
     }
 
     return pathname === url || pathname.startsWith(`${url}/`);
   };
 
-  const [openSections, setOpenSections] = useState({});
+  const [open_sections, setOpenSections] = useState({});
 
   const is_active_group = (item) => {
     if (!Array.isArray(item.items) || item.items.length === 0) {
@@ -39,8 +39,8 @@ export function NavMain({ items }) {
       return false;
     }
 
-    if (Object.hasOwn(openSections, item.title)) {
-      return openSections[item.title];
+    if (Object.hasOwn(open_sections, item.title)) {
+      return open_sections[item.title];
     }
 
     return is_active_group(item);
@@ -57,7 +57,7 @@ export function NavMain({ items }) {
                   <SidebarMenuButton
                     tooltip={item.title}
                     isActive={is_active_group(item)}
-                    className="h-11 px-3 text-white/85 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium"
+                    className="h-auto min-h-11 items-center px-3 py-3 text-white/85 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
                     onClick={() =>
                       setOpenSections((current) => ({
                         ...current,
@@ -66,9 +66,11 @@ export function NavMain({ items }) {
                     }
                   >
                     {item.icon}
-                    <span>{item.title}</span>
+                    <span className="whitespace-normal break-words leading-snug">
+                      {item.title}
+                    </span>
                     <ChevronDownIcon
-                      className={`ml-auto transition-transform ${
+                      className={`ml-auto shrink-0 transition-transform ${
                         is_open_group(item) ? "rotate-180" : ""
                       }`}
                     />
@@ -79,11 +81,21 @@ export function NavMain({ items }) {
                         <SidebarMenuItem key={child_item.title}>
                           <SidebarMenuButton
                             tooltip={child_item.title}
-                            isActive={is_active_item(child_item.url)}
-                            className="h-10 px-3 text-white/75 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium"
-                            render={<Link href={child_item.url} />}
+                            isActive={
+                              !child_item.disabled &&
+                              is_active_item(child_item.url, { exact: true })
+                            }
+                            disabled={child_item.disabled}
+                            className="h-auto min-h-10 items-start px-3 py-2.5 text-white/75 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium disabled:cursor-not-allowed [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
+                            render={
+                              child_item.disabled ? undefined : (
+                                <Link href={child_item.url} />
+                              )
+                            }
                           >
-                            <span>{child_item.title}</span>
+                            <span className="whitespace-normal break-words leading-snug">
+                              {child_item.title}
+                            </span>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
@@ -93,12 +105,15 @@ export function NavMain({ items }) {
               ) : (
                 <SidebarMenuButton
                   tooltip={item.title}
-                  isActive={is_active_item(item.url)}
-                  className="h-11 px-3 text-white/85 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium"
-                  render={<Link href={item.url} />}
+                  isActive={!item.disabled && is_active_item(item.url)}
+                  disabled={item.disabled}
+                  className="h-auto min-h-11 items-center px-3 py-3 text-white/85 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium disabled:cursor-not-allowed [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
+                  render={item.disabled ? undefined : <Link href={item.url} />}
                 >
                   {item.icon}
-                  <span>{item.title}</span>
+                  <span className="whitespace-normal break-words leading-snug">
+                    {item.title}
+                  </span>
                 </SidebarMenuButton>
               )}
             </SidebarMenuItem>

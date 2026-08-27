@@ -16,11 +16,23 @@ import {
 
 const format_number = (value) => Number(value || 0).toLocaleString("id-ID");
 
-function render_bar_label({ value, x, y, width, height }) {
+function render_bar_label({
+  value,
+  x,
+  y,
+  width,
+  height,
+  index,
+  data_key,
+  chart_data,
+  label_formatter,
+  label_class_name,
+}) {
   if (value == null) {
     return null;
   }
 
+  const row_data = chart_data[index] ?? {};
   const numeric_value = Number(value) || 0;
   const bar_start_y = Number(y) || 0;
   const bar_end_y = bar_start_y + (Number(height) || 0);
@@ -29,6 +41,13 @@ function render_bar_label({ value, x, y, width, height }) {
     numeric_value < 0
       ? Math.max(bar_start_y, bar_end_y) + 8
       : Math.min(bar_start_y, bar_end_y) - 8;
+  const formatted_value = label_formatter
+    ? label_formatter({
+        value: numeric_value,
+        data_key,
+        payload: row_data,
+      })
+    : format_number(numeric_value);
 
   return (
     <text
@@ -36,9 +55,9 @@ function render_bar_label({ value, x, y, width, height }) {
       y={label_y}
       textAnchor="middle"
       dominantBaseline={numeric_value < 0 ? "hanging" : "auto"}
-      className="fill-foreground text-xs"
+      className={`fill-foreground ${label_class_name}`}
     >
-      {format_number(numeric_value)}
+      {formatted_value}
     </text>
   );
 }
@@ -79,13 +98,32 @@ function build_chart_config(series) {
   );
 }
 
+function render_legend(series) {
+  return (
+    <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
+      {series.map((item, index) => (
+        <div key={item.key} className="flex items-center gap-2">
+          <span
+            className="size-4 rounded-full"
+            style={{ backgroundColor: get_series_color(item, index) }}
+          />
+          <span>{item.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function render_chart({
   chart_data,
   series,
   chart_class_name,
   x_data_key,
   x_tick_formatter,
+  x_axis_interval,
   tooltip_content,
+  label_formatter,
+  label_class_name,
 }) {
   return (
     <ChartContainer
@@ -100,6 +138,7 @@ function render_chart({
           tickMargin={10}
           axisLine={false}
           minTickGap={24}
+          interval={x_axis_interval}
           tickFormatter={x_tick_formatter}
         />
         <ChartTooltip
@@ -113,7 +152,18 @@ function render_chart({
             fill={`var(--color-${item.key})`}
             radius={8}
           >
-            <LabelList content={render_bar_label} />
+            <LabelList
+              dataKey={item.key}
+              content={(props) =>
+                render_bar_label({
+                  ...props,
+                  data_key: item.key,
+                  chart_data,
+                  label_formatter,
+                  label_class_name,
+                })
+              }
+            />
           </Bar>
         ))}
       </BarChart>
@@ -130,25 +180,34 @@ export default function ChartBarMultiple({
   emptyMessage = "Belum ada data.",
   xDataKey = "month",
   xTickFormatter = (value) => value,
+  xAxisInterval,
   tooltipContent,
   showLegend = true,
   chartClassName = "aspect-auto h-[180px] w-full",
   renderCard = true,
-  wrapperClassName = "rounded-lg border p-4",
+  wrapperClassName = "rounded-lg border px-4 py-3",
+  labelFormatter,
+  labelClassName = "text-xs",
 }) {
   const has_data = chartData.length > 0 && series.length > 0;
 
   if (!renderCard) {
     return has_data ? (
       <div className={wrapperClassName}>
-        {render_chart({
-          chart_data: chartData,
-          series,
-          chart_class_name: chartClassName,
-          x_data_key: xDataKey,
-          x_tick_formatter: xTickFormatter,
-          tooltip_content: tooltipContent,
-        })}
+        <div className="space-y-3">
+          {showLegend ? render_legend(series) : null}
+          {render_chart({
+            chart_data: chartData,
+            series,
+            chart_class_name: chartClassName,
+            x_data_key: xDataKey,
+            x_tick_formatter: xTickFormatter,
+            x_axis_interval: xAxisInterval,
+            tooltip_content: tooltipContent,
+            label_formatter: labelFormatter,
+            label_class_name: labelClassName,
+          })}
+        </div>
       </div>
     ) : (
       <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed bg-muted/40 px-6 text-center text-sm text-muted-foreground">
@@ -158,41 +217,34 @@ export default function ChartBarMultiple({
   }
 
   return (
-    <Card className="border-t-4 border-t-primary">
-      <CardHeader className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="text-xl">{title}</CardTitle>
-          {showLegend && has_data ? (
-            <div className="mt-2 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
-              {series.map((item, index) => (
-                <div key={item.key} className="flex items-center gap-2">
-                  <span
-                    className="size-4 rounded-full"
-                    style={{ backgroundColor: get_series_color(item, index) }}
-                  />
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        {filter || action ? (
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-end">
+    <Card className="gap-0 border-t-4 border-t-primary">
+      <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+        <CardTitle>{title}</CardTitle>
+        {action ? <div className="w-full sm:w-auto">{action}</div> : null}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {filter ? (
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
             {filter ? <div className="w-full sm:w-auto">{filter}</div> : null}
-            {action ? <div className="w-full sm:w-auto">{action}</div> : null}
           </div>
         ) : null}
-      </CardHeader>
-      <CardContent className="pt-5">
         {has_data ? (
-          render_chart({
-            chart_data: chartData,
-            series,
-            chart_class_name: chartClassName,
-            x_data_key: xDataKey,
-            x_tick_formatter: xTickFormatter,
-            tooltip_content: tooltipContent,
-          })
+          <div className={wrapperClassName}>
+            <div className="space-y-3">
+              {showLegend ? render_legend(series) : null}
+              {render_chart({
+                chart_data: chartData,
+                series,
+                chart_class_name: chartClassName,
+                x_data_key: xDataKey,
+                x_tick_formatter: xTickFormatter,
+                x_axis_interval: xAxisInterval,
+                tooltip_content: tooltipContent,
+                label_formatter: labelFormatter,
+                label_class_name: labelClassName,
+              })}
+            </div>
+          </div>
         ) : (
           <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed bg-muted/40 px-6 text-center text-sm text-muted-foreground">
             {emptyMessage}

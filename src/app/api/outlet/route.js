@@ -4,7 +4,7 @@ import {
   syncOutlet,
   updateOutlet,
 } from "@/services/outletService";
-import { requireSession } from "@/lib/auth";
+import { requireRole, requireSession } from "@/lib/auth";
 
 export const GET = async () => {
   try {
@@ -35,7 +35,7 @@ export const GET = async () => {
 
 export const POST = async () => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireRole(["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -61,19 +61,18 @@ export const POST = async () => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireRole(["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
     const body = await request.json().catch(() => ({}));
-
-    console.log(body);
     const data = await updateOutlet({
       uuid_outlet: body?.uuid_outlet,
       name: body?.name,
-      is_skip_sync: body?.is_skip_sync
+      kategori: body?.kategori,
+      is_skip_sync: body?.is_skip_sync,
     });
 
     return NextResponse.json(data);

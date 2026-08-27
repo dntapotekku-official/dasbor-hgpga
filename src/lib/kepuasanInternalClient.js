@@ -1,11 +1,7 @@
 const kepuasan_internal_cache = new Map();
 
-function build_cache_key({ year } = {}) {
-  return JSON.stringify({ year: year ?? "" });
-}
-
 export function get_kepuasan_internal_from_db({ year } = {}) {
-  const cache_key = build_cache_key({ year });
+  const cache_key = JSON.stringify({ year: year ?? "" });
 
   if (kepuasan_internal_cache.has(cache_key)) {
     return kepuasan_internal_cache.get(cache_key);

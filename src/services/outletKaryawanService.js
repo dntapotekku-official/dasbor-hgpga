@@ -1,24 +1,102 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { dedupeByKey } from "@/lib/utils";
 import {
-  build_relation_key,
-  fetch_karyawan_payload,
-  fetch_outlet_karyawan_payload,
-  fetch_outlet_payload,
-  normalize_karyawan_rows,
-  normalize_outlet_karyawan_rows,
-  normalize_outlet_rows,
-} from "@/services/pengaturanSharedService";
+  fetchKaryawanPayload,
+  getKaryawanSettingsData,
+  normalizeKaryawanRows,
+} from "@/services/karyawanService";
+import {
+  fetchOutletPayload,
+  normalizeOutletRows,
+} from "@/services/outletService";
+
+function buildRelationKey({ uuid_outlet, uuid_karyawan }) {
+  return `${uuid_outlet}:${uuid_karyawan}`;
+}
+
+export async function fetchOutletKaryawanPayload() {
+  const url =
+    process.env.OUTLET_KARYAWAN_SLIP_GAJI_API_URL ??
+    process.env.OUTLET_KARYAWAN_SLIPGAJI_API_URL;
+
+  if (!url) {
+    throw new Error("Environment variable OUTLET_KARYAWAN_SLIP_GAJI_API_URL belum diatur.");
+  }
+
+  const result = await fetch(url, {
+    headers: {
+      "x-api-key": process.env.SLIPGAJI_AUDIT_API_KEY,
+    },
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      `Gagal menyinkronkan OUTLET_KARYAWAN_SLIP_GAJI_API_URL: ${result.status}`,
+    );
+  }
+
+  const response = await result.json();
+
+  return response.data ?? response;
+}
+
+export function normalizeOutletKaryawanRows({
+  outlet_karyawan_payload,
+  valid_outlet_uuid_set,
+  valid_karyawan_uuid_set,
+}) {
+  const placement_rows = Object.entries(outlet_karyawan_payload).flatMap(
+    ([outlet_key, karyawan_list]) => {
+      const [uuid_outlet] = outlet_key.split("_");
+
+      if (!Array.isArray(karyawan_list)) {
+        return [];
+      }
+
+      return karyawan_list
+        .map((item) => {
+          const uuid_karyawan = String(
+            item?.id_karyawans ?? item?.id_karyawan ?? item?.uuid ?? item?.id ?? "",
+          ).trim();
+
+          if (!uuid_outlet || !uuid_karyawan) {
+            return null;
+          }
+
+          return {
+            uuid_outlet,
+            uuid_karyawan,
+          };
+        })
+        .filter(Boolean);
+    },
+  );
+  const valid_rows = placement_rows.filter(
+    (item) =>
+      valid_outlet_uuid_set.has(item.uuid_outlet) &&
+      valid_karyawan_uuid_set.has(item.uuid_karyawan),
+  );
+
+  return {
+    placement_rows,
+    valid_rows,
+    unique_rows: dedupeByKey(
+      valid_rows,
+      (item) => `${item.uuid_outlet}:${item.uuid_karyawan}`,
+    ),
+  };
+}
 
 export async function syncOutletKaryawan() {
   const [outlet_payload, karyawan_payload, outlet_karyawan_payload] =
     await Promise.all([
-      fetch_outlet_payload(),
-      fetch_karyawan_payload(),
-      fetch_outlet_karyawan_payload(),
+      fetchOutletPayload(),
+      fetchKaryawanPayload(),
+      fetchOutletKaryawanPayload(),
     ]);
-  const unique_outlet = normalize_outlet_rows(outlet_payload);
-  const unique_karyawan = normalize_karyawan_rows(karyawan_payload);
+  const unique_outlet = normalizeOutletRows(outlet_payload);
+  const unique_karyawan = normalizeKaryawanRows(karyawan_payload);
   const valid_outlet_uuid_set = new Set(
     unique_outlet.map((item) => item.uuid),
   );
@@ -26,7 +104,7 @@ export async function syncOutletKaryawan() {
     unique_karyawan.map((item) => item.uuid),
   );
   const { placement_rows, valid_rows, unique_rows } =
-    normalize_outlet_karyawan_rows({
+    normalizeOutletKaryawanRows({
       outlet_karyawan_payload,
       valid_outlet_uuid_set,
       valid_karyawan_uuid_set,
@@ -95,12 +173,12 @@ export async function syncOutletKaryawan() {
       },
     });
     const incoming_relation_key_set = new Set(
-      syncable_outlet_karyawan.map((item) => build_relation_key(item)),
+      syncable_outlet_karyawan.map((item) => buildRelationKey(item)),
     );
     const removed_relation_keys = current_relations
       .filter((item) => !item.is_skip_sync)
-      .filter((item) => !incoming_relation_key_set.has(build_relation_key(item)))
-      .map((item) => build_relation_key(item));
+      .filter((item) => !incoming_relation_key_set.has(buildRelationKey(item)))
+      .map((item) => buildRelationKey(item));
 
     if (removed_relation_keys.length > 0) {
       await Promise.all(
@@ -136,5 +214,146 @@ export async function syncOutletKaryawan() {
         skipped_placement_karyawan_uuid_set.size +
         (unique_rows.length - syncable_outlet_karyawan.length),
     },
+  };
+}
+
+export async function getOutletKaryawan() {
+  const data_karyawan = await getKaryawanSettingsData();
+
+  return {
+    data_outlet_karyawan: data_karyawan.map((item) => ({
+      uuid_karyawan: item.uuid,
+      name: item.name,
+      username: item.username,
+      outlet_uuids: item.outlet_uuids,
+      outlet_names: item.outlet_names,
+      is_skip_sync_outlet_karyawan: item.is_skip_sync_outlet_karyawan,
+    })),
+  };
+}
+
+export async function updateOutletKaryawan({
+  uuid_karyawan,
+  outlet_uuids = [],
+  is_skip_sync_outlet_karyawan,
+}) {
+  if (!uuid_karyawan) {
+    throw new Error("UUID karyawan wajib diisi.");
+  }
+
+  const unique_outlet_uuids = Array.from(
+    new Set(
+      Array.isArray(outlet_uuids)
+        ? outlet_uuids.map((item) => String(item).trim()).filter(Boolean)
+        : [],
+    ),
+  );
+
+  if (Boolean(is_skip_sync_outlet_karyawan) && unique_outlet_uuids.length === 0) {
+    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika karyawan punya outlet.");
+  }
+
+  const existing_karyawan = await prisma.tbl_karyawan.findUnique({
+    where: { uuid: uuid_karyawan },
+    select: {
+      uuid: true,
+      deleted_at: true,
+    },
+  });
+
+  if (!existing_karyawan || existing_karyawan.deleted_at) {
+    throw new Error("Data karyawan tidak ditemukan.");
+  }
+
+  const valid_outlets = await prisma.tbl_outlet.findMany({
+    where: {
+      uuid: {
+        in: unique_outlet_uuids,
+      },
+      deleted_at: null,
+    },
+    select: {
+      uuid: true,
+    },
+  });
+  const valid_outlet_uuid_set = new Set(valid_outlets.map((item) => item.uuid));
+
+  if (valid_outlet_uuid_set.size !== unique_outlet_uuids.length) {
+    throw new Error("Sebagian outlet yang dipilih tidak ditemukan.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const current_relations = await tx.tbl_outlet_karyawan.findMany({
+      where: {
+        uuid_karyawan,
+        deleted_at: null,
+      },
+      select: {
+        uuid_outlet: true,
+      },
+    });
+    const current_outlet_uuid_set = new Set(
+      current_relations.map((item) => item.uuid_outlet),
+    );
+
+    for (const uuid_outlet of unique_outlet_uuids) {
+      await tx.tbl_outlet_karyawan.upsert({
+        where: {
+          uuid_outlet_uuid_karyawan: {
+            uuid_outlet,
+            uuid_karyawan,
+          },
+        },
+        update: {
+          deleted_at: null,
+          is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+        },
+        create: {
+          uuid: randomUUID(),
+          uuid_outlet,
+          uuid_karyawan,
+          is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+        },
+      });
+    }
+
+    await tx.tbl_outlet_karyawan.updateMany({
+      where: {
+        uuid_karyawan,
+        deleted_at: null,
+      },
+      data: {
+        is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+      },
+    });
+
+    const outlet_uuids_to_remove = Array.from(current_outlet_uuid_set).filter(
+      (item) => !valid_outlet_uuid_set.has(item),
+    );
+
+    if (outlet_uuids_to_remove.length > 0) {
+      await tx.tbl_outlet_karyawan.updateMany({
+        where: {
+          uuid_karyawan,
+          uuid_outlet: {
+            in: outlet_uuids_to_remove,
+          },
+        },
+        data: {
+          deleted_at: new Date(),
+        },
+      });
+    }
+  });
+
+  const refreshed_data = await getOutletKaryawan();
+  const updated_outlet_karyawan = refreshed_data.data_outlet_karyawan.find(
+    (item) => item.uuid_karyawan === uuid_karyawan,
+  );
+
+  return {
+    success: true,
+    data: updated_outlet_karyawan ?? null,
+    message: "Data penempatan berhasil diperbarui.",
   };
 }

@@ -4,11 +4,11 @@ import {
   syncKaryawan,
   updateKaryawan,
 } from "@/services/karyawanService";
-import { requireSession } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireRole(["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -33,7 +33,7 @@ export const GET = async () => {
 
 export const POST = async () => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireRole(["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -59,7 +59,7 @@ export const POST = async () => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireRole(["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -70,6 +70,8 @@ export const PATCH = async (request) => {
       uuid_karyawan: body?.uuid_karyawan,
       name: body?.name,
       username: body?.username,
+      password: body?.password,
+      outlet_placements: body?.outlet_placements,
       outlet_uuids: body?.outlet_uuids,
       is_skip_sync_karyawan: body?.is_skip_sync_karyawan,
       is_skip_sync_outlet_karyawan: body?.is_skip_sync_outlet_karyawan,

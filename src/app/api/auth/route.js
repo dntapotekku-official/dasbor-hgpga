@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import authenticateUser from "@/services/authService";
+import {
+  createSessionToken,
+  session_cookie_name,
+  session_max_age,
+} from "@/lib/session";
 
 export async function POST(request) {
   try {
@@ -14,12 +19,14 @@ export async function POST(request) {
       data: session_payload,
     });
 
-    response.cookies.set("user_session", JSON.stringify(session_payload), {
+    const token = await createSessionToken(session_payload);
+
+    response.cookies.set(session_cookie_name, token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24,
+      maxAge: session_max_age,
     });
 
     return response;
@@ -33,7 +40,7 @@ export async function POST(request) {
           ? error.message
           : "Terjadi kesalahan pada server.",
       },
-      { status: is_login_error ? 401 : 500 }
+      { status: is_login_error ? 401 : 500 },
     );
   }
 }
@@ -44,7 +51,7 @@ export async function DELETE() {
     message: "Logout berhasil.",
   });
 
-  response.cookies.delete("user_session");
+  response.cookies.delete(session_cookie_name);
 
   return response;
 }

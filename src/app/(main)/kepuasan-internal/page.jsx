@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, Loader2Icon, UsersRoundIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   clear_kepuasan_internal_cache,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/kepuasanInternalClient";
 import PageHeading from "@/components/page-heading";
 import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
+import SyncActionButton from "@/components/sync-action-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,53 +19,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-const getFallbackYear = () => String(new Date().getFullYear());
-
-const getYearOptions = (chart_data) => {
-  const labels = Array.isArray(chart_data?.labels) ? chart_data.labels : [];
-  const years = Array.from(new Set(labels.map((label) => label.slice(0, 4))));
-
-  return years.length ? years.sort().reverse() : [getFallbackYear()];
-};
-
-const filterDataByYear = (chart_data, selectedYear) => {
-  if (!chart_data?.chart_data?.length || !chart_data?.series?.length) {
-    return null;
-  }
-
-  return {
-    ...chart_data,
-    chart_data: chart_data.chart_data.filter((item) =>
-      item.month.startsWith(`${selectedYear}-`),
-    ),
-  };
-};
-
-const getRespondentStat = (chart_data) => {
-  const latest_month = chart_data?.chart_data?.at(-1);
-  const series = chart_data?.series ?? [];
-
-  if (!latest_month || !series.length) {
-    return null;
-  }
-
-  const total = series.reduce(
-    (sum, item) => sum + (Number(latest_month[item.key]) || 0),
-    0,
-  );
-
-  return {
-    value: total.toLocaleString("id-ID"),
-    label: "InsanKu mengisi bulan ini.",
-  };
-};
-
 export default function KepuasanInternalPage() {
   const [chart_data, setChartData] = useState(null);
   const [error_message, setErrorMessage] = useState("");
   const [is_loading, setIsLoading] = useState(true);
   const [sync_status, setSyncStatus] = useState("idle");
-  const [selectedYear, setSelectedYear] = useState(getFallbackYear());
+  const [selected_year, setSelectedYear] = useState(() =>
+    String(new Date().getFullYear()),
+  );
 
   useEffect(() => {
     let is_active = true;
@@ -72,7 +34,7 @@ export default function KepuasanInternalPage() {
     const run = async () => {
       try {
         const response_data = await get_kepuasan_internal_from_db({
-          year: selectedYear,
+          year: selected_year,
         });
 
         if (!is_active) {
@@ -87,11 +49,6 @@ export default function KepuasanInternalPage() {
 
         setChartData(response_data.data);
         setErrorMessage("");
-
-        const next_year_options = getYearOptions(response_data.data);
-        if (!next_year_options.includes(selectedYear)) {
-          setSelectedYear(next_year_options[0]);
-        }
       } catch (error) {
         if (!is_active) {
           return;
@@ -113,18 +70,29 @@ export default function KepuasanInternalPage() {
     return () => {
       is_active = false;
     };
-  }, [selectedYear]);
+  }, [selected_year]);
 
-  const year_options = useMemo(() => getYearOptions(chart_data), [chart_data]);
-  const filtered_data = useMemo(
-    () => filterDataByYear(chart_data, selectedYear),
-    [chart_data, selectedYear],
-  );
-  const respondent_stat = useMemo(
-    () => getRespondentStat(filtered_data),
-    [filtered_data],
-  );
+  const year_options = useMemo(() => {
+    const current_year = new Date().getFullYear();
+    const start_year = 2018;
 
+    return Array.from(
+      { length: current_year - start_year + 1 },
+      (_, index) => String(current_year - index),
+    );
+  }, []);
+  const filtered_data = useMemo(() => {
+    if (!chart_data?.chart_data?.length || !chart_data?.series?.length) {
+      return null;
+    }
+
+    return {
+      ...chart_data,
+      chart_data: chart_data.chart_data.filter((item) =>
+        item.month.startsWith(`${selected_year}-`),
+      ),
+    };
+  }, [chart_data, selected_year]);
   const syncKepuasanInternalHandler = async () => {
     try {
       setSyncStatus("loading");
@@ -136,7 +104,7 @@ export default function KepuasanInternalPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          year: selectedYear,
+          year: selected_year,
         }),
       });
       const payload = await response.json();
@@ -153,7 +121,7 @@ export default function KepuasanInternalPage() {
 
       clear_kepuasan_internal_cache();
       const latest_response = await get_kepuasan_internal_from_db({
-        year: selectedYear,
+        year: selected_year,
       });
 
       if (!latest_response.success) {
@@ -180,23 +148,6 @@ export default function KepuasanInternalPage() {
         <PageHeading
           title="Kepuasan Internal"
           description="Pantau tren jawaban puas dan tidak puas dari monthly review."
-          action={
-            respondent_stat ? (
-              <div className="flex min-w-44 items-center gap-3 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-primary">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <UsersRoundIcon className="size-4" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold leading-none">
-                    {respondent_stat.value}
-                  </div>
-                  <div className="mt-1 text-xs font-medium leading-tight">
-                    {respondent_stat.label}
-                  </div>
-                </div>
-              </div>
-            ) : null
-          }
         />
       </div>
       <div className="space-y-4 px-4 lg:px-6">
@@ -217,12 +168,12 @@ export default function KepuasanInternalPage() {
                     />
                   }
                 >
-                  <span>{selectedYear}</span>
+                  <span>{selected_year}</span>
                   <ChevronDownIcon className="size-4 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[170px]">
                   <DropdownMenuRadioGroup
-                    value={selectedYear}
+                    value={selected_year}
                     onValueChange={(year) => {
                       setIsLoading(true);
                       setSelectedYear(year);
@@ -243,24 +194,32 @@ export default function KepuasanInternalPage() {
             </div>
           }
           action={
-            <Button
-              type="button"
-              onClick={syncKepuasanInternalHandler}
-              disabled={sync_status === "loading"}
+            <SyncActionButton
+              onConfirm={syncKepuasanInternalHandler}
+              description={`Sinkronisasi akan mengambil ulang data kepuasan internal untuk tahun ${selected_year}.`}
+              isPending={sync_status === "loading"}
               className="w-full sm:w-auto"
-            >
-              {sync_status === "loading" ? (
-                <>
-                  <Loader2Icon className="size-4 animate-spin" />
-                  Menyinkronkan...
-                </>
-              ) : (
-                "Sinkron"
-              )}
-            </Button>
+            />
           }
           chartData={filtered_data?.chart_data ?? []}
           series={filtered_data?.series ?? chart_data?.series ?? []}
+          xAxisInterval={0}
+          labelFormatter={({ value, payload }) => {
+            const total_karyawan = Number(payload?.total_karyawan) || 0;
+            const current_value = Number(value) || 0;
+
+            if (!total_karyawan) {
+              return `${current_value.toLocaleString("id-ID")} (0%)`;
+            }
+
+            const percentage = (current_value / total_karyawan) * 100;
+            const formatted_percentage = percentage.toLocaleString("id-ID", {
+              maximumFractionDigits: 1,
+            });
+
+            return `${current_value.toLocaleString("id-ID")} (${formatted_percentage}%)`;
+          }}
+          labelClassName="text-[10px]"
           emptyMessage={
             is_loading
               ? "Memuat data kepuasan internal..."

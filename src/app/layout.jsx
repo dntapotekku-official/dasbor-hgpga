@@ -1,10 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Roboto_Slab } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
+const robotoSlab = Roboto_Slab({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-roboto-slab",
 });
 
 const geistMono = Geist_Mono({
@@ -24,7 +24,7 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${robotoSlab.variable} ${geistMono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col">
         {children}

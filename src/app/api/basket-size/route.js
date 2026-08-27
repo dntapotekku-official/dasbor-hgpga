@@ -1,0 +1,75 @@
+import { NextResponse } from "next/server";
+
+import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
+import { requireRole, requireSession } from "@/lib/auth";
+import {
+  bulkDeleteBasketSizeDate,
+  deleteBasketSizeDaily,
+  getNilaiTransaksiBasketSize,
+  importBasketSize,
+} from "@/services/nilaiTransaksiBasketSizeService";
+
+export async function GET(request) {
+  try {
+    const unauthorized_response = await requireSession();
+
+    if (unauthorized_response) {
+      return unauthorized_response;
+    }
+
+    const selected_date = request.nextUrl.searchParams.get("selected_date");
+    const data = await getNilaiTransaksiBasketSize({
+      selected_date,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request) {
+  return import_outlet_report(request, {
+    import_handler: importBasketSize,
+    temp_prefix: "basket-size",
+  });
+}
+
+export async function DELETE(request) {
+  try {
+    const unauthorized_response = await requireRole(["admin"]);
+
+    if (unauthorized_response) {
+      return unauthorized_response;
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const data = body?.action === "bulk_delete_date"
+      ? await bulkDeleteBasketSizeDate({
+          selected_date: body?.selected_date,
+        })
+      : await deleteBasketSizeDaily({
+          uuid_outlet: body?.uuid_outlet,
+          selected_date: body?.selected_date,
+        });
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
+      },
+      { status: 400 },
+    );
+  }
+}

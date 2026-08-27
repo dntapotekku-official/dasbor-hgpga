@@ -8,7 +8,6 @@ export default function NilaiMagangPage() {
       title="Nilai Magang"
       description="Pantau ringkasan penilaian program magang."
       sectionTitle="Data Nilai Magang"
-      sectionDescription="Area ini disiapkan untuk menampilkan nilai, tren, dan rekap evaluasi magang."
       emptyMessage="Template nilai magang siap dihubungkan dengan data."
     />
   );

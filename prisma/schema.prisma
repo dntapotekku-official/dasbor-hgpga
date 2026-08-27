@@ -13,18 +13,26 @@ datasource db {
 }
 
 enum Role {
+  superadmin
   admin
   viewer
   member
 }
 
+enum Kategori {
+  non_pariwisata
+  pariwisata
+  parsial
+}
+
 model tbl_outlet {
-  id           Int        @id @default(autoincrement())
-  uuid         String     @unique @db.Char(36)
-  name         String     @db.VarChar(255)
-  is_skip_sync    Boolean    @default(false)
-  created_at   DateTime   @default(now())
-  updated_at   DateTime   @updatedAt
+  id           Int       @id @default(autoincrement())
+  uuid         String    @unique @db.Char(36)
+  name         String    @db.VarChar(100)
+  kategori     Kategori
+  is_skip_sync Boolean   @default(false)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
   deleted_at   DateTime?
 
   kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
@@ -32,79 +40,188 @@ model tbl_outlet {
 }
 
 model tbl_karyawan {
-  id                  Int         @id @default(autoincrement())
-  uuid                String      @unique @db.Char(36)
-  name                String      @db.VarChar(255)
-  username            String      @unique @db.VarChar(100)
-  password            String?     @db.Text
-  is_username_change  Boolean     @default(false)
-  is_password_change  Boolean     @default(false)
-  avatar              String?     @db.Text
-  is_skip_sync           Boolean     @default(false)
-  role                Role
-  created_at          DateTime    @default(now())
-  updated_at          DateTime    @updatedAt
-  deleted_at          DateTime?
+  id                 Int       @id @default(autoincrement())
+  uuid               String    @unique @db.Char(36)
+  name               String    @db.VarChar(100)
+  username           String    @unique @db.VarChar(100)
+  password           String?   @db.Text
+  is_username_change Boolean   @default(false)
+  is_password_change Boolean   @default(false)
+  avatar             String?   @db.Text
+  is_skip_sync       Boolean   @default(false)
+  role               Role
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
 
-  outlet_karyawan     tbl_outlet_karyawan[]
+  outlet_karyawan tbl_outlet_karyawan[]
 }
 
 model tbl_admin {
-  id                  Int         @id @default(autoincrement())
-  uuid                String      @unique @db.Char(36)
-  name                String      @db.VarChar(255)
-  username            String      @unique @db.VarChar(100)
-  password            String?     @db.Text
-  is_username_change  Boolean     @default(false)
-  is_password_change  Boolean     @default(false)
-  role                Role
-  avatar              String?     @db.Text
-  created_at          DateTime    @default(now())
-  updated_at          DateTime    @updatedAt
-  deleted_at          DateTime?
+  id                 Int       @id @default(autoincrement())
+  uuid               String    @unique @db.Char(36)
+  name               String    @db.VarChar(100)
+  username           String    @unique @db.VarChar(100)
+  password           String?   @db.Text
+  is_username_change Boolean   @default(false)
+  is_password_change Boolean   @default(false)
+  role               Role
+  avatar             String?   @db.Text
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
 }
 
 model tbl_kepuasan_internal {
-  id                  Int         @id @default(autoincrement())
-  uuid                String      @unique @db.Char(36)
-  date                DateTime    @unique
-  puas                Int         @default(0)
-  tidak_puas          Int         @default(0)
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
-  deleted_at          DateTime?
+  id         Int       @id @default(autoincrement())
+  uuid       String    @unique @db.Char(36)
+  date       DateTime  @unique
+  puas       Int       @default(0)
+  tidak_puas Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deleted_at DateTime?
 }
 
 model tbl_kepatuhan_sop_cctv {
-  id                  Int         @id @default(autoincrement())
-  uuid                String      @unique @db.Char(36)
-  uuid_outlet         String      @db.Char(36)
-  date                DateTime
-  total               Int         @default(0)
-  total_point         Int         @default(0)
-  created_at          DateTime    @default(now())
-  updated_at          DateTime    @updatedAt
-  deleted_at          DateTime?
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  date        DateTime
+  total       Int       @default(0)
+  total_point Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 
-  outlet              tbl_outlet  @relation(fields: [uuid_outlet], references: [uuid])
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull)
 
   @@unique([uuid_outlet, date])
 }
 
 model tbl_outlet_karyawan {
-  id                  Int          @id @default(autoincrement())
-  uuid                String       @unique @db.Char(36)
-  uuid_outlet         String       @db.Char(36)
-  uuid_karyawan       String       @db.Char(36)
-  is_skip_sync           Boolean      @default(false)
-  created_at          DateTime     @default(now())
-  updated_at          DateTime     @updatedAt
-  deleted_at          DateTime?
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  uuid_karyawan String?   @db.Char(36)
+  is_skip_sync  Boolean   @default(false)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
 
-  outlet              tbl_outlet   @relation(fields: [uuid_outlet], references: [uuid])
-  karyawan            tbl_karyawan @relation(fields: [uuid_karyawan], references: [uuid])
+  outlet            tbl_outlet?             @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull)
+  karyawan          tbl_karyawan?           @relation(fields: [uuid_karyawan], references: [uuid], onDelete: SetNull)
+  penjualan_gofitku tbl_penjualan_gofitku[]
 
   @@unique([uuid_outlet, uuid_karyawan])
   @@index([uuid_outlet])
   @@index([uuid_karyawan])
+}
+
+model tbl_penjualan_gofitku {
+  id                   Int       @id @default(autoincrement())
+  uuid                 String    @unique @db.Char(36)
+  uuid_outlet_karyawan String?   @db.Char(36)
+  uuid_produk_gofitku  String?   @db.Char(36)
+  name                 String    @db.VarChar(30)
+  date                 DateTime
+  qty                  Int       @default(0)
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  deleted_at           DateTime?
+
+  outlet_karyawan tbl_outlet_karyawan? @relation(fields: [uuid_outlet_karyawan], references: [uuid], onDelete: SetNull)
+  produk_gofitku  tbl_produk_gofitku?  @relation(fields: [uuid_produk_gofitku], references: [uuid], onDelete: SetNull)
+
+  @@index([uuid_outlet_karyawan])
+  @@index([uuid_produk_gofitku])
+  @@index([date])
+}
+
+model tbl_produk_gofitku {
+  id         Int       @id @default(autoincrement())
+  uuid       String    @unique @db.Char(36)
+  name       String    @db.VarChar(30)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  penjualan_gofitku tbl_penjualan_gofitku[]
+}
+
+model tbl_api_ai {
+  id         Int       @id @default(autoincrement())
+  uuid       String    @unique @db.Char(36)
+  base_url   String    @db.VarChar(255)
+  model      String    @db.VarChar(100)
+  api_key    String    @db.Text
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+}
+
+model tbl_prompt {
+  id         Int       @id @default(autoincrement())
+  uuid       String    @unique @db.Char(36)
+  name       String    @db.VarChar(100)
+  prompt     String    @db.Text
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+}
+
+model tbl_target_gofitku {
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  value         Int       @default(0)
+  start_date    DateTime
+  end_date      DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+}
+
+model tbl_target_nilai_transaksi {
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  value         Int       @default(0)
+  start_date    DateTime
+  end_date      DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+}
+
+model tbl_target_basket_size {
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  value         Int       @default(0)
+  start_date    DateTime
+  end_date      DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+}
+
+model tbl_nilai_transaksi {
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  ach           Int       @default(0)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+}
+
+model tbl_basket_size {
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  ach           Int       @default(0)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
 }

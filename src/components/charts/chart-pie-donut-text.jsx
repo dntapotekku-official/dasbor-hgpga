@@ -37,6 +37,7 @@ export function ChartPieDonutText({
   data = [],
   emptyMessage = "Data kepuasan internal belum tersedia.",
   action,
+  icon,
 }) {
   const chart_data = React.useMemo(() => {
     return data.map((item, index) => {
@@ -62,11 +63,20 @@ export function ChartPieDonutText({
 
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader>
+        <div className="flex items-start gap-3">
+          {icon ? (
+            <div className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50">
+              {icon}
+            </div>
+          ) : null}
+          <div className="grid auto-rows-min gap-1 text-left">
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="flex-1 pb-0">
+      <CardContent className="flex-1">
         {has_data ? (
           <>
             <ChartContainer
@@ -140,7 +150,9 @@ export function ChartPieDonutText({
           </div>
         )}
       </CardContent>
-      {action ? <CardFooter className="p-0">{action}</CardFooter> : null}
+      {action ? (
+        <CardFooter className="p-2">{action}</CardFooter>
+      ) : null}
     </Card>
   );
 }

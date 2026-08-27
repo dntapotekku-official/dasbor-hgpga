@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronsUpDownIcon,
   ChevronDownIcon,
-  Loader2Icon,
   MoveRightIcon,
   SearchIcon,
 } from "lucide-react";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/kepatuhanSopCctvClient";
 import PageHeading from "@/components/page-heading";
 import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
+import SyncActionButton from "@/components/sync-action-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -296,20 +296,18 @@ export default function KepatuhanSopCctvPage() {
         />
       </div>
       <div className="space-y-4 px-4 lg:px-6">
-        <Card className="border-t-4 border-t-primary">
-          <CardHeader className="grid gap-4 border-b pb-5 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div>
-              <CardTitle className="text-xl">Tren Harian</CardTitle>
-              <div className="mt-2 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
-                {chart_series.map((item) => (
-                  <div key={item.key} className="flex items-center gap-2">
-                    <span className={`size-4 rounded-full ${item.className}`} />
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(320px,360px)_auto] sm:items-end lg:w-auto">
+        <Card className="gap-0 border-t-4 border-t-primary">
+          <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Tren Harian</CardTitle>
+            <SyncActionButton
+              onConfirm={syncKepatuhanSopCCTVHandler}
+              description="Sinkronisasi akan memperbarui data kepatuhan SOP CCTV sesuai filter tanggal dan outlet yang sedang aktif."
+              isPending={sync_status === "loading"}
+              className="w-full sm:w-auto"
+            />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(320px,360px)] sm:items-end lg:w-auto">
               <div className="flex min-w-0 flex-col gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   Outlet
@@ -398,23 +396,7 @@ export default function KepatuhanSopCctvPage() {
                   />
                 </div>
               </div>
-              <Button
-                type="button"
-                onClick={syncKepatuhanSopCCTVHandler}
-                disabled={sync_status === "loading"}
-              >
-                {sync_status === "loading" ? (
-                  <>
-                    <Loader2Icon className="size-4 animate-spin" />
-                    Menyinkronkan...
-                  </>
-                ) : (
-                  "Sinkron"
-                )}
-              </Button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-5 pt-5">
             {chart_data.length || !table_rows.length ? (
               <ChartBarMultiple
                 renderCard={false}
@@ -423,7 +405,7 @@ export default function KepatuhanSopCctvPage() {
                 xDataKey="date"
                 xTickFormatter={formatChartDate}
                 chartClassName="aspect-auto h-[240px] w-full"
-                wrapperClassName="rounded-lg border p-4"
+                wrapperClassName="rounded-lg border px-4 py-3"
                 emptyMessage={
                   view_state === "loading"
                     ? "Memuat data kepatuhan SOP CCTV..."

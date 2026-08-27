@@ -62,10 +62,13 @@ export function ChartBarLabel({
   filter,
   showLegend = true,
   chartClassName = "min-h-[250px] w-full",
+  chartStyle,
   emptyClassName = "min-h-[250px]",
   data = [],
   emptyMessage = "Data kepuasan internal belum tersedia.",
   action,
+  icon,
+  renderCard = true,
 }) {
   const chart_data = React.useMemo(() => {
     return data.map((item, index) => {
@@ -87,58 +90,77 @@ export function ChartBarLabel({
   const has_series = chart_data.length > 0;
   const has_data = chart_data.some((item) => item.value !== 0);
 
-  return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
+  const content = (
+    <>
+      <CardHeader>
         <div className="grid auto-rows-min gap-1">
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-          {showLegend && has_series ? (
-            <div className="mt-4 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
-              {chart_data.map((item) => (
-                <div key={item.key} className="flex items-center gap-2">
-                  <span
-                    className="size-4 rounded-full"
-                    style={{ backgroundColor: item.fill }}
-                  />
-                  <span>{item.label}</span>
-                </div>
-              ))}
+          <div className="flex items-start gap-3">
+            {icon ? (
+              <div className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50">
+                {icon}
+              </div>
+            ) : null}
+            <div className="grid auto-rows-min gap-1">
+              <CardTitle>{title}</CardTitle>
+              <CardDescription>{description}</CardDescription>
             </div>
-          ) : null}
+          </div>
         </div>
-        {filter ? <div className="w-full sm:w-auto">{filter}</div> : null}
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 space-y-4">
+        {filter ? <div className="w-full sm:w-auto">{filter}</div> : null}
         {has_data ? (
-          <ChartContainer config={chartConfig} className={chartClassName}>
-            <BarChart
-              accessibilityLayer
-              data={chart_data}
-              layout="vertical"
-              margin={{ left: 8, right: 16 }}
-            >
-              <YAxis
-                dataKey="label"
-                type="category"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                width={86}
-              />
-              <XAxis dataKey="value" type="number" hide />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent hideLabel />}
-              />
-              <Bar dataKey="value" radius={5}>
-                <LabelList dataKey="value" content={render_value_label} />
+          <div
+            className={cn(
+              showLegend && has_series ? "space-y-3 rounded-lg border p-4" : null,
+            )}
+          >
+            {showLegend && has_series ? (
+              <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
                 {chart_data.map((item) => (
-                  <Cell key={item.key} fill={item.fill} />
+                  <div key={item.key} className="flex items-center gap-2">
+                    <span
+                      className="size-4 rounded-full"
+                      style={{ backgroundColor: item.fill }}
+                    />
+                    <span>{item.label}</span>
+                  </div>
                 ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
+              </div>
+            ) : null}
+            <ChartContainer
+              config={chartConfig}
+              className={chartClassName}
+              style={chartStyle}
+            >
+              <BarChart
+                accessibilityLayer
+                data={chart_data}
+                layout="vertical"
+                margin={{ left: 8, right: 16 }}
+              >
+                <YAxis
+                  dataKey="label"
+                  type="category"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                  width={86}
+                />
+                <XAxis dataKey="value" type="number" hide />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+                <Bar dataKey="value" radius={5}>
+                  <LabelList dataKey="value" content={render_value_label} />
+                  {chart_data.map((item) => (
+                    <Cell key={item.key} fill={item.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
+          </div>
         ) : (
           <div
             className={cn(
@@ -150,7 +172,19 @@ export function ChartBarLabel({
           </div>
         )}
       </CardContent>
-      {action ? <CardFooter className="p-0">{action}</CardFooter> : null}
+      {action ? (
+        <CardFooter className="p-2">{action}</CardFooter>
+      ) : null}
+    </>
+  );
+
+  if (!renderCard) {
+    return <div className="flex h-full min-w-0 flex-col">{content}</div>;
+  }
+
+  return (
+    <Card className="flex h-full flex-col gap-0">
+      {content}
     </Card>
   );
 }

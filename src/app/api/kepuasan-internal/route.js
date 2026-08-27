@@ -3,7 +3,7 @@ import {
   getKepuasanInternalChart,
   syncKepuasanInternal,
 } from "@/services/kepuasanInternalService";
-import { requireSession } from "@/lib/auth";
+import { requireRole, requireSession } from "@/lib/auth";
 
 export const GET = async (request) => {
   try {
@@ -38,7 +38,7 @@ export const GET = async (request) => {
 
 export const POST = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireRole(["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
