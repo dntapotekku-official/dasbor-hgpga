@@ -76,7 +76,6 @@ export default function MetricBulkActionModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={is_processing}
                 />
               }
             >
@@ -102,7 +101,6 @@ export default function MetricBulkActionModal({
                 options={date_options}
                 onValueChange={setSourceDate}
                 ariaLabel={`Pilih tanggal ${metric_label}`}
-                disabled={is_processing}
                 searchable
                 searchPlaceholder="Cari tanggal..."
                 emptyMessage="Tanggal data tidak ditemukan."
@@ -121,16 +119,12 @@ export default function MetricBulkActionModal({
                   required
                 />
               </div>
-            ) : (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                Seluruh data outlet pada tanggal terpilih akan dihapus permanen.
-              </div>
-            )}
+            ) : ''}
 
             <div className="flex justify-end gap-2">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={is_processing} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
@@ -138,9 +132,6 @@ export default function MetricBulkActionModal({
               <Button
                 type="submit"
                 variant={is_edit ? "default" : "delete"}
-                disabled={
-                  is_processing || !source_date || (is_edit && !target_date)
-                }
               >
                 {is_processing ? (
                   <>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { PencilIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CircleOffIcon, PencilIcon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
+import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
@@ -30,6 +31,23 @@ export default function OutletManagementCard() {
   const { search, setSearch, filtered_items } = useSearch(outlet);
   const [selected_outlet, setSelectedOutlet] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
+  const [updating_exception_uuid, setUpdatingExceptionUuid] = useState(null);
+  const [sort_key, setSortKey] = useState("name");
+  const [sort_direction, setSortDirection] = useState("asc");
+  const sorted_items = useMemo(() => {
+    return [...filtered_items].sort((a, b) => {
+      const direction = sort_direction === "asc" ? 1 : -1;
+
+      if (sort_key === "excep") {
+        return (Number(Boolean(a.excep)) - Number(Boolean(b.excep))) * direction;
+      }
+
+      return String(a[sort_key] ?? "").localeCompare(
+        String(b[sort_key] ?? ""),
+        "id-ID",
+      ) * direction;
+    });
+  }, [filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -37,10 +55,10 @@ export default function OutletManagementCard() {
     paginated_rows,
     previous_page,
     next_page,
-  } = usePagination(filtered_items, PAGE_SIZE);
+  } = usePagination(sorted_items, PAGE_SIZE);
 
   const fetch_outlet = async () => {
-    const outlet_result = await fetch("/api/outlet");
+    const outlet_result = await fetch("/api/outlet?include_excluded=true");
     const outlet_data = await outlet_result.json();
 
     if (!outlet_result.ok || !outlet_data.success) {
@@ -135,11 +153,62 @@ export default function OutletManagementCard() {
     toast.success(payload.message || "Data outlet berhasil diperbarui.");
   };
 
+  const handle_exception = async (selected_item) => {
+    try {
+      setUpdatingExceptionUuid(selected_item.uuid);
+      const response = await fetch("/api/outlet", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "update_exception",
+          uuid_outlet: selected_item.uuid,
+          excep: !selected_item.excep,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(
+          payload.message || "Gagal memperbarui pengecualian outlet.",
+        );
+      }
+
+      setOutlet((current) =>
+        current.map((item) =>
+          item.uuid === payload.data.uuid ? payload.data : item,
+        ),
+      );
+      toast.success(payload.message || "Pengecualian outlet diperbarui.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal memperbarui pengecualian outlet.",
+      );
+    } finally {
+      setUpdatingExceptionUuid(null);
+    }
+  };
+
   const format_kategori_label = (kategori) =>
     outlet_category_options.find((option) => option.value === kategori)?.label ?? "-";
 
+  const toggle_sort = (next_sort_key) => {
+    if (sort_key === next_sort_key) {
+      setSortDirection((current_direction) =>
+        current_direction === "asc" ? "desc" : "asc",
+      );
+      return;
+    }
+
+    setSortKey(next_sort_key);
+    setSortDirection("asc");
+  };
+
   return (
-    <Card className="gap-0 border-t-4 border-t-primary">
+    <Card className="gap-0 border-t-2 border-t-primary/70">
       <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Outlet</CardTitle>
         <SyncActionButton
@@ -164,8 +233,33 @@ export default function OutletManagementCard() {
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
                     <TableHead className="w-20">#</TableHead>
-                    <TableHead>Nama Outlet</TableHead>
-                    <TableHead>Kategori</TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Nama Outlet"
+                        sortKey="name"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Kategori"
+                        sortKey="kategori"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Status"
+                        sortKey="excep"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -176,18 +270,48 @@ export default function OutletManagementCard() {
                       <TableCell className="font-medium">{row.name}</TableCell>
                       <TableCell>{format_kategori_label(row.kategori)}</TableCell>
                       <TableCell>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedOutlet(row);
-                            setIsSheetOpen(true);
-                          }}
+                        <span
+                          className={
+                            row.excep
+                              ? "text-rose-700 dark:text-rose-400"
+                              : "text-emerald-700 dark:text-emerald-400"
+                          }
                         >
-                          <PencilIcon className="size-4" />
-                          Edit
-                        </Button>
+                          {row.excep ? "Dikecualikan" : "Aktif"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedOutlet(row);
+                              setIsSheetOpen(true);
+                            }}
+                          >
+                            <PencilIcon className="size-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={row.excep ? "outline" : "delete"}
+                            size="sm"
+                            onClick={() => handle_exception(row)}
+                          >
+                            {row.excep ? (
+                              <RotateCcwIcon className="size-4" />
+                            ) : (
+                              <CircleOffIcon className="size-4" />
+                            )}
+                            {updating_exception_uuid === row.uuid
+                              ? "Menyimpan..."
+                              : row.excep
+                                ? "Aktifkan"
+                                : "Kecualikan"}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

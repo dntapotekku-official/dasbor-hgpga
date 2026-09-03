@@ -31,7 +31,7 @@ export default function PenggunaPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola akun admin dan data karyawan dalam satu halaman."
+          description="Kelola akun admin, superadmin, dan data karyawan dalam satu halaman."
         />
       </div>
 

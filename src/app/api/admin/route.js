@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import getCurrentUser, { requireRole } from "@/lib/auth";
 import {
+  createSessionToken,
+  session_cookie_name,
+  session_max_age,
+} from "@/lib/session";
+import {
   createAdmin,
   deleteAdmin,
   getAdmin,
@@ -50,7 +55,27 @@ export const PATCH = async (request) => {
       actor_role: current_user?.role,
     });
 
-    return NextResponse.json(data);
+    const response = NextResponse.json(data);
+
+    if (current_user?.uuid === data.data?.uuid) {
+      const session_payload = {
+        uuid: data.data.uuid,
+        username: data.data.username,
+        name: data.data.name,
+        role: data.data.role,
+      };
+      const token = await createSessionToken(session_payload);
+
+      response.cookies.set(session_cookie_name, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: session_max_age,
+      });
+    }
+
+    return response;
   } catch (error) {
     return NextResponse.json(
       {
@@ -107,7 +132,13 @@ export const DELETE = async (request) => {
       actor_role: current_user?.role,
     });
 
-    return NextResponse.json(data);
+    const response = NextResponse.json(data);
+
+    if (current_user?.uuid === body?.uuid_admin) {
+      response.cookies.delete(session_cookie_name);
+    }
+
+    return response;
   } catch (error) {
     return NextResponse.json(
       {

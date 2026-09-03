@@ -19,17 +19,25 @@ enum Role {
   member
 }
 
-enum Kategori {
+enum Category {
   non_pariwisata
   pariwisata
   parsial
+}
+
+enum AttributeType {
+  string
+  number
+  date
+  checkbox
 }
 
 model tbl_outlet {
   id           Int       @id @default(autoincrement())
   uuid         String    @unique @db.Char(36)
   name         String    @db.VarChar(100)
-  kategori     Kategori
+  category     Category
+  excep        Boolean   @default(false)
   is_skip_sync Boolean   @default(false)
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
@@ -37,6 +45,9 @@ model tbl_outlet {
 
   kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
   outlet_karyawan    tbl_outlet_karyawan[]
+  nilai_transaksi    tbl_nilai_transaksi[]
+  basket_size        tbl_basket_size[]
+  dilayani           tbl_dilayani[]
 }
 
 model tbl_karyawan {
@@ -54,7 +65,8 @@ model tbl_karyawan {
   updated_at         DateTime  @updatedAt
   deleted_at         DateTime?
 
-  outlet_karyawan tbl_outlet_karyawan[]
+  outlet_karyawan  tbl_outlet_karyawan[]
+  atribut_karyawan tbl_atribut_karyawan[]
 }
 
 model tbl_admin {
@@ -94,7 +106,7 @@ model tbl_kepatuhan_sop_cctv {
   updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
 
-  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull)
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_kepatuhan_sop_cctv_outlet")
 
   @@unique([uuid_outlet, date])
 }
@@ -109,8 +121,8 @@ model tbl_outlet_karyawan {
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
 
-  outlet            tbl_outlet?             @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull)
-  karyawan          tbl_karyawan?           @relation(fields: [uuid_karyawan], references: [uuid], onDelete: SetNull)
+  outlet            tbl_outlet?             @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_outlet_karyawan_outlet")
+  karyawan          tbl_karyawan?           @relation(fields: [uuid_karyawan], references: [uuid], onDelete: SetNull, map: "fk_outlet_karyawan_karyawan")
   penjualan_gofitku tbl_penjualan_gofitku[]
 
   @@unique([uuid_outlet, uuid_karyawan])
@@ -130,8 +142,8 @@ model tbl_penjualan_gofitku {
   updated_at           DateTime  @updatedAt
   deleted_at           DateTime?
 
-  outlet_karyawan tbl_outlet_karyawan? @relation(fields: [uuid_outlet_karyawan], references: [uuid], onDelete: SetNull)
-  produk_gofitku  tbl_produk_gofitku?  @relation(fields: [uuid_produk_gofitku], references: [uuid], onDelete: SetNull)
+  outlet_karyawan tbl_outlet_karyawan? @relation(fields: [uuid_outlet_karyawan], references: [uuid], onDelete: SetNull, map: "fk_penjualan_gofitku_outlet_karyawan")
+  produk_gofitku  tbl_produk_gofitku?  @relation(fields: [uuid_produk_gofitku], references: [uuid], onDelete: SetNull, map: "fk_penjualan_gofitku_produk")
 
   @@index([uuid_outlet_karyawan])
   @@index([uuid_produk_gofitku])
@@ -171,57 +183,121 @@ model tbl_prompt {
 }
 
 model tbl_target_gofitku {
-  id            Int       @id @default(autoincrement())
-  uuid          String    @unique @db.Char(36)
-  uuid_outlet   String?   @db.Char(36)
-  value         Int       @default(0)
-  start_date    DateTime
-  end_date      DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  value       Int       @default(0)
+  start_date  DateTime
+  end_date    DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 }
 
 model tbl_target_nilai_transaksi {
-  id            Int       @id @default(autoincrement())
-  uuid          String    @unique @db.Char(36)
-  uuid_outlet   String?   @db.Char(36)
-  value         Int       @default(0)
-  start_date    DateTime
-  end_date      DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  value       Decimal   @default(0) @db.Decimal(10, 2)
+  start_date  DateTime
+  end_date    DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 }
 
 model tbl_target_basket_size {
-  id            Int       @id @default(autoincrement())
-  uuid          String    @unique @db.Char(36)
-  uuid_outlet   String?   @db.Char(36)
-  value         Int       @default(0)
-  start_date    DateTime
-  end_date      DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  value       Decimal   @default(0) @db.Decimal(10, 2)
+  start_date  DateTime
+  end_date    DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 }
 
 model tbl_nilai_transaksi {
   id            Int       @id @default(autoincrement())
   uuid          String    @unique @db.Char(36)
   uuid_outlet   String?   @db.Char(36)
-  ach           Int       @default(0)
+  active_key    String?   @unique @db.VarChar(80)
+  date          DateTime
+  total_revenue Decimal   @default(0) @db.Decimal(18, 2)
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
+
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_nilai_transaksi_outlet")
+
+  @@index([uuid_outlet])
+  @@index([date])
 }
 
 model tbl_basket_size {
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  active_key  String?   @unique @db.VarChar(80)
+  date        DateTime
+  sku_qty     Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_basket_size_outlet")
+
+  @@index([uuid_outlet])
+  @@index([date])
+}
+
+model tbl_dilayani {
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  active_key  String?   @unique @db.VarChar(80)
+  value       Int       @default(0)
+  date        DateTime
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_dilayani_outlet")
+
+  @@index([uuid_outlet])
+  @@index([date])
+}
+
+model tbl_atribut_karyawan {
   id            Int       @id @default(autoincrement())
   uuid          String    @unique @db.Char(36)
-  uuid_outlet   String?   @db.Char(36)
-  ach           Int       @default(0)
+  uuid_karyawan String?   @db.Char(36)
+  uuid_atribut  String?   @db.Char(36)
+  value         String    @db.VarChar(100)
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
+
+  karyawan tbl_karyawan? @relation(fields: [uuid_karyawan], references: [uuid], onDelete: SetNull, map: "fk_atribut_karyawan_karyawan")
+  atribut  tbl_atribut?  @relation(fields: [uuid_atribut], references: [uuid], onDelete: SetNull, map: "fk_atribut_karyawan_atribut")
+
+  @@unique([uuid_karyawan, uuid_atribut])
+  @@index([uuid_karyawan])
+  @@index([uuid_atribut])
+}
+
+model tbl_atribut {
+  id         Int       @id @default(autoincrement())
+  uuid       String    @unique @db.Char(36)
+  name       String    @db.VarChar(100)
+  type       AttributeType
+  is_edit    Boolean   @default(false)
+  is_view    Boolean   @default(false)
+  order      Int       @default(0)    
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  atribut_karyawan tbl_atribut_karyawan[]
 }

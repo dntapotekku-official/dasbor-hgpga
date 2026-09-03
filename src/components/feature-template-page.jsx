@@ -19,7 +19,7 @@ export default function FeatureTemplatePage({
         <PageHeading title={title} description={description} action={action} />
       </div>
       <div className="px-4 lg:px-6">
-        <Card className="border-t-4 border-t-primary">
+        <Card className="border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
             <CardTitle>{sectionTitle}</CardTitle>
           </CardHeader>

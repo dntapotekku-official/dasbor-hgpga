@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,17 +31,20 @@ export default function DetailTabContent({
     <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
       {outlet_groups.map((group) => (
         <Card key={group.uuid} className="gap-0 bg-orange-50/60 shadow-none">
-          <CardHeader className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
+          <CardHeader className="border-b">
             <CardTitle>{group.outlet_name}</CardTitle>
-            <Button
-              type="button"
-              onClick={() => on_add_sales(group)}
-              className="w-full sm:w-auto"
-            >
-              Tambah Penjualan
-            </Button>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent>
+            <div className="mb-4 flex justify-end">
+              <Button
+                type="button"
+                onClick={() => on_add_sales(group)}
+                className="w-full sm:w-auto"
+              >
+                <PlusIcon className="size-4" />
+                Tambah Penjualan
+              </Button>
+            </div>
             <div className="overflow-hidden rounded-lg border bg-card">
               <Table className="min-w-[760px]">
                 <TableHeader className="bg-primary [&_th]:text-primary-foreground">

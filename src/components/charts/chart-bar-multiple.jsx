@@ -217,7 +217,7 @@ export default function ChartBarMultiple({
   }
 
   return (
-    <Card className="gap-0 border-t-4 border-t-primary">
+    <Card className="gap-0 border-t-2 border-t-primary/70">
       <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>{title}</CardTitle>
         {action ? <div className="w-full sm:w-auto">{action}</div> : null}

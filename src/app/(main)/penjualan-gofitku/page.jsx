@@ -726,7 +726,6 @@ export default function PenjualanGoFitKuPage() {
                   <Button
                     type="button"
                     onClick={handle_export_sales}
-                    disabled={!outlet_groups.length}
                     className="bg-emerald-600 text-white hover:bg-emerald-700"
                   >
                     <FileSpreadsheetIcon className="size-4" />
@@ -744,7 +743,7 @@ export default function PenjualanGoFitKuPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <Card className="gap-0 border-t-4 border-t-primary">
+              <Card className="gap-0 border-t-2 border-t-primary/70">
                 <CardHeader className="border-b">
                   <CardTitle>
                     {active_tab === "ringkasan" ? "Ringkasan" : "Detail"}

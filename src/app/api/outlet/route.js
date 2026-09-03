@@ -3,18 +3,23 @@ import {
   getOutlet,
   syncOutlet,
   updateOutlet,
+  updateOutletException,
 } from "@/services/outletService";
 import { requireRole, requireSession } from "@/lib/auth";
 
-export const GET = async () => {
+export const GET = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const include_excluded =
+      request.nextUrl.searchParams.get("include_excluded") === "true";
+    const unauthorized_response = include_excluded
+      ? await requireRole(["admin"])
+      : await requireSession();
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
-    const data = await getOutlet();
+    const data = await getOutlet({ include_excluded });
 
     return NextResponse.json({
       success: true,
@@ -68,12 +73,17 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = await updateOutlet({
-      uuid_outlet: body?.uuid_outlet,
-      name: body?.name,
-      kategori: body?.kategori,
-      is_skip_sync: body?.is_skip_sync,
-    });
+    const data = body?.action === "update_exception"
+      ? await updateOutletException({
+          uuid_outlet: body?.uuid_outlet,
+          excep: body?.excep,
+        })
+      : await updateOutlet({
+          uuid_outlet: body?.uuid_outlet,
+          name: body?.name,
+          kategori: body?.kategori,
+          is_skip_sync: body?.is_skip_sync,
+        });
 
     return NextResponse.json(data);
   } catch (error) {

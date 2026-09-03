@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRightIcon,
   BadgeDollarSignIcon,
+  HandIcon,
   PieChartIcon,
   ShoppingBasketIcon,
 } from "lucide-react";
@@ -18,7 +19,10 @@ import {
   getPenjualanGofitkuTopOutletChart,
   getPenjualanGofitkuTopProdukChart,
 } from "@/services/penjualanGofitkuService";
+import { getNilaiTransaksiBasketSize } from "@/services/nilaiTransaksiBasketSizeService";
+import { outlet_category_slug_options } from "@/lib/outletCategories";
 import KepatuhanSopCctvDashboardCard from "./components/kepatuhan-sop-cctv-dashboard-card";
+import NilaiTransaksiBasketSizeDashboardCard from "./components/nilai-transaksi-basket-size-dashboard-card";
 
 export default async function Page() {
   await connection();
@@ -27,9 +31,25 @@ export default async function Page() {
   const today = new Date();
   const current_year = String(today.getFullYear());
   const current_month = `${current_year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const kepuasan_internal = await getKepuasanInternalChart({
-    year: current_year,
-  });
+  const [
+    kepuasan_internal,
+    nilai_transaksi_basket_size,
+    outlet_chart,
+    product_chart,
+  ] = await Promise.all([
+    getKepuasanInternalChart({
+      year: current_year,
+    }),
+    getNilaiTransaksiBasketSize({}),
+    getPenjualanGofitkuTopOutletChart({
+      username: user?.username,
+      role: user?.role,
+    }),
+    getPenjualanGofitkuTopProdukChart({
+      username: user?.username,
+      role: user?.role,
+    }),
+  ]);
   const current_chart_item = kepuasan_internal.data?.chart_data?.find(
     (item) => item.month === current_month,
   );
@@ -40,24 +60,41 @@ export default async function Page() {
         value: Number(current_chart_item[item.key]) || 0,
       }))
     : [];
-  const outlet_chart = await getPenjualanGofitkuTopOutletChart({
-    username: user?.username,
-    role: user?.role,
-  });
-  const product_chart = await getPenjualanGofitkuTopProdukChart({
-    username: user?.username,
-    role: user?.role,
-  });
   const outlet_chart_data = outlet_chart.chart_data ?? [];
   const product_chart_data = product_chart.chart_data ?? [];
   const outlet_chart_height = Math.max(320, outlet_chart_data.length * 42);
+  const user_display_name = user?.name || user?.username || "User";
+  const highest_nilai_transaksi_by_category = outlet_category_slug_options
+    .map((category) => {
+      const row = (nilai_transaksi_basket_size.rows ?? [])
+        .filter((item) => item.category_key === category.value)
+        .reduce((highest, item) => {
+          if (!highest || Number(item.nt_daily ?? 0) > Number(highest.nt_daily ?? 0)) {
+            return item;
+          }
+
+          return highest;
+        }, null);
+
+      return {
+        category_key: category.value,
+        category_label: category.label,
+        outlet_name: row?.outlet_name ?? "-",
+        value: Number(row?.nt_daily ?? 0),
+      };
+    });
 
   return (
     <>
       <div className="px-4 lg:px-6">
         <PageHeading
-          title="Dasbor"
-          description="Ringkasan utama aktivitas dan data operasional HGPGA."
+          title={
+            <span className="inline-flex items-center gap-2">
+              <HandIcon className="size-5 text-primary" />
+              Hai, {user_display_name}
+            </span>
+          }
+          description="Ringkasan utama aktivitas dan data operasional dalam Performance Report."
         />
       </div>
 
@@ -129,6 +166,12 @@ export default async function Page() {
             </Link>
           </CardFooter>
         </Card>
+      </div>
+      <div className="px-4 lg:px-6">
+        <NilaiTransaksiBasketSizeDashboardCard
+          metrics={nilai_transaksi_basket_size.overall_metrics}
+          highest_nilai_transaksi_by_category={highest_nilai_transaksi_by_category}
+        />
       </div>
     </>
   );

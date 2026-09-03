@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { isSuperadmin, normalizeRole } from "@/lib/role";
+import {
+  admin_account_roles,
+  isSuperadmin,
+  normalizeRole,
+} from "@/lib/role";
 
 export async function getAdminSettingsData() {
   const data_admin = await prisma.tbl_admin.findMany({
@@ -26,16 +30,48 @@ export async function getAdminSettingsData() {
 function validate_admin_role(role) {
   const trimmed_role = normalizeRole(role);
 
-  if (!["superadmin", "admin", "viewer"].includes(trimmed_role)) {
+  if (!admin_account_roles.includes(trimmed_role)) {
     throw new Error("Role admin tidak valid.");
   }
 
   return trimmed_role;
 }
 
-function assert_superadmin_write_access(actor_role, target_role) {
-  if (target_role === "superadmin" && !isSuperadmin(actor_role)) {
-    throw new Error("Hanya superadmin yang dapat mengelola akun superadmin.");
+async function assert_superadmin_write_access(actor_role, target_role) {
+  if (!isSuperadmin(target_role) || isSuperadmin(actor_role)) {
+    return;
+  }
+
+  const superadmin_count = await prisma.tbl_admin.count({
+    where: {
+      role: "superadmin",
+      deleted_at: null,
+    },
+  });
+
+  if (superadmin_count > 0) {
+    throw new Error(
+      "Hanya superadmin yang dapat mengelola akun superadmin.",
+    );
+  }
+}
+
+async function assert_not_last_superadmin(target_role) {
+  if (!isSuperadmin(target_role)) {
+    return;
+  }
+
+  const superadmin_count = await prisma.tbl_admin.count({
+    where: {
+      role: "superadmin",
+      deleted_at: null,
+    },
+  });
+
+  if (superadmin_count <= 1) {
+    throw new Error(
+      "Superadmin terakhir tidak dapat diturunkan rolenya atau dihapus.",
+    );
   }
 }
 
@@ -68,8 +104,6 @@ export async function updateAdmin({
     throw new Error("Username admin wajib diisi.");
   }
 
-  assert_superadmin_write_access(actor_role, trimmed_role);
-
   const existing_admin = await prisma.tbl_admin.findUnique({
     where: { uuid: uuid_admin },
     select: {
@@ -81,7 +115,12 @@ export async function updateAdmin({
     throw new Error("Data admin tidak ditemukan.");
   }
 
-  assert_superadmin_write_access(actor_role, existing_admin.role);
+  await assert_superadmin_write_access(actor_role, existing_admin.role);
+  await assert_superadmin_write_access(actor_role, trimmed_role);
+
+  if (isSuperadmin(existing_admin.role) && !isSuperadmin(trimmed_role)) {
+    await assert_not_last_superadmin(existing_admin.role);
+  }
 
   const updated_admin = await prisma.tbl_admin.update({
     where: { uuid: uuid_admin },
@@ -129,7 +168,7 @@ export async function createAdmin({
     throw new Error("Password admin wajib diisi.");
   }
 
-  assert_superadmin_write_access(actor_role, trimmed_role);
+  await assert_superadmin_write_access(actor_role, trimmed_role);
 
   const existing_admin = await prisma.tbl_admin.findUnique({
     where: { username: trimmed_username },
@@ -196,7 +235,8 @@ export async function deleteAdmin({
     throw new Error("Data admin tidak ditemukan.");
   }
 
-  assert_superadmin_write_access(actor_role, existing_admin.role);
+  await assert_superadmin_write_access(actor_role, existing_admin.role);
+  await assert_not_last_superadmin(existing_admin.role);
 
   await prisma.tbl_admin.update({
     where: {

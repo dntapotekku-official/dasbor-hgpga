@@ -2,9 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  BadgeDollarSignIcon,
   CalendarRangeIcon,
   FileSpreadsheetIcon,
   LoaderCircleIcon,
+  MinusIcon,
+  ShoppingBasketIcon,
   Trash2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +19,13 @@ import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import OptionDropdown from "@/components/option-dropdown";
 import PageHeading from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -22,7 +33,12 @@ import BasketSizeTab from "./components/basket-size-tab";
 import ImportDataModal from "./components/import-data-modal";
 import MetricBulkActionModal from "./components/metric-bulk-action-modal";
 import NilaiTransaksiDailyEditModal from "./components/nilai-transaksi-daily-edit-modal";
+import {
+  formatCurrency,
+  formatDecimal,
+} from "@/lib/nilaiTransaksiBasketSizeTable";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
+import { hasRoleAccess } from "@/lib/role";
 import NilaiTransaksiTab from "./components/nilai-transaksi-tab";
 
 const empty_metrics = {
@@ -74,24 +90,168 @@ async function fetchMetricData(date, metric) {
   return payload.data;
 }
 
+function gapValueClassName(value) {
+  if (value > 0) {
+    return "text-emerald-700 dark:text-emerald-400";
+  }
+
+  if (value < 0) {
+    return "text-rose-700 dark:text-rose-400";
+  }
+
+  return "text-foreground";
+}
+
+function GapMetricValue({ value, is_loading = false, large = false }) {
+  const DirectionIcon = value > 0
+    ? ArrowUpIcon
+    : value < 0
+      ? ArrowDownIcon
+      : MinusIcon;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 ${gapValueClassName(value)}`}
+    >
+      {is_loading ? (
+        "Memuat..."
+      ) : (
+        <>
+          <DirectionIcon className={large ? "size-7" : "size-4"} />
+          {formatDecimal(value)}%
+        </>
+      )}
+    </span>
+  );
+}
+
+function SummaryMetric({ label, value }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words font-medium">{value}</p>
+    </div>
+  );
+}
+
+function toNumber(value) {
+  const parsed_value = Number(value ?? 0);
+
+  return Number.isFinite(parsed_value) ? parsed_value : 0;
+}
+
+function comparePercentage(value, divisor) {
+  return divisor ? (value / divisor) * 100 : 0;
+}
+
+function summarizeVisibleRows(rows) {
+  if (!rows.length) {
+    return empty_metrics;
+  }
+
+  const summary = rows.reduce(
+    (current, row) => ({
+      nt_target: current.nt_target + toNumber(row.nt_target),
+      nt_daily_total_revenue:
+        current.nt_daily_total_revenue + toNumber(row.nt_daily_total_revenue),
+      nt_daily_served: current.nt_daily_served + toNumber(row.nt_daily_served),
+      nt_last_month_total_revenue:
+        current.nt_last_month_total_revenue + toNumber(row.nt_last_month_total_revenue),
+      nt_last_month_served:
+        current.nt_last_month_served + toNumber(row.nt_last_month_served),
+      nt_current_month_total_revenue:
+        current.nt_current_month_total_revenue
+        + toNumber(row.nt_current_month_total_revenue),
+      nt_current_month_served:
+        current.nt_current_month_served + toNumber(row.nt_current_month_served),
+      bs_target: current.bs_target + toNumber(row.bs_target),
+      bs_current_month_sku_qty:
+        current.bs_current_month_sku_qty + toNumber(row.bs_current_month_sku_qty),
+      bs_current_month_served:
+        current.bs_current_month_served + toNumber(row.bs_current_month_served),
+      bs_last_month_sku_qty:
+        current.bs_last_month_sku_qty + toNumber(row.bs_last_month_sku_qty),
+      bs_last_month_served:
+        current.bs_last_month_served + toNumber(row.bs_last_month_served),
+    }),
+    {
+      nt_target: 0,
+      nt_daily_total_revenue: 0,
+      nt_daily_served: 0,
+      nt_last_month_total_revenue: 0,
+      nt_last_month_served: 0,
+      nt_current_month_total_revenue: 0,
+      nt_current_month_served: 0,
+      bs_target: 0,
+      bs_current_month_sku_qty: 0,
+      bs_current_month_served: 0,
+      bs_last_month_sku_qty: 0,
+      bs_last_month_served: 0,
+    },
+  );
+  const row_count = rows.length;
+  const nt_daily = summary.nt_daily_served
+    ? summary.nt_daily_total_revenue / summary.nt_daily_served
+    : 0;
+  const nt_last_month = summary.nt_last_month_served
+    ? summary.nt_last_month_total_revenue / summary.nt_last_month_served
+    : 0;
+  const nt_current_month = summary.nt_current_month_served
+    ? summary.nt_current_month_total_revenue / summary.nt_current_month_served
+    : 0;
+  const bs_last_month = summary.bs_last_month_served
+    ? summary.bs_last_month_sku_qty / summary.bs_last_month_served
+    : 0;
+  const bs_current_month = summary.bs_current_month_served
+    ? summary.bs_current_month_sku_qty / summary.bs_current_month_served
+    : 0;
+  const nt_target = summary.nt_target / row_count;
+  const bs_target = summary.bs_target / row_count;
+  const nt_growth = comparePercentage(nt_current_month, nt_last_month);
+  const bs_growth = comparePercentage(bs_current_month, bs_last_month);
+  const nt_target_compare = comparePercentage(nt_current_month, nt_target);
+  const bs_target_compare = comparePercentage(bs_current_month, bs_target);
+
+  return {
+    ...summary,
+    nt_target,
+    nt_daily,
+    nt_last_month,
+    nt_current_month,
+    nt_growth,
+    nt_gap_growth: nt_growth - 100,
+    nt_target_compare,
+    nt_gap_target: nt_target_compare - 100,
+    bs_target,
+    bs_last_month,
+    bs_current_month,
+    bs_growth,
+    bs_gap_growth: bs_growth - 100,
+    bs_target_compare,
+    bs_gap_target: bs_target_compare - 100,
+  };
+}
+
 export default function NilaiTransaksiPage() {
   const { role } = useAuth();
   const [activeMetric, setActiveMetric] = useState("nilai-transaksi");
   const [selectedDate, setSelectedDate] = useState("2026-08-25");
-  const [selectedOutletFilter, setSelectedOutletFilter] = useState("all");
+  const [outletSearch, setOutletSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("non-pariwisata");
   const [rows, setRows] = useState([]);
   const [categoryMetrics, setCategoryMetrics] = useState({});
+  const [overallMetrics, setOverallMetrics] = useState(empty_metrics);
   const [tableLabels, setTableLabels] = useState(default_table_labels);
   const [availableDates, setAvailableDates] = useState(default_available_dates);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
   const [bulkAction, setBulkAction] = useState(null);
   const [isMutating, setIsMutating] = useState(false);
-  const canImport = role === "admin" || role === "superadmin";
+  const canImport = hasRoleAccess(role, ["admin"]);
   const activeMetricLabel =
     activeMetric === "nilai-transaksi" ? "Nilai Transaksi" : "Basket Size";
 
@@ -109,6 +269,10 @@ export default function NilaiTransaksiPage() {
 
         setRows(metrics.rows ?? []);
         setCategoryMetrics(metrics.category_metrics ?? {});
+        setOverallMetrics(
+          metrics.overall_metrics
+            ?? empty_metrics,
+        );
         setTableLabels({
           selected_date_label: metrics.selected_date_label ?? "",
           selected_month_label: metrics.selected_month_label ?? "",
@@ -139,33 +303,83 @@ export default function NilaiTransaksiPage() {
     };
   }, [activeMetric, selectedDate]);
 
-  const outlet_filter_options = useMemo(
-    () => [
-      { value: "all", label: "Semua Outlet" },
-      ...rows.map((row) => ({
-        value: row.uuid,
-        label: row.outlet_name,
-      })),
-    ],
-    [rows],
-  );
-
-  const filtered_outlet_rows = useMemo(
+  const category_outlet_rows = useMemo(
     () =>
-      rows.filter(
-        (row) =>
-          row.category_key === selectedCategory &&
-          (selectedOutletFilter === "all" || row.uuid === selectedOutletFilter),
-      ),
-    [rows, selectedCategory, selectedOutletFilter],
-  );
-  const displayed_metrics =
-    (selectedOutletFilter === "all"
-      ? categoryMetrics[selectedCategory]
-      : filtered_outlet_rows[0]) ?? empty_metrics;
+      rows
+        .filter((row) => row.category_key === selectedCategory)
+        .sort((first, second) => {
+          const first_value = activeMetric === "nilai-transaksi"
+            ? Number(first.nt_gap_growth ?? 0)
+            : Number(first.bs_gap_growth ?? 0);
+          const second_value = activeMetric === "nilai-transaksi"
+            ? Number(second.nt_gap_growth ?? 0)
+            : Number(second.bs_gap_growth ?? 0);
 
+          return second_value - first_value
+            || first.outlet_name.localeCompare(second.outlet_name, "id-ID");
+        }),
+    [activeMetric, rows, selectedCategory],
+  );
+  const normalized_outlet_search = outletSearch.trim().toLowerCase();
+  const filtered_outlet_rows = useMemo(
+    () => category_outlet_rows.filter(
+      (row) =>
+        !normalized_outlet_search
+        || row.outlet_name.toLowerCase().includes(normalized_outlet_search),
+    ),
+    [category_outlet_rows, normalized_outlet_search],
+  );
+  const highest_category_value = category_outlet_rows.length
+    ? Math.max(
+      ...category_outlet_rows.map((row) => Number(
+        activeMetric === "nilai-transaksi"
+          ? row.nt_daily ?? 0
+          : row.bs_current_month ?? 0,
+      )),
+    )
+    : null;
+  const displayed_metrics = normalized_outlet_search
+    ? summarizeVisibleRows(filtered_outlet_rows)
+    : (categoryMetrics[selectedCategory] ?? empty_metrics);
   const onImportButtonClick = () => {
     setIsImportModalOpen(true);
+  };
+
+  const onExportButtonClick = async () => {
+    try {
+      setIsExporting(true);
+      const response = await fetch(
+        `/api/nilai-transaksi?action=export&selected_date=${encodeURIComponent(selectedDate)}`,
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || "Gagal mengekspor laporan Excel.");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1]
+        ?? `NILAI-TRANSAKSI-DAN-BASKET-SIZE-${selectedDate}.xlsx`;
+      const download_url = URL.createObjectURL(blob);
+      const download_link = document.createElement("a");
+
+      download_link.href = download_url;
+      download_link.download = filename;
+      document.body.appendChild(download_link);
+      download_link.click();
+      download_link.remove();
+      URL.revokeObjectURL(download_url);
+      toast.success("Laporan Excel berhasil diekspor.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal mengekspor laporan Excel.",
+      );
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const refreshMetrics = async () => {
@@ -173,6 +387,10 @@ export default function NilaiTransaksiPage() {
 
     setRows(metrics.rows ?? []);
     setCategoryMetrics(metrics.category_metrics ?? {});
+    setOverallMetrics(
+      metrics.overall_metrics
+        ?? empty_metrics,
+    );
     setTableLabels({
       selected_date_label: metrics.selected_date_label ?? "",
       selected_month_label: metrics.selected_month_label ?? "",
@@ -186,7 +404,7 @@ export default function NilaiTransaksiPage() {
   const onImportSubmit = async ({ import_date, file, import_type }) => {
     try {
       if (!canImport) {
-        throw new Error("Hanya admin yang dapat mengimpor file Excel.");
+        throw new Error("Hanya admin atau superadmin yang dapat mengimpor file Excel.");
       }
 
       if (!import_date || !file || !import_type) {
@@ -214,6 +432,10 @@ export default function NilaiTransaksiPage() {
         const metrics = await fetchMetricData(import_date, import_type);
         setRows(metrics.rows ?? []);
         setCategoryMetrics(metrics.category_metrics ?? {});
+        setOverallMetrics(
+          metrics.overall_metrics
+            ?? empty_metrics,
+        );
         setTableLabels({
           selected_date_label: metrics.selected_date_label ?? "",
           selected_month_label: metrics.selected_month_label ?? "",
@@ -224,7 +446,7 @@ export default function NilaiTransaksiPage() {
         setAvailableDates(metrics.available_dates ?? default_available_dates);
       } else {
         setSelectedDate(import_date);
-        setSelectedOutletFilter("all");
+        setOutletSearch("");
       }
 
       setIsImportModalOpen(false);
@@ -246,7 +468,7 @@ export default function NilaiTransaksiPage() {
     }
   };
 
-  const handleDailyEdit = async ({ daily }) => {
+  const handleDailyEdit = async ({ total_revenue }) => {
     if (!editingRow) {
       return;
     }
@@ -262,7 +484,7 @@ export default function NilaiTransaksiPage() {
           action: "update_daily",
           uuid_outlet: editingRow.uuid,
           selected_date: selectedDate,
-          daily,
+          total_revenue,
         }),
       });
       const payload = await response.json();
@@ -388,6 +610,152 @@ export default function NilaiTransaksiPage() {
       <div className="px-4 lg:px-6">
         <Tabs value={activeMetric} onValueChange={setActiveMetric} className="w-full">
           <div className="flex flex-col gap-6">
+            {activeMetric === "nilai-transaksi" ? (
+              <Card className="bg-orange-50/60 dark:bg-orange-950/15">
+                <CardHeader>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/50">
+                      <BadgeDollarSignIcon className="size-5 text-orange-700 dark:text-orange-300" />
+                    </div>
+                    <div className="grid min-w-0 auto-rows-min gap-1 text-left">
+                      <CardTitle>Nilai Transaksi</CardTitle>
+                      <CardDescription>
+                        Semua kategori • {tableLabels.selected_date_label || "tanggal terpilih"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
+                      <p className="text-3xl font-semibold tracking-tight">
+                        <GapMetricValue
+                          value={overallMetrics.nt_gap_growth}
+                          is_loading={isLoading}
+                          large
+                        />
+                      </p>
+                    </div>
+                    <div className="min-w-0 space-y-1 border-l pl-4">
+                      <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
+                      <p className="text-3xl font-semibold tracking-tight">
+                        <GapMetricValue
+                          value={overallMetrics.nt_gap_target}
+                          is_loading={isLoading}
+                          large
+                        />
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
+                    <SummaryMetric
+                      label="Target"
+                      value={formatCurrency(overallMetrics.nt_target)}
+                    />
+                    <SummaryMetric
+                      label="TPP (Harian)"
+                      value={formatCurrency(overallMetrics.nt_daily_total_revenue)}
+                    />
+                    <SummaryMetric
+                      label="Dilayani (Harian)"
+                      value={formatDecimal(overallMetrics.nt_daily_served, 0)}
+                    />
+                    <SummaryMetric
+                      label={`Harian (${tableLabels.selected_date_label || "tanggal terpilih"})`}
+                      value={formatCurrency(overallMetrics.nt_daily)}
+                    />
+                    <SummaryMetric
+                      label={tableLabels.previous_period_label || "Periode sebelumnya"}
+                      value={formatCurrency(overallMetrics.nt_last_month)}
+                    />
+                    <SummaryMetric
+                      label={tableLabels.selected_period_label || "Periode berjalan"}
+                      value={formatCurrency(overallMetrics.nt_current_month)}
+                    />
+                    <SummaryMetric
+                      label="Growth"
+                      value={`${formatDecimal(overallMetrics.nt_growth)}%`}
+                    />
+                    <SummaryMetric
+                      label="Dari Target"
+                      value={`${formatDecimal(overallMetrics.nt_target_compare)}%`}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-blue-50/60 dark:bg-blue-950/15">
+                <CardHeader>
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50">
+                      <ShoppingBasketIcon className="size-5 text-blue-700 dark:text-blue-300" />
+                    </div>
+                    <div className="grid min-w-0 auto-rows-min gap-1 text-left">
+                      <CardTitle>Basket Size</CardTitle>
+                      <CardDescription>
+                        Semua kategori • {tableLabels.selected_date_label || "tanggal terpilih"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
+                      <p className="text-3xl font-semibold tracking-tight">
+                        <GapMetricValue
+                          value={overallMetrics.bs_gap_growth}
+                          is_loading={isLoading}
+                          large
+                        />
+                      </p>
+                    </div>
+                    <div className="min-w-0 space-y-1 border-l pl-4">
+                      <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
+                      <p className="text-3xl font-semibold tracking-tight">
+                        <GapMetricValue
+                          value={overallMetrics.bs_gap_target}
+                          is_loading={isLoading}
+                          large
+                        />
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
+                    <SummaryMetric
+                      label="Target"
+                      value={formatDecimal(overallMetrics.bs_target)}
+                    />
+                    <SummaryMetric
+                      label="Jumlah SKU"
+                      value={formatDecimal(overallMetrics.bs_current_month_sku_qty, 0)}
+                    />
+                    <SummaryMetric
+                      label="Dilayani"
+                      value={formatDecimal(overallMetrics.bs_current_month_served, 0)}
+                    />
+                    <SummaryMetric
+                      label={tableLabels.previous_period_label || "Periode sebelumnya"}
+                      value={formatDecimal(overallMetrics.bs_last_month)}
+                    />
+                    <SummaryMetric
+                      label={tableLabels.selected_period_label || "Periode berjalan"}
+                      value={formatDecimal(overallMetrics.bs_current_month)}
+                    />
+                    <SummaryMetric
+                      label="Growth"
+                      value={`${formatDecimal(overallMetrics.bs_growth)}%`}
+                    />
+                    <SummaryMetric
+                      label="Dari Target"
+                      value={`${formatDecimal(overallMetrics.bs_target_compare)}%`}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                 <div className="flex min-w-0 flex-col gap-2 sm:w-[220px]">
@@ -398,24 +766,11 @@ export default function NilaiTransaksiPage() {
                     id={`filter-kategori-${activeMetric}`}
                     value={selectedCategory}
                     options={outlet_category_slug_options}
-                    onValueChange={setSelectedCategory}
+                    onValueChange={(next_category) => {
+                      setSelectedCategory(next_category);
+                      setOutletSearch("");
+                    }}
                     ariaLabel="Filter kategori outlet"
-                  />
-                </div>
-
-                <div className="flex min-w-0 flex-col gap-2 sm:w-[320px]">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Outlet
-                  </span>
-                  <OptionDropdown
-                    id="filter-outlet-nilai-transaksi"
-                    value={selectedOutletFilter}
-                    options={outlet_filter_options}
-                    onValueChange={setSelectedOutletFilter}
-                    ariaLabel="Filter outlet nilai transaksi"
-                    searchable
-                    searchPlaceholder="Cari outlet..."
-                    emptyMessage="Outlet tidak ditemukan."
                   />
                 </div>
 
@@ -428,7 +783,7 @@ export default function NilaiTransaksiPage() {
                     value={selectedDate}
                     onChange={(event) => {
                       setSelectedDate(event.target.value);
-                      setSelectedOutletFilter("all");
+                      setOutletSearch("");
                     }}
                     className="bg-card"
                     aria-label="Tanggal nilai transaksi"
@@ -439,11 +794,11 @@ export default function NilaiTransaksiPage() {
               <div className="flex justify-end gap-3">
                 <Button
                   type="button"
-                  disabled
                   className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  onClick={onExportButtonClick}
                 >
                   <FileSpreadsheetIcon className="size-4" />
-                  Export
+                  {isExporting ? "Mengekspor..." : "Export"}
                 </Button>
               </div>
             </div>
@@ -457,14 +812,13 @@ export default function NilaiTransaksiPage() {
               </TabsTrigger>
             </TabsList>
 
-            <Card className="gap-0 border-t-4 border-t-primary">
+            <Card className="gap-0 border-t-2 border-t-primary/70">
               <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>
                   {activeMetricLabel}
                 </CardTitle>
                 <Button
                   type="button"
-                  disabled={isImporting || !canImport}
                   className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                   onClick={onImportButtonClick}
                 >
@@ -482,38 +836,49 @@ export default function NilaiTransaksiPage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                {canImport ? (
-                  <div className="mb-4 flex flex-wrap justify-end gap-2">
-                    {activeMetric === "nilai-transaksi" ? (
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 sm:w-[320px]">
+                    <Input
+                      value={outletSearch}
+                      onChange={(event) => setOutletSearch(event.target.value)}
+                      placeholder="Ketik nama outlet..."
+                      className="bg-card"
+                      aria-label="Cari outlet"
+                    />
+                  </div>
+                  {canImport ? (
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {activeMetric === "nilai-transaksi" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            setBulkAction({
+                              action: "edit_date",
+                              metric: "nilai-transaksi",
+                            })
+                          }
+                        >
+                          <CalendarRangeIcon className="size-4" />
+                          Edit Massal
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="delete"
                         onClick={() =>
                           setBulkAction({
-                            action: "edit_date",
-                            metric: "nilai-transaksi",
+                            action: "delete_date",
+                            metric: activeMetric,
                           })
                         }
                       >
-                        <CalendarRangeIcon className="size-4" />
-                        Edit Massal
+                        <Trash2Icon className="size-4" />
+                        Hapus Massal
                       </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="delete"
-                      onClick={() =>
-                        setBulkAction({
-                          action: "delete_date",
-                          metric: activeMetric,
-                        })
-                      }
-                    >
-                      <Trash2Icon className="size-4" />
-                      Hapus Massal
-                    </Button>
-                  </div>
-                ) : null}
+                    </div>
+                  ) : null}
+                </div>
                 {isLoading ? (
                   <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">
                     <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
@@ -522,6 +887,7 @@ export default function NilaiTransaksiPage() {
                 ) : activeMetric === "nilai-transaksi" ? (
                   <NilaiTransaksiTab
                     category_metrics={displayed_metrics}
+                    highest_daily={highest_category_value}
                     labels={tableLabels}
                     rows={filtered_outlet_rows}
                     can_manage={canImport}
@@ -533,6 +899,7 @@ export default function NilaiTransaksiPage() {
                 ) : (
                   <BasketSizeTab
                     category_metrics={displayed_metrics}
+                    highest_achievement={highest_category_value}
                     labels={tableLabels}
                     rows={filtered_outlet_rows}
                     can_manage={canImport}

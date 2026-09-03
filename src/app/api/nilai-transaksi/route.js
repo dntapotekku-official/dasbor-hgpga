@@ -6,6 +6,7 @@ import {
   bulkDeleteNilaiTransaksiDate,
   bulkUpdateNilaiTransaksiDate,
   deleteNilaiTransaksiDaily,
+  exportNilaiTransaksiBasketSizeWorkbook,
   getNilaiTransaksiBasketSize,
   importNilaiTransaksi,
   updateNilaiTransaksiDaily,
@@ -20,6 +21,22 @@ export async function GET(request) {
     }
 
     const selected_date = request.nextUrl.searchParams.get("selected_date");
+    const action = request.nextUrl.searchParams.get("action");
+
+    if (action === "export") {
+      const { buffer, filename } = await exportNilaiTransaksiBasketSizeWorkbook({
+        selected_date,
+      });
+
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      });
+    }
+
     const data = await getNilaiTransaksiBasketSize({
       selected_date,
     });
@@ -68,7 +85,7 @@ export async function PATCH(request) {
     const data = await updateNilaiTransaksiDaily({
       uuid_outlet: body?.uuid_outlet,
       selected_date: body?.selected_date,
-      daily: body?.daily,
+      total_revenue: body?.total_revenue,
     });
 
     return NextResponse.json(data);

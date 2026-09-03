@@ -76,6 +76,7 @@ export async function getKaryawanSettingsData() {
           deleted_at: null,
           outlet: {
             deleted_at: null,
+            excep: false,
           },
         },
         orderBy: {
@@ -200,6 +201,46 @@ export async function syncKaryawan() {
     if (deleted_karyawan.length > 0) {
       const deleted_karyawan_uuids = deleted_karyawan.map((item) => item.uuid);
       const deleted_at = new Date();
+      const deleted_outlet_karyawan = await tx.tbl_outlet_karyawan.findMany({
+        where: {
+          uuid_karyawan: {
+            in: deleted_karyawan_uuids,
+          },
+          deleted_at: null,
+        },
+        select: {
+          uuid: true,
+        },
+      });
+      const deleted_outlet_karyawan_uuids = deleted_outlet_karyawan.map(
+        (item) => item.uuid,
+      );
+
+      if (deleted_outlet_karyawan_uuids.length > 0) {
+        await tx.tbl_penjualan_gofitku.updateMany({
+          where: {
+            uuid_outlet_karyawan: {
+              in: deleted_outlet_karyawan_uuids,
+            },
+            deleted_at: null,
+          },
+          data: {
+            deleted_at,
+          },
+        });
+      }
+
+      await tx.tbl_atribut_karyawan.updateMany({
+        where: {
+          uuid_karyawan: {
+            in: deleted_karyawan_uuids,
+          },
+          deleted_at: null,
+        },
+        data: {
+          deleted_at,
+        },
+      });
 
       await tx.tbl_outlet_karyawan.updateMany({
         where: {
@@ -337,6 +378,7 @@ export async function updateKaryawan({
         in: unique_outlet_uuids,
       },
       deleted_at: null,
+      excep: false,
     },
     select: {
       uuid: true,

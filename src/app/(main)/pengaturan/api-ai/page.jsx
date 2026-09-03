@@ -94,7 +94,7 @@ export default function AiApiPage() {
         />
       </div>
       <div className="px-4 lg:px-6">
-        <Card className="gap-0 border-t-4 border-t-primary">
+        <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
             <CardTitle>AI API</CardTitle>
           </CardHeader>

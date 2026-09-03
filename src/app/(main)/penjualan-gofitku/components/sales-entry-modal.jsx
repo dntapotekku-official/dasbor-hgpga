@@ -56,7 +56,6 @@ export default function SalesEntryModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={!can_close}
                 />
               }
             >
@@ -131,7 +130,6 @@ export default function SalesEntryModal({
                   <Button
                     type="button"
                     onClick={on_scan_images}
-                    disabled={!sales_form.uploaded_images.length || is_scanning}
                     className="w-full"
                   >
                     {is_scanning ? (
@@ -252,12 +250,12 @@ export default function SalesEntryModal({
             <div className="flex shrink-0 justify-end gap-2 pt-4">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={!can_close} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit" disabled={is_saving}>
+              <Button type="submit">
                 {is_saving ? (
                   <LoaderCircleIcon className="size-4 animate-spin" />
                 ) : null}

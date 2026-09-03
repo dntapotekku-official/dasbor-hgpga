@@ -7,7 +7,7 @@ export default function OutletPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola dan sinkronkan data outlet."
+          description="Kelola, sinkronkan, dan atur pengecualian data outlet."
         />
       </div>
 

@@ -157,10 +157,22 @@ export default function PengaturanRowSheet({
                     checked={Boolean(draft[field.key])}
                     disabled={is_disabled}
                     onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        [field.key]: event.target.checked,
-                      }))
+                      setDraft((current) => {
+                        const checked = event.target.checked;
+                        const next_draft = {
+                          ...current,
+                          [field.key]: checked,
+                        };
+
+                        if (typeof field.on_change === "function") {
+                          return {
+                            ...next_draft,
+                            ...field.on_change(next_draft, checked),
+                          };
+                        }
+
+                        return next_draft;
+                      })
                     }
                     className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
                   />
@@ -196,7 +208,6 @@ export default function PengaturanRowSheet({
                   <button
                     type="button"
                     id={field.key}
-                    disabled={is_disabled}
                     onClick={() =>
                       setOpenFieldKey((current) => {
                         const next_key = current === field.key ? null : field.key;
@@ -211,9 +222,7 @@ export default function PengaturanRowSheet({
                         return next_key;
                       })
                     }
-                    className={`flex w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 ${
-                      is_disabled ? "cursor-not-allowed opacity-60" : ""
-                    }`}
+                    className="flex w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
                     <span className="truncate text-foreground">
                       {Array.isArray(draft[field.key]) && draft[field.key].length > 0
@@ -329,7 +338,6 @@ export default function PengaturanRowSheet({
                                   ),
                                 }))
                               }
-                              disabled={is_disabled}
                               ariaLabel={`Pilih outlet penempatan ${index + 1}`}
                               searchable
                               searchPlaceholder="Cari outlet..."
@@ -341,7 +349,6 @@ export default function PengaturanRowSheet({
                             variant="delete"
                             size="icon-sm"
                             className="shrink-0"
-                            disabled={is_disabled}
                             onClick={() =>
                               setDraft((current) => ({
                                 ...current,
@@ -365,11 +372,6 @@ export default function PengaturanRowSheet({
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={
-                      is_disabled ||
-                      (Array.isArray(field.options) &&
-                        (draft[field.key] ?? []).length >= field.options.length)
-                    }
                     onClick={() =>
                       setDraft((current) => ({
                         ...current,
@@ -400,7 +402,6 @@ export default function PengaturanRowSheet({
                       [field.key]: next_value,
                     }))
                   }
-                  disabled={is_disabled}
                   ariaLabel={field.aria_label ?? field.label}
                   searchable={field.searchable}
                   searchPlaceholder={field.search_placeholder}
@@ -434,7 +435,6 @@ export default function PengaturanRowSheet({
           <Button
             type="button"
             onClick={handle_save}
-            disabled={is_submitting}
             className="w-full"
           >
             Simpan Perubahan

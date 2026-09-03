@@ -30,7 +30,6 @@ export default function Pagination({
           variant="outline"
           size="sm"
           onClick={on_previous}
-          disabled={current_page === 1}
         >
           Sebelumnya
         </Button>
@@ -42,7 +41,6 @@ export default function Pagination({
           variant="outline"
           size="sm"
           onClick={on_next}
-          disabled={current_page === total_pages}
         >
           Berikutnya
         </Button>

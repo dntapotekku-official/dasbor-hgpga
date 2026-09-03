@@ -85,7 +85,6 @@ export default function TargetBulkDeleteModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={is_deleting}
                 />
               }
             >
@@ -117,7 +116,6 @@ export default function TargetBulkDeleteModal({
                 options={period_options}
                 onValueChange={setSelectedPeriodKey}
                 ariaLabel={`Pilih periode ${target_label} yang akan dihapus`}
-                disabled={is_deleting}
                 searchable
                 searchPlaceholder="Cari periode..."
                 emptyMessage="Periode tidak ditemukan."
@@ -133,7 +131,7 @@ export default function TargetBulkDeleteModal({
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={is_deleting} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
@@ -141,7 +139,6 @@ export default function TargetBulkDeleteModal({
               <Button
                 type="submit"
                 variant="delete"
-                disabled={is_deleting || !selected_period}
               >
                 {is_deleting ? (
                   <>

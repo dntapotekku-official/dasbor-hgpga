@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PencilIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
+import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
@@ -30,6 +31,24 @@ export default function KaryawanTab() {
   const { search, setSearch, filtered_items } = useSearch(karyawan);
   const [selected_karyawan, setSelectedKaryawan] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
+  const [sort_key, setSortKey] = useState("name");
+  const [sort_direction, setSortDirection] = useState("asc");
+  const sorted_items = useMemo(() => {
+    return [...filtered_items].sort((a, b) => {
+      const direction = sort_direction === "asc" ? 1 : -1;
+      const first_value = sort_key === "outlet_names"
+        ? (a.outlet_names ?? []).join(", ")
+        : a[sort_key];
+      const second_value = sort_key === "outlet_names"
+        ? (b.outlet_names ?? []).join(", ")
+        : b[sort_key];
+
+      return String(first_value ?? "").localeCompare(
+        String(second_value ?? ""),
+        "id-ID",
+      ) * direction;
+    });
+  }, [filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -37,7 +56,19 @@ export default function KaryawanTab() {
     paginated_rows,
     previous_page,
     next_page,
-  } = usePagination(filtered_items, PAGE_SIZE);
+  } = usePagination(sorted_items, PAGE_SIZE);
+
+  const toggle_sort = (next_sort_key) => {
+    if (sort_key === next_sort_key) {
+      setSortDirection((current_direction) =>
+        current_direction === "asc" ? "desc" : "asc",
+      );
+      return;
+    }
+
+    setSortKey(next_sort_key);
+    setSortDirection("asc");
+  };
 
   const fetch_karyawan = async () => {
     const [outlet_result, karyawan_result] = await Promise.all([
@@ -170,7 +201,7 @@ export default function KaryawanTab() {
   };
 
   return (
-    <Card className="gap-0 border-t-4 border-t-primary">
+    <Card className="gap-0 border-t-2 border-t-primary/70">
       <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Karyawan</CardTitle>
         <SyncActionButton
@@ -195,9 +226,33 @@ export default function KaryawanTab() {
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
                     <TableHead className="w-20">#</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Outlet</TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Nama"
+                        sortKey="name"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Username"
+                        sortKey="username"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Outlet"
+                        sortKey="outlet_names"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>

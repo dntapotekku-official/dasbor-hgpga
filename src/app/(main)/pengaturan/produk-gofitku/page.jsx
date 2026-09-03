@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import Pagination from "@/components/pagination";
 import PageHeading from "@/components/page-heading";
+import SortableTableHead from "@/components/sortable-table-head";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "../component/pengaturan-row-sheet";
@@ -37,6 +38,18 @@ export default function ProdukGofitkuPage() {
   const [is_create_sheet_open, setIsCreateSheetOpen] = useState(false);
   const [produk_to_delete, setProdukToDelete] = useState(null);
   const [is_delete_pending, setIsDeletePending] = useState(false);
+  const [sort_key, setSortKey] = useState("name");
+  const [sort_direction, setSortDirection] = useState("asc");
+  const sorted_items = useMemo(() => {
+    return [...filtered_items].sort((a, b) => {
+      const direction = sort_direction === "asc" ? 1 : -1;
+
+      return String(a[sort_key] ?? "").localeCompare(
+        String(b[sort_key] ?? ""),
+        "id-ID",
+      ) * direction;
+    });
+  }, [filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -44,7 +57,19 @@ export default function ProdukGofitkuPage() {
     paginated_rows,
     previous_page,
     next_page,
-  } = usePagination(filtered_items, PAGE_SIZE);
+  } = usePagination(sorted_items, PAGE_SIZE);
+
+  const toggle_sort = (next_sort_key) => {
+    if (sort_key === next_sort_key) {
+      setSortDirection((current_direction) =>
+        current_direction === "asc" ? "desc" : "asc",
+      );
+      return;
+    }
+
+    setSortKey(next_sort_key);
+    setSortDirection("asc");
+  };
 
   const fetch_produk = async () => {
     const result = await fetch("/api/produk-gofitku");
@@ -184,25 +209,30 @@ export default function ProdukGofitkuPage() {
         />
       </div>
       <div className="px-4 lg:px-6">
-        <Card className="gap-0 border-t-4 border-t-primary">
-          <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+        <Card className="gap-0 border-t-2 border-t-primary/70">
+          <CardHeader className="border-b">
             <CardTitle>Produk GoFitKu</CardTitle>
-            <Button
-              type="button"
-              onClick={() => setIsCreateSheetOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              Tambah Produk
-            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari produk..."
-                className="max-w-sm"
-              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Cari produk..."
+                  className="w-full sm:max-w-sm"
+                />
+                <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
+                  <Button
+                    type="button"
+                    onClick={() => setIsCreateSheetOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <PlusIcon className="size-4" />
+                    Tambah Produk
+                  </Button>
+                </div>
+              </div>
 
               <div className="overflow-hidden rounded-lg border">
                 <div className="max-h-[560px] overflow-auto">
@@ -210,7 +240,15 @@ export default function ProdukGofitkuPage() {
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
                         <TableHead className="w-20">#</TableHead>
-                        <TableHead>Nama Produk</TableHead>
+                        <TableHead>
+                          <SortableTableHead
+                            label="Nama Produk"
+                            sortKey="name"
+                            currentSortKey={sort_key}
+                            sortDirection={sort_direction}
+                            onSort={toggle_sort}
+                          />
+                        </TableHead>
                         <TableHead className="w-[180px]">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>

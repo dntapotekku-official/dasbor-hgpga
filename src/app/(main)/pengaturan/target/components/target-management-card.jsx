@@ -5,12 +5,15 @@ import {
   CalendarRangeIcon,
   FileSpreadsheetIcon,
   PencilIcon,
+  PlusIcon,
   Trash2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import CurrencyValue from "@/components/currency-value";
 import Pagination from "@/components/pagination";
+import SortableTableHead from "@/components/sortable-table-head";
 import usePagination from "@/hooks/usePagination";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
 import { Button } from "@/components/ui/button";
@@ -123,6 +126,8 @@ export default function TargetManagementCard({
   const [is_bulk_deleting, setIsBulkDeleting] = useState(false);
   const [target_to_delete, setTargetToDelete] = useState(null);
   const [is_delete_pending, setIsDeletePending] = useState(false);
+  const [sort_key, setSortKey] = useState("outlet_name");
+  const [sort_direction, setSortDirection] = useState("asc");
   const filtered_items = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
@@ -142,6 +147,26 @@ export default function TargetManagementCard({
       );
     });
   }, [search, target_rows, target_value_format]);
+  const sorted_items = useMemo(() => {
+    return [...filtered_items].sort((a, b) => {
+      const direction = sort_direction === "asc" ? 1 : -1;
+
+      if (sort_key === "target") {
+        return ((Number(a.target) || 0) - (Number(b.target) || 0)) * direction;
+      }
+
+      if (sort_key === "start_date") {
+        return String(a.start_date ?? "").localeCompare(
+          String(b.start_date ?? ""),
+        ) * direction;
+      }
+
+      return String(a.outlet_name ?? "").localeCompare(
+        String(b.outlet_name ?? ""),
+        "id-ID",
+      ) * direction;
+    });
+  }, [filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -149,7 +174,19 @@ export default function TargetManagementCard({
     paginated_rows,
     previous_page,
     next_page,
-  } = usePagination(filtered_items, PAGE_SIZE);
+  } = usePagination(sorted_items, PAGE_SIZE);
+
+  const toggle_sort = (next_sort_key) => {
+    if (sort_key === next_sort_key) {
+      setSortDirection((current_direction) =>
+        current_direction === "asc" ? "desc" : "asc",
+      );
+      return;
+    }
+
+    setSortKey(next_sort_key);
+    setSortDirection(next_sort_key === "outlet_name" ? "asc" : "desc");
+  };
 
   useEffect(() => {
     let should_ignore = false;
@@ -476,6 +513,10 @@ export default function TargetManagementCard({
   ];
 
   const format_target_value = (value) => {
+    if (target_value_format === "currency") {
+      return <CurrencyValue value={value} />;
+    }
+
     if (target_value_format === "decimal") {
       return Number(value ?? 0).toLocaleString("id-ID", {
         minimumFractionDigits: 2,
@@ -492,7 +533,7 @@ export default function TargetManagementCard({
   );
 
   return (
-    <Card className="gap-0 border-t-4 border-t-primary">
+    <Card className="gap-0 border-t-2 border-t-primary/70">
       <CardHeader className="border-b">
         <div className="flex w-full items-center gap-4">
           <CardTitle className="min-w-0 flex-1">{card_title}</CardTitle>
@@ -539,6 +580,7 @@ export default function TargetManagementCard({
                 onClick={() => setIsCreateSheetOpen(true)}
                 className="flex-1 sm:flex-none"
               >
+                <PlusIcon className="size-4" />
                 Tambah Target
               </Button>
             </div>
@@ -550,9 +592,33 @@ export default function TargetManagementCard({
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
                     <TableHead className="w-20">#</TableHead>
-                    <TableHead>Outlet</TableHead>
-                    <TableHead>Range Tanggal</TableHead>
-                    <TableHead>Target</TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Outlet"
+                        sortKey="outlet_name"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Range Tanggal"
+                        sortKey="start_date"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Target"
+                        sortKey="target"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
                     <TableHead className="w-[180px]">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>

@@ -181,6 +181,40 @@ export async function syncOutletKaryawan() {
       .map((item) => buildRelationKey(item));
 
     if (removed_relation_keys.length > 0) {
+      const removed_relations = await tx.tbl_outlet_karyawan.findMany({
+        where: {
+          OR: removed_relation_keys.map((relation_key) => {
+            const [uuid_outlet, uuid_karyawan] = relation_key.split(":");
+
+            return {
+              uuid_outlet,
+              uuid_karyawan,
+              deleted_at: null,
+              is_skip_sync: false,
+            };
+          }),
+        },
+        select: {
+          uuid: true,
+        },
+      });
+      const removed_relation_uuids = removed_relations.map((item) => item.uuid);
+      const deleted_at = new Date();
+
+      if (removed_relation_uuids.length > 0) {
+        await tx.tbl_penjualan_gofitku.updateMany({
+          where: {
+            uuid_outlet_karyawan: {
+              in: removed_relation_uuids,
+            },
+            deleted_at: null,
+          },
+          data: {
+            deleted_at,
+          },
+        });
+      }
+
       await Promise.all(
         removed_relation_keys.map((relation_key) => {
           const [uuid_outlet, uuid_karyawan] = relation_key.split(":");
@@ -193,7 +227,7 @@ export async function syncOutletKaryawan() {
               is_skip_sync: false,
             },
             data: {
-              deleted_at: new Date(),
+              deleted_at,
             },
           });
         }),
@@ -271,6 +305,7 @@ export async function updateOutletKaryawan({
         in: unique_outlet_uuids,
       },
       deleted_at: null,
+      excep: false,
     },
     select: {
       uuid: true,

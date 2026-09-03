@@ -83,7 +83,6 @@ export default function TargetImportModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={is_importing}
                 />
               }
             >
@@ -155,7 +154,7 @@ export default function TargetImportModal({
               />
               <label
                 htmlFor="file-import-target"
-                className={`group flex min-h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-7 text-center transition-colors ${
+                className={`group flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-7 text-center transition-colors ${
                   is_importing ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                 } ${
                   is_dragging
@@ -220,19 +219,12 @@ export default function TargetImportModal({
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={is_importing} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button
-                type="submit"
-                disabled={
-                  is_importing ||
-                  !file ||
-                  (is_range_mode ? !start_date || !end_date : !import_date)
-                }
-              >
+              <Button type="submit">
                 {is_importing ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

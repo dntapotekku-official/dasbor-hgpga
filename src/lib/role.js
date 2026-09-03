@@ -2,6 +2,8 @@ export function normalizeRole(role) {
   return String(role ?? "").trim().toLowerCase();
 }
 
+export const admin_account_roles = ["superadmin", "admin", "viewer"];
+
 const role_levels = {
   member: 0,
   viewer: 1,

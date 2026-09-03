@@ -81,17 +81,9 @@ export function NavMain({ items }) {
                         <SidebarMenuItem key={child_item.title}>
                           <SidebarMenuButton
                             tooltip={child_item.title}
-                            isActive={
-                              !child_item.disabled &&
-                              is_active_item(child_item.url, { exact: true })
-                            }
-                            disabled={child_item.disabled}
-                            className="h-auto min-h-10 items-start px-3 py-2.5 text-white/75 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium disabled:cursor-not-allowed [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
-                            render={
-                              child_item.disabled ? undefined : (
-                                <Link href={child_item.url} />
-                              )
-                            }
+                            isActive={is_active_item(child_item.url, { exact: true })}
+                            className="h-auto min-h-10 items-start px-3 py-2.5 text-white/75 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
+                            render={<Link href={child_item.url} />}
                           >
                             <span className="whitespace-normal break-words leading-snug">
                               {child_item.title}
@@ -105,10 +97,9 @@ export function NavMain({ items }) {
               ) : (
                 <SidebarMenuButton
                   tooltip={item.title}
-                  isActive={!item.disabled && is_active_item(item.url)}
-                  disabled={item.disabled}
-                  className="h-auto min-h-11 items-center px-3 py-3 text-white/85 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium disabled:cursor-not-allowed [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
-                  render={item.disabled ? undefined : <Link href={item.url} />}
+                  isActive={is_active_item(item.url)}
+                  className="h-auto min-h-11 items-center px-3 py-3 text-white/85 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
+                  render={<Link href={item.url} />}
                 >
                   {item.icon}
                   <span className="whitespace-normal break-words leading-snug">

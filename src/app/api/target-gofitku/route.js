@@ -10,7 +10,7 @@ import {
   getTargetGofitku,
   importTargetGofitku,
   updateTargetGofitku,
-} from "@/services/targetGofitkuService";
+} from "@/services/penjualanGofitkuService";
 
 export const GET = async () => {
   try {

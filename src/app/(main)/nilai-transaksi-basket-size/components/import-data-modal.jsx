@@ -43,19 +43,34 @@ export default function ImportDataModal({
   };
 
   const title =
-    import_type === "basket-size" ? "Impor Basket Size" : "Impor Nilai Transaksi";
+    import_type === "kunjungan"
+      ? "Impor Kunjungan"
+      : import_type === "basket-size"
+        ? "Impor Basket Size"
+        : "Impor Nilai Transaksi";
   const description =
-    import_type === "basket-size"
+    import_type === "kunjungan"
+      ? "Tentukan tanggal data, lalu pilih file Excel berisi kolom Outlet dan Dilayani."
+      : import_type === "basket-size"
       ? "Tentukan tanggal data, lalu pilih file ikhtisar outlet untuk mengimpor basket size."
       : "Tentukan tanggal data, lalu pilih file ikhtisar outlet untuk mengimpor nilai transaksi.";
   const date_input_id =
-    import_type === "basket-size"
+    import_type === "kunjungan"
+      ? "tanggal-import-kunjungan"
+      : import_type === "basket-size"
       ? "tanggal-import-basket-size"
       : "tanggal-import-nilai-transaksi";
   const file_input_id =
-    import_type === "basket-size"
+    import_type === "kunjungan"
+      ? "file-import-kunjungan"
+      : import_type === "basket-size"
       ? "file-import-basket-size"
       : "file-import-nilai-transaksi";
+  const helper_text = import_type === "kunjungan"
+    ? "Pastikan file memiliki kolom Outlet dan Dilayani."
+    : import_type === "basket-size"
+      ? "Pastikan file memiliki sheet Rekap Penjualan. Sistem hanya mengambil data sesuai Tanggal Data yang dipilih."
+      : "Pastikan file memiliki sheet Laporan Penjualan dan Statistik Kunjungan.";
 
   return (
     <DialogPrimitive.Root
@@ -84,7 +99,6 @@ export default function ImportDataModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={is_importing}
                 />
               }
             >
@@ -124,7 +138,7 @@ export default function ImportDataModal({
               />
               <label
                 htmlFor={file_input_id}
-                className={`group flex min-h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-7 text-center transition-colors ${
+                className={`group flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed px-6 py-7 text-center transition-colors ${
                   is_importing
                     ? "cursor-not-allowed opacity-60"
                     : "cursor-pointer"
@@ -185,8 +199,7 @@ export default function ImportDataModal({
                 </p>
               ) : (
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Pastikan file memiliki sheet Laporan Penjualan dan Statistik
-                  Kunjungan.
+                  {helper_text}
                 </p>
               )}
             </div>
@@ -194,12 +207,12 @@ export default function ImportDataModal({
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={is_importing} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit" disabled={is_importing || !import_date || !file}>
+              <Button type="submit">
                 {is_importing ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

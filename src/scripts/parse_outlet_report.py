@@ -16,6 +16,13 @@ target_col_1 = "Total Penerimaan Pendapatan"
 target_sheet_2 = "Statistik Kunjungan"
 target_col_2 = "Dilayani"
 
+target_sheet_3 = "BASKET SIZE"
+target_col_3 = "Sum of sku_hari"
+target_col_4 = "kunjungan"
+target_sheet_4 = "Rekap Penjualan"
+target_col_5 = "Tanggal Penjualan"
+target_col_6 = "Jumlah Sku"
+
 def readSharedString(archive):
     if "xl/sharedStrings.xml" not in archive.namelist():
         return []
@@ -104,7 +111,11 @@ def findColumnIndex(header_row, target_column):
     raise ValueError(f"Kolom wajib tidak ditemukan: {target_column}")
 
 
-def main(file_path):
+def normalizeDate(value):
+    return str(value or "").strip()[:10]
+
+
+def main(file_path, import_date=None):
     path = Path(file_path)
 
     if not path.exists():
@@ -114,79 +125,153 @@ def main(file_path):
         shared_strings = readSharedString(archive)
         targets = readSheetTargets(archive)
 
-        if target_sheet_1 not in targets or target_sheet_2 not in targets:
-            raise ValueError("Sheet wajib tidak ditemukan pada file Excel.")
-
         penjualan_rows = readSheetRows(
             archive,
             targets[target_sheet_1],
             shared_strings,
-        )
+        ) if target_sheet_1 in targets else []
         kunjungan_rows = readSheetRows(
             archive,
             targets[target_sheet_2],
             shared_strings,
-        )
+        ) if target_sheet_2 in targets else []
+        basket_size_rows = readSheetRows(
+            archive,
+            targets[target_sheet_3],
+            shared_strings,
+        ) if target_sheet_3 in targets else []
+        rekap_penjualan_rows = readSheetRows(
+            archive,
+            targets[target_sheet_4],
+            shared_strings,
+        ) if target_sheet_4 in targets else []
 
-    if not penjualan_rows or not kunjungan_rows:
-        raise ValueError("Data sheet pada file Excel kosong.")
+    output_map = {}
 
-    penjualan_header = penjualan_rows[0]
-    kunjungan_header = kunjungan_rows[0]
-    outlet_col_penjualan = 0
-    outlet_col_kunjungan = 0
-    target_col_penjualan_index = findColumnIndex(penjualan_header, target_col_1)
-    target_col_kunjungan_index = findColumnIndex(kunjungan_header, target_col_2)
+    if penjualan_rows and kunjungan_rows:
+        penjualan_header = penjualan_rows[0]
+        kunjungan_header = kunjungan_rows[0]
+        outlet_col_penjualan = 0
+        outlet_col_kunjungan = 0
+        target_col_penjualan_index = findColumnIndex(penjualan_header, target_col_1)
+        target_col_kunjungan_index = findColumnIndex(kunjungan_header, target_col_2)
 
-    penjualan_map = {}
-    for row in penjualan_rows[1:]:
-        if not row:
-            continue
+        penjualan_map = {}
+        for row in penjualan_rows[1:]:
+            if not row:
+                continue
 
-        if len(row) <= max(outlet_col_penjualan, target_col_penjualan_index):
-            continue
+            if len(row) <= max(outlet_col_penjualan, target_col_penjualan_index):
+                continue
 
-        outlet_name = str(row[outlet_col_penjualan]).strip()
-        if isTotalRow(outlet_name):
-            break
+            outlet_name = str(row[outlet_col_penjualan]).strip()
+            if isTotalRow(outlet_name):
+                break
 
-        if not outlet_name:
-            continue
+            if not outlet_name:
+                continue
 
-        penjualan_map[outlet_name] = {
-            "outlet_name": outlet_name,
-            "total_penerimaan_pendapatan": toNumber(row[target_col_penjualan_index]),
-        }
-
-    output_rows = []
-    for row in kunjungan_rows[1:]:
-        if not row:
-            continue
-
-        if len(row) <= max(outlet_col_kunjungan, target_col_kunjungan_index):
-            continue
-
-        outlet_name = str(row[outlet_col_kunjungan]).strip()
-        if isTotalRow(outlet_name):
-            break
-
-        if not outlet_name:
-            continue
-
-        penjualan = penjualan_map.get(outlet_name)
-        if not penjualan:
-            continue
-
-        output_rows.append(
-            {
+            penjualan_map[outlet_name] = {
                 "outlet_name": outlet_name,
-                "total_penerimaan_pendapatan": penjualan["total_penerimaan_pendapatan"],
-                "dilayani": toNumber(row[target_col_kunjungan_index]),
+                "total_penerimaan_pendapatan": toNumber(row[target_col_penjualan_index]),
             }
-        )
+
+        for row in kunjungan_rows[1:]:
+            if not row:
+                continue
+
+            if len(row) <= max(outlet_col_kunjungan, target_col_kunjungan_index):
+                continue
+
+            outlet_name = str(row[outlet_col_kunjungan]).strip()
+            if isTotalRow(outlet_name):
+                break
+
+            if not outlet_name:
+                continue
+
+            penjualan = penjualan_map.get(outlet_name)
+            if not penjualan:
+                continue
+
+            output_map.setdefault(outlet_name, {"outlet_name": outlet_name}).update(
+                {
+                    "total_penerimaan_pendapatan": penjualan["total_penerimaan_pendapatan"],
+                    "served": toNumber(row[target_col_kunjungan_index]),
+                    "served_nilai_transaksi": toNumber(row[target_col_kunjungan_index]),
+                }
+            )
+
+    if rekap_penjualan_rows:
+        rekap_header = rekap_penjualan_rows[0]
+        outlet_col_rekap = findColumnIndex(rekap_header, "Outlet")
+        date_col_rekap = findColumnIndex(rekap_header, target_col_5)
+        sku_qty_col_rekap = findColumnIndex(rekap_header, target_col_6)
+        normalized_import_date = normalizeDate(import_date)
+
+        if not normalized_import_date:
+            raise ValueError("Tanggal impor wajib diisi untuk file Rekap Penjualan.")
+
+        for row in rekap_penjualan_rows[1:]:
+            if not row:
+                continue
+
+            if len(row) <= max(outlet_col_rekap, date_col_rekap, sku_qty_col_rekap):
+                continue
+
+            outlet_name = str(row[outlet_col_rekap]).strip()
+            if isTotalRow(outlet_name):
+                break
+
+            if not outlet_name:
+                continue
+
+            if normalizeDate(row[date_col_rekap]) != normalized_import_date:
+                continue
+
+            current_row = output_map.setdefault(
+                outlet_name,
+                {
+                    "outlet_name": outlet_name,
+                    "sku_qty": 0,
+                },
+            )
+            current_row["sku_qty"] = current_row.get("sku_qty", 0) + toNumber(row[sku_qty_col_rekap])
+
+    elif basket_size_rows:
+        basket_header = basket_size_rows[0]
+        outlet_col_basket = 0
+        sku_qty_col_index = findColumnIndex(basket_header, target_col_3)
+        served_col_index = findColumnIndex(basket_header, target_col_4)
+
+        for row in basket_size_rows[1:]:
+            if not row:
+                continue
+
+            if len(row) <= max(outlet_col_basket, sku_qty_col_index, served_col_index):
+                continue
+
+            outlet_name = str(row[outlet_col_basket]).strip()
+            if isTotalRow(outlet_name):
+                break
+
+            if not outlet_name:
+                continue
+
+            output_map.setdefault(outlet_name, {"outlet_name": outlet_name}).update(
+                {
+                    "sku_qty": toNumber(row[sku_qty_col_index]),
+                    "served_basket_size": toNumber(row[served_col_index]),
+                }
+            )
+
+    output_rows = list(output_map.values())
+
+    if not output_rows:
+        raise ValueError("Data sheet pada file Excel kosong atau tidak sesuai format.")
 
     print(json.dumps({"rows": output_rows}))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)

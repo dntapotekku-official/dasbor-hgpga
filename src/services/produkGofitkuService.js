@@ -155,21 +155,13 @@ export async function deleteProdukGofitku({ uuid_produk_gofitku }) {
     throw new Error("Data produk tidak ditemukan.");
   }
 
-  await prisma.$transaction(async (transaction) => {
-    await transaction.tbl_penjualan_gofitku.updateMany({
-      where: {
-        uuid_produk_gofitku,
-      },
-      data: {
-        uuid_produk_gofitku: null,
-      },
-    });
-
-    await transaction.tbl_produk_gofitku.delete({
-      where: {
-        uuid: uuid_produk_gofitku,
-      },
-    });
+  await prisma.tbl_produk_gofitku.update({
+    where: {
+      uuid: uuid_produk_gofitku,
+    },
+    data: {
+      deleted_at: new Date(),
+    },
   });
 
   return {

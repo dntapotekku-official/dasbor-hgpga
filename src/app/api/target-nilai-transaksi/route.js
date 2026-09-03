@@ -10,7 +10,7 @@ import {
   getTargetNilaiTransaksi,
   importTargetNilaiTransaksi,
   updateTargetNilaiTransaksi,
-} from "@/services/targetMetricService";
+} from "@/services/nilaiTransaksiBasketSizeService";
 
 export const GET = async () => {
   try {

@@ -296,7 +296,7 @@ export default function KepatuhanSopCctvPage() {
         />
       </div>
       <div className="space-y-4 px-4 lg:px-6">
-        <Card className="gap-0 border-t-4 border-t-primary">
+        <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Tren Harian</CardTitle>
             <SyncActionButton
@@ -434,7 +434,7 @@ export default function KepatuhanSopCctvPage() {
                             className="flex items-center gap-2 font-medium"
                           >
                             Outlet
-                            <ChevronsUpDownIcon className="size-4 text-muted-foreground" />
+                            <ChevronsUpDownIcon className="size-4 text-primary-foreground/90" />
                           </button>
                         </TableHead>
                         <TableHead className="text-right">
@@ -444,7 +444,7 @@ export default function KepatuhanSopCctvPage() {
                             className="ml-auto flex items-center gap-2 font-medium"
                           >
                             Total
-                            <ChevronsUpDownIcon className="size-4 text-muted-foreground" />
+                            <ChevronsUpDownIcon className="size-4 text-primary-foreground/90" />
                           </button>
                         </TableHead>
                         <TableHead className="text-right">
@@ -454,7 +454,7 @@ export default function KepatuhanSopCctvPage() {
                             className="ml-auto flex items-center gap-2 font-medium"
                           >
                             Total Poin
-                            <ChevronsUpDownIcon className="size-4 text-muted-foreground" />
+                            <ChevronsUpDownIcon className="size-4 text-primary-foreground/90" />
                           </button>
                         </TableHead>
                       </TableRow>

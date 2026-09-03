@@ -19,7 +19,6 @@ export default function OptionDropdown({
   options,
   onValueChange,
   ariaLabel,
-  disabled = false,
   searchable = false,
   searchPlaceholder = "Cari...",
   emptyMessage = "Data tidak ditemukan.",
@@ -58,7 +57,6 @@ export default function OptionDropdown({
             type="button"
             variant="outline"
             aria-label={ariaLabel}
-            disabled={disabled}
             className="w-full justify-between bg-card"
           />
         }
@@ -82,10 +80,6 @@ export default function OptionDropdown({
         <DropdownMenuRadioGroup
           value={value}
           onValueChange={(next_value) => {
-            if (disabled) {
-              return;
-            }
-
             onValueChange(next_value);
             setOpen(false);
             setSearch("");

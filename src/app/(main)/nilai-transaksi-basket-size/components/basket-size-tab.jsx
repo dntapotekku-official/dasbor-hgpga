@@ -1,5 +1,6 @@
 import {
   formatDecimal,
+  formatPercentage,
   gapClassName,
 } from "@/lib/nilaiTransaksiBasketSizeTable";
 import {
@@ -20,8 +21,28 @@ function sticky_identity_class(column) {
     : "sticky left-24 z-20 bg-background";
 }
 
+function PeriodHeader({ label, prefix = null, prefix_as_title = false }) {
+  const separator_index = label.indexOf(" (");
+
+  if (separator_index < 0) {
+    return prefix ? `${prefix} ${label}` : label;
+  }
+
+  return (
+    <span className="flex flex-col items-center leading-snug">
+      <span>
+        {prefix_as_title
+          ? prefix
+          : <>{prefix ? `${prefix} ` : ""}{label.slice(0, separator_index)}</>}
+      </span>
+      <span>{label.slice(separator_index + 1)}</span>
+    </span>
+  );
+}
+
 export default function BasketSizeTab({
   category_metrics,
+  highest_achievement,
   labels,
   rows,
   can_manage = false,
@@ -45,19 +66,37 @@ export default function BasketSizeTab({
             Outlet
           </TableHead>
           {[
-            "Target",
-            previous_period_label,
-            `Capaian ${selected_period_label}`,
-            `Growth % (dibanding ${previous_month_label})`,
-            "Gap Growth",
-            "% Dari Target",
-            "Gap Target"
-          ].map((label) => (
+            { key: "target", label: "Target" },
+            { key: "sku-qty", label: "Jumlah SKU" },
+            { key: "served", label: "Dilayani" },
+            { key: "previous-period", label: <PeriodHeader label={previous_period_label} /> },
+            {
+              key: "selected-period",
+              label: (
+                <PeriodHeader
+                  label={selected_period_label}
+                  prefix="Capaian"
+                  prefix_as_title
+                />
+              ),
+            },
+            {
+              key: "growth",
+              label: (
+                <PeriodHeader
+                  label={`Growth % (dibanding ${previous_month_label})`}
+                />
+              ),
+            },
+            { key: "gap-growth", label: "Gap Growth" },
+            { key: "target-percentage", label: "% Dari Target" },
+            { key: "gap-target", label: "Gap Target" },
+          ].map((header) => (
             <TableHead
-              key={label}
+              key={header.key}
               className="sticky top-0 z-30 min-w-[120px] bg-blue-200 text-center text-blue-950"
             >
-              {label}
+              {header.label}
             </TableHead>
           ))}
           {can_manage ? (
@@ -86,20 +125,32 @@ export default function BasketSizeTab({
             </TableCell>
             <TableCell className="text-center">{formatDecimal(row.bs_target)}</TableCell>
             <TableCell className="text-center">
+              {formatDecimal(row.bs_current_month_sku_qty, 0)}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatDecimal(row.bs_current_month_served, 0)}
+            </TableCell>
+            <TableCell className="text-center">
               {formatDecimal(row.bs_last_month)}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell
+              className={
+                Number(row.bs_current_month) === highest_achievement
+                  ? "bg-emerald-100 text-center font-semibold text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100"
+                  : "text-center"
+              }
+            >
               {formatDecimal(row.bs_current_month)}
             </TableCell>
-            <TableCell className="text-center">{formatDecimal(row.bs_growth)}</TableCell>
+            <TableCell className="text-center">{formatPercentage(row.bs_growth)}</TableCell>
             <TableCell className={`text-center ${gapClassName(row.bs_gap_growth)}`}>
-              {formatDecimal(row.bs_gap_growth)}
+              {formatPercentage(row.bs_gap_growth)}
             </TableCell>
             <TableCell className="text-center">
-              {formatDecimal(row.bs_target_compare)}
+              {formatPercentage(row.bs_target_compare)}
             </TableCell>
             <TableCell className={`text-center ${gapClassName(row.bs_gap_target)}`}>
-              {formatDecimal(row.bs_gap_target)}
+              {formatPercentage(row.bs_gap_target)}
             </TableCell>
             {can_manage ? (
               <TableCell className="text-center">
@@ -119,7 +170,7 @@ export default function BasketSizeTab({
 
         <TableRow className="bg-muted font-semibold hover:bg-muted [&>td]:border-t [&>td]:!border-b-0 [&>td]:border-border">
           <TableCell className="sticky bottom-0 left-0 z-40 w-24 min-w-24 max-w-24 bg-muted text-center">
-            TOTAL
+            Akumulasi
           </TableCell>
           <TableCell className="sticky bottom-0 left-24 z-40 bg-muted">
             {rows.length} outlet
@@ -128,26 +179,32 @@ export default function BasketSizeTab({
             {formatDecimal(category_metrics.bs_target)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
+            {formatDecimal(category_metrics.bs_current_month_sku_qty, 0)}
+          </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+            {formatDecimal(category_metrics.bs_current_month_served, 0)}
+          </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatDecimal(category_metrics.bs_last_month)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatDecimal(category_metrics.bs_current_month)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.bs_growth)}
+            {formatPercentage(category_metrics.bs_growth)}
           </TableCell>
           <TableCell
             className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.bs_gap_growth)}`}
           >
-            {formatDecimal(category_metrics.bs_gap_growth)}
+            {formatPercentage(category_metrics.bs_gap_growth)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.bs_target_compare)}
+            {formatPercentage(category_metrics.bs_target_compare)}
           </TableCell>
           <TableCell
             className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.bs_gap_target)}`}
           >
-            {formatDecimal(category_metrics.bs_gap_target)}
+            {formatPercentage(category_metrics.bs_gap_target)}
           </TableCell>
           {can_manage ? (
             <TableCell className="sticky bottom-0 z-30 bg-muted" />

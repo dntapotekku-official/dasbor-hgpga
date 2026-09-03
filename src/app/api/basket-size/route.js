@@ -4,6 +4,7 @@ import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
 import { requireRole, requireSession } from "@/lib/auth";
 import {
   bulkDeleteBasketSizeDate,
+  bulkUpdateBasketSizeDate,
   deleteBasketSizeDaily,
   getNilaiTransaksiBasketSize,
   importBasketSize,
@@ -42,6 +43,32 @@ export async function POST(request) {
     import_handler: importBasketSize,
     temp_prefix: "basket-size",
   });
+}
+
+export async function PATCH(request) {
+  try {
+    const unauthorized_response = await requireRole(["admin"]);
+
+    if (unauthorized_response) {
+      return unauthorized_response;
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const data = await bulkUpdateBasketSizeDate({
+      source_date: body?.source_date,
+      target_date: body?.target_date,
+    });
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
+      },
+      { status: 400 },
+    );
+  }
 }
 
 export async function DELETE(request) {

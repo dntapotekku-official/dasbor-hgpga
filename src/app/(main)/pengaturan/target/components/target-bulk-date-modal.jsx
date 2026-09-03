@@ -107,7 +107,6 @@ export default function TargetBulkDateModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={is_updating}
                 />
               }
             >
@@ -143,7 +142,6 @@ export default function TargetBulkDateModal({
                 options={period_options}
                 onValueChange={handle_period_change}
                 ariaLabel={`Pilih ${is_range_mode ? "range tanggal" : "tanggal"} lama ${target_label}`}
-                disabled={is_updating}
                 searchable
                 searchPlaceholder={
                   is_range_mode ? "Cari range tanggal..." : "Cari tanggal..."
@@ -208,20 +206,12 @@ export default function TargetBulkDateModal({
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={is_updating} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button
-                type="submit"
-                disabled={
-                  is_updating ||
-                  !selected_period ||
-                  !start_date ||
-                  (is_range_mode && !end_date)
-                }
-              >
+              <Button type="submit">
                 {is_updating ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

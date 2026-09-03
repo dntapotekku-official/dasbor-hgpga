@@ -44,7 +44,6 @@ export default function ConfirmActionDialog({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={isPending}
                 />
               }
             >
@@ -56,7 +55,7 @@ export default function ConfirmActionDialog({
           <div className="flex justify-end gap-2 pt-2">
             <DialogPrimitive.Close
               render={
-                <Button type="button" variant="outline" disabled={isPending} />
+                <Button type="button" variant="outline" />
               }
             >
               {cancelLabel}
@@ -65,7 +64,6 @@ export default function ConfirmActionDialog({
               type="button"
               variant={confirmVariant}
               onClick={onConfirm}
-              disabled={isPending}
             >
               {isPending ? (
                 <>

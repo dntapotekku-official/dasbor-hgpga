@@ -1,10 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
-import { Geist_Mono, Roboto_Slab } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const robotoSlab = Roboto_Slab({
+const geistSans = Geist({
   subsets: ["latin"],
-  variable: "--font-roboto-slab",
+  variable: "--font-geist-sans",
 });
 
 const geistMono = Geist_Mono({
@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Dasbor HGPGA",
-  description: "Dasbor HGPGA",
+  title: "Performance Report",
+  description: "Performance Report",
   icons: {
     icon: "/apotekku-logo.jpeg",
   },
@@ -24,7 +24,7 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="id"
-      className={`${robotoSlab.variable} ${geistMono.variable} h-full`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col">
         {children}

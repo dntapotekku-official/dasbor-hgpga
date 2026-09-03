@@ -77,7 +77,6 @@ const data = {
         <ClipboardCheckIcon />
       ),
       roles: ["admin", "viewer"],
-      disabled: true,
     },
     {
       title: "Atribut InsanKu",
@@ -85,8 +84,7 @@ const data = {
       icon: (
         <IdCardIcon />
       ),
-      roles: ["admin", "viewer"],
-      disabled: true,
+      roles: ["admin", "viewer", "member"],
     },
     {
       title: "Pengaturan",
@@ -103,6 +101,16 @@ const data = {
         {
           title: "Outlet",
           url: "/pengaturan/outlet",
+          roles: ["admin"],
+        },
+        {
+          title: "Kunjungan",
+          url: "/pengaturan/kunjungan",
+          roles: ["admin"],
+        },
+        {
+          title: "Atribut",
+          url: "/pengaturan/atribut",
           roles: ["admin"],
         },
         {
@@ -130,7 +138,7 @@ export function AppSidebar({
 }) {
   const { user } = useAuth()
   const current_user = {
-    name: user?.name ?? "User HGPGA",
+    name: user?.name ?? "Performance Report User",
     username: user?.username ?? user?.role ?? "user",
   };
   const normalized_role = normalizeRole(user?.role ?? "member");
@@ -156,7 +164,7 @@ export function AppSidebar({
               render={<Link href="/" />}>
               <Image
                 src="/apotekku-logo-crop.png"
-                alt="HGPGA"
+                alt="Performance Report"
                 width={120}
                 height={83}
                 className="h-auto w-[76px] object-contain"

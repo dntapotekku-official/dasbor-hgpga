@@ -25,7 +25,6 @@ export default function SyncActionButton({
       <Button
         type="button"
         onClick={() => setOpen(true)}
-        disabled={is_pending}
         className={className}
       >
         {is_pending ? (

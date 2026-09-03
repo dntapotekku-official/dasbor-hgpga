@@ -60,7 +60,7 @@ export default function LoginPage() {
             <div className="mb-1 flex w-fit max-w-full justify-self-center rounded-2xl border border-primary/30 bg-primary p-3 shadow-md ring-1 ring-primary/10">
               <Image
                 src="/apotekku-logo-crop.png"
-                alt="HGPGA"
+                alt="Performance Report"
                 width={120}
                 height={83}
                 className="h-auto w-[128px] object-contain"
@@ -68,7 +68,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1">
-              <CardTitle className="my-2">Dasbor HGPGA</CardTitle>
+              <CardTitle className="my-2">Performance Report</CardTitle>
               <CardDescription>
                 Silahkan Masuk
               </CardDescription>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              <Button className="w-full shadow-sm" type="submit" disabled={is_loading}>
+              <Button className="w-full shadow-sm" type="submit">
                 {is_loading ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

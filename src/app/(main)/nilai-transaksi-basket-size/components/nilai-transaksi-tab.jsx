@@ -1,8 +1,9 @@
 import {
-  formatCurrency,
   formatDecimal,
+  formatPercentage,
   gapClassName,
 } from "@/lib/nilaiTransaksiBasketSizeTable";
+import CurrencyValue from "@/components/currency-value";
 import {
   Table,
   TableBody,
@@ -21,8 +22,24 @@ function sticky_identity_class(column) {
     : "sticky left-24 z-20 bg-background";
 }
 
+function PeriodHeader({ label }) {
+  const separator_index = label.indexOf(" (");
+
+  if (separator_index < 0) {
+    return label;
+  }
+
+  return (
+    <span className="flex flex-col items-center leading-snug">
+      <span>{label.slice(0, separator_index)}</span>
+      <span>{label.slice(separator_index + 1)}</span>
+    </span>
+  );
+}
+
 export default function NilaiTransaksiTab({
   category_metrics,
+  highest_daily,
   labels,
   rows,
   can_manage = false,
@@ -49,6 +66,8 @@ export default function NilaiTransaksiTab({
           </TableHead>
           {[
             ["Target", "min-w-[140px]"],
+            ["TPP (Harian)", "min-w-[160px]"],
+            ["Dilayani (Harian)", "min-w-[140px]"],
             [`Harian (${selected_date_label})`, "min-w-[140px]"],
             [previous_period_label, "min-w-[180px]"],
             [selected_period_label, "min-w-[180px]"],
@@ -61,7 +80,7 @@ export default function NilaiTransaksiTab({
               key={label}
               className={`sticky top-0 z-30 bg-orange-100 text-orange-950 ${className}`}
             >
-              {label}
+              <PeriodHeader label={label} />
             </TableHead>
           ))}
           {can_manage ? (
@@ -88,19 +107,39 @@ export default function NilaiTransaksiTab({
             <TableCell className={`${sticky_identity_class("outlet")} font-medium`}>
               {row.outlet_name}
             </TableCell>
-            <TableCell>{formatCurrency(row.nt_target)}</TableCell>
-            <TableCell>{formatCurrency(row.nt_daily)}</TableCell>
-            <TableCell>{formatCurrency(row.nt_last_month)}</TableCell>
-            <TableCell>{formatCurrency(row.nt_current_month)}</TableCell>
-            <TableCell className="text-center">{formatDecimal(row.nt_growth)}</TableCell>
+            <TableCell>
+              <CurrencyValue value={row.nt_target} />
+            </TableCell>
+            <TableCell className="text-right">
+              <CurrencyValue value={row.nt_daily_total_revenue} align="right" />
+            </TableCell>
+            <TableCell className="text-right">
+              {formatDecimal(row.nt_daily_served, 0)}
+            </TableCell>
+            <TableCell
+              className={
+                Number(row.nt_daily) === highest_daily
+                  ? "bg-emerald-100 font-semibold text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100"
+                  : undefined
+              }
+            >
+              <CurrencyValue value={row.nt_daily} />
+            </TableCell>
+            <TableCell>
+              <CurrencyValue value={row.nt_last_month} />
+            </TableCell>
+            <TableCell>
+              <CurrencyValue value={row.nt_current_month} />
+            </TableCell>
+            <TableCell className="text-center">{formatPercentage(row.nt_growth)}</TableCell>
             <TableCell className={`text-center ${gapClassName(row.nt_gap_growth)}`}>
-              {formatDecimal(row.nt_gap_growth)}
+              {formatPercentage(row.nt_gap_growth)}
             </TableCell>
             <TableCell className="text-center">
-              {formatDecimal(row.nt_target_compare)}
+              {formatPercentage(row.nt_target_compare)}
             </TableCell>
             <TableCell className={`text-center ${gapClassName(row.nt_gap_target)}`}>
-              {formatDecimal(row.nt_gap_target)}
+              {formatPercentage(row.nt_gap_target)}
             </TableCell>
             {can_manage ? (
               <TableCell>
@@ -131,38 +170,47 @@ export default function NilaiTransaksiTab({
 
         <TableRow className="bg-muted font-semibold hover:bg-muted [&>td]:border-t [&>td]:!border-b-0 [&>td]:border-border">
           <TableCell className="sticky bottom-0 left-0 z-40 w-24 min-w-24 max-w-24 bg-muted text-center">
-            TOTAL
+            Akumulasi
           </TableCell>
           <TableCell className="sticky bottom-0 left-24 z-40 bg-muted">
             {rows.length} outlet
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            {formatCurrency(category_metrics.nt_target)}
+            <CurrencyValue value={category_metrics.nt_target} />
+          </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+            <CurrencyValue
+              value={category_metrics.nt_daily_total_revenue}
+              align="right"
+            />
+          </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+            {formatDecimal(category_metrics.nt_daily_served, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            {formatCurrency(category_metrics.nt_daily)}
+            <CurrencyValue value={category_metrics.nt_daily} />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            {formatCurrency(category_metrics.nt_last_month)}
+            <CurrencyValue value={category_metrics.nt_last_month} />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            {formatCurrency(category_metrics.nt_current_month)}
+            <CurrencyValue value={category_metrics.nt_current_month} />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.nt_growth)}
+            {formatPercentage(category_metrics.nt_growth)}
           </TableCell>
           <TableCell
             className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.nt_gap_growth)}`}
           >
-            {formatDecimal(category_metrics.nt_gap_growth)}
+            {formatPercentage(category_metrics.nt_gap_growth)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.nt_target_compare)}
+            {formatPercentage(category_metrics.nt_target_compare)}
           </TableCell>
           <TableCell
             className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.nt_gap_target)}`}
           >
-            {formatDecimal(category_metrics.nt_gap_target)}
+            {formatPercentage(category_metrics.nt_gap_target)}
           </TableCell>
           {can_manage ? (
             <TableCell className="sticky bottom-0 z-30 bg-muted" />

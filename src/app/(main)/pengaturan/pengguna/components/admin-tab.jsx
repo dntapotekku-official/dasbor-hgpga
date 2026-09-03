@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import Pagination from "@/components/pagination";
+import SortableTableHead from "@/components/sortable-table-head";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
-import { hasRoleAccess, isSuperadmin } from "@/lib/role";
+import {
+  admin_account_roles,
+  isSuperadmin,
+} from "@/lib/role";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +31,8 @@ import {
 const PAGE_SIZE = 50;
 
 export default function AdminTab() {
-  const { role } = useAuth();
+  const router = useRouter();
+  const { role, user } = useAuth();
   const [admin, setAdmin] = useState([]);
   const { search, setSearch, filtered_items } = useSearch(admin);
   const [selected_admin, setSelectedAdmin] = useState(null);
@@ -34,6 +40,18 @@ export default function AdminTab() {
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_create_sheet_open, setIsCreateSheetOpen] = useState(false);
   const [is_deleting_admin, setIsDeletingAdmin] = useState(false);
+  const [sort_key, setSortKey] = useState("name");
+  const [sort_direction, setSortDirection] = useState("asc");
+  const sorted_items = useMemo(() => {
+    return [...filtered_items].sort((a, b) => {
+      const direction = sort_direction === "asc" ? 1 : -1;
+
+      return String(a[sort_key] ?? "").localeCompare(
+        String(b[sort_key] ?? ""),
+        "id-ID",
+      ) * direction;
+    });
+  }, [filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -41,7 +59,19 @@ export default function AdminTab() {
     paginated_rows,
     previous_page,
     next_page,
-  } = usePagination(filtered_items, PAGE_SIZE);
+  } = usePagination(sorted_items, PAGE_SIZE);
+
+  const toggle_sort = (next_sort_key) => {
+    if (sort_key === next_sort_key) {
+      setSortDirection((current_direction) =>
+        current_direction === "asc" ? "desc" : "asc",
+      );
+      return;
+    }
+
+    setSortKey(next_sort_key);
+    setSortDirection("asc");
+  };
 
   const format_role_label = (value) => {
     const normalized_role = String(value ?? "").trim().toLowerCase();
@@ -53,40 +83,19 @@ export default function AdminTab() {
     return normalized_role.charAt(0).toUpperCase() + normalized_role.slice(1);
   };
 
-  const admin_role_options = hasRoleAccess(role, ["superadmin"])
-    ? [
-        { value: "superadmin", label: "Superadmin" },
-        { value: "admin", label: "Admin" },
-        { value: "viewer", label: "Viewer" },
-      ]
-    : [
-        { value: "admin", label: "Admin" },
-        { value: "viewer", label: "Viewer" },
-      ];
+  const admin_role_options = admin_account_roles.map((admin_role) => ({
+    value: admin_role,
+    label: format_role_label(admin_role),
+  }));
+  const has_superadmin = admin.some((item) => isSuperadmin(item.role));
+  const role_helper = isSuperadmin(role)
+    ? "Superadmin dapat mengelola seluruh role akun."
+    : has_superadmin
+      ? "Hanya superadmin yang dapat menetapkan role Superadmin."
+      : "Admin dapat menetapkan Superadmin pertama untuk aktivasi awal.";
 
-  const can_delete_admin = (row) => {
-    if (!row) {
-      return false;
-    }
-
-    if (isSuperadmin(row.role) && !hasRoleAccess(role, ["superadmin"])) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const can_edit_admin = (row) => {
-    if (!row) {
-      return false;
-    }
-
-    if (isSuperadmin(row.role) && !hasRoleAccess(role, ["superadmin"])) {
-      return false;
-    }
-
-    return true;
-  };
+  const can_manage_admin = (row) =>
+    !isSuperadmin(row?.role) || isSuperadmin(role);
 
   useEffect(() => {
     let should_ignore = false;
@@ -149,6 +158,11 @@ export default function AdminTab() {
     setAdmin((current) =>
       current.map((item) => (item.uuid === payload.data.uuid ? payload.data : item)),
     );
+
+    if (payload.data.uuid === user?.uuid) {
+      router.refresh();
+    }
+
     toast.success(payload.message || "Data admin berhasil diperbarui.");
   };
 
@@ -215,25 +229,30 @@ export default function AdminTab() {
   };
 
   return (
-    <Card className="gap-0 border-t-4 border-t-primary">
-      <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle>Admin</CardTitle>
-        <Button
-          type="button"
-          onClick={() => setIsCreateSheetOpen(true)}
-          className="w-full sm:w-auto"
-        >
-          Tambah Admin
-        </Button>
+    <Card className="gap-0 border-t-2 border-t-primary/70">
+      <CardHeader className="border-b">
+        <CardTitle>Admin & Superadmin</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cari admin..."
-            className="max-w-sm"
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari admin atau superadmin..."
+              className="w-full sm:max-w-sm"
+            />
+            <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
+              <Button
+                type="button"
+                onClick={() => setIsCreateSheetOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <PlusIcon className="size-4" />
+                Tambah Admin
+              </Button>
+            </div>
+          </div>
 
           <div className="overflow-hidden rounded-lg border">
             <div className="max-h-[560px] overflow-auto">
@@ -241,9 +260,33 @@ export default function AdminTab() {
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
                     <TableHead className="w-20">#</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Nama"
+                        sortKey="name"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Username"
+                        sortKey="username"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
+                        label="Role"
+                        sortKey="role"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -256,29 +299,35 @@ export default function AdminTab() {
                       <TableCell>{format_role_label(row.role)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedAdmin(row);
-                              setIsSheetOpen(true);
-                            }}
-                            disabled={!can_edit_admin(row)}
-                          >
-                            <PencilIcon className="size-4" />
-                            Edit
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="delete"
-                            size="sm"
-                            onClick={() => setDeletingAdmin(row)}
-                            disabled={!can_delete_admin(row)}
-                          >
-                            <Trash2Icon className="size-4" />
-                            Hapus
-                          </Button>
+                          {can_manage_admin(row) ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedAdmin(row);
+                                  setIsSheetOpen(true);
+                                }}
+                              >
+                                <PencilIcon className="size-4" />
+                                Edit
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="delete"
+                                size="sm"
+                                onClick={() => setDeletingAdmin(row)}
+                              >
+                                <Trash2Icon className="size-4" />
+                                Hapus
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Khusus superadmin
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -289,7 +338,7 @@ export default function AdminTab() {
 
             {filtered_items.length === 0 ? (
               <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
-                Tidak ada admin yang cocok dengan pencarian.
+                Tidak ada admin atau superadmin yang cocok dengan pencarian.
               </div>
             ) : (
               <Pagination
@@ -297,7 +346,7 @@ export default function AdminTab() {
                 page_size={PAGE_SIZE}
                 total_items={filtered_items.length}
                 total_pages={total_pages}
-                item_label="admin"
+                item_label="akun"
                 on_previous={previous_page}
                 on_next={next_page}
               />
@@ -308,8 +357,8 @@ export default function AdminTab() {
             key={selected_admin?.uuid ?? "admin-sheet"}
             open={is_sheet_open}
             on_open_change={setIsSheetOpen}
-            title="Edit Admin"
-            description="Perbarui data admin pada tampilan pengaturan."
+            title="Edit Akun Admin"
+            description="Perbarui data admin atau superadmin pada tampilan pengaturan."
             item={selected_admin}
             fields={[
               {
@@ -328,6 +377,7 @@ export default function AdminTab() {
                 type: "select",
                 placeholder: "Pilih role",
                 options: admin_role_options,
+                helper: role_helper,
               },
             ]}
             on_save={handle_save}
@@ -337,8 +387,8 @@ export default function AdminTab() {
             key="admin-create-sheet"
             open={is_create_sheet_open}
             on_open_change={setIsCreateSheetOpen}
-            title="Tambah Admin"
-            description="Tambahkan data admin baru ke database."
+            title="Tambah Akun Admin"
+            description="Tambahkan data admin atau superadmin baru ke database sesuai hak akses Anda."
             item={{
               name: "",
               username: "",
@@ -367,6 +417,7 @@ export default function AdminTab() {
                 type: "select",
                 placeholder: "Pilih role",
                 options: admin_role_options,
+                helper: role_helper,
               },
             ]}
             on_save={handle_create}
@@ -379,8 +430,8 @@ export default function AdminTab() {
                 setDeletingAdmin(null);
               }
             }}
-            title="Hapus Admin"
-            description={`Akun ${deleting_admin?.name ?? ""} akan dihapus dari daftar admin.`}
+            title="Hapus Akun Admin"
+            description={`Akun ${deleting_admin?.name ?? ""} akan dihapus dari daftar admin dan superadmin.`}
             confirmLabel="Ya, hapus"
             confirmVariant="delete"
             onConfirm={handle_delete}

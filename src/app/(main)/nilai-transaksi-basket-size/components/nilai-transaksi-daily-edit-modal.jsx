@@ -17,7 +17,9 @@ export default function NilaiTransaksiDailyEditModal({
   on_submit,
 }) {
   const field_id = useId();
-  const [daily, setDaily] = useState(String(row?.nt_daily ?? 0));
+  const [totalRevenue, setTotalRevenue] = useState(
+    String(row?.total_revenue ?? 0),
+  );
 
   const handle_close = (next_open) => {
     if (!next_open && !is_saving) {
@@ -33,10 +35,10 @@ export default function NilaiTransaksiDailyEditModal({
           <div className="flex items-start justify-between gap-4">
             <div>
               <DialogPrimitive.Title className="font-heading text-xl font-semibold">
-                Edit Nilai Transaksi Harian
+                Edit Data Nilai Transaksi
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                Ubah nilai harian {row?.outlet_name ?? "outlet"} pada {selected_date}.
+                Ubah data mentah {row?.outlet_name ?? "outlet"} pada {selected_date}.
               </DialogPrimitive.Description>
             </div>
             <DialogPrimitive.Close
@@ -45,7 +47,6 @@ export default function NilaiTransaksiDailyEditModal({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  disabled={is_saving}
                 />
               }
             >
@@ -58,35 +59,35 @@ export default function NilaiTransaksiDailyEditModal({
             className="mt-6 space-y-5"
             onSubmit={(event) => {
               event.preventDefault();
-              on_submit({ daily });
+              on_submit({
+                total_revenue: totalRevenue,
+              });
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor={`${field_id}-nilai-harian`}>Harian</Label>
+              <Label htmlFor={`${field_id}-total-revenue`}>
+                Total Penerimaan Pendapatan
+              </Label>
               <Input
-                id={`${field_id}-nilai-harian`}
+                id={`${field_id}-total-revenue`}
                 type="number"
                 min="0"
-                step="1"
-                value={daily}
-                onChange={(event) => setDaily(event.target.value)}
-                disabled={is_saving}
+                step="0.01"
+                value={totalRevenue}
+                onChange={(event) => setTotalRevenue(event.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Kolom selain Harian tidak berubah.
-              </p>
             </div>
 
             <div className="flex justify-end gap-2">
               <DialogPrimitive.Close
                 render={
-                  <Button type="button" variant="outline" disabled={is_saving} />
+                  <Button type="button" variant="outline" />
                 }
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit" disabled={is_saving || daily === ""}>
+              <Button type="submit">
                 {is_saving ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />
