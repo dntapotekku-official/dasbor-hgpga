@@ -1859,7 +1859,7 @@ export function importBasketSize({
 const invalid_excel_format_message = "Format Excel tidak sesuai yang diharapkan. Pastikan file .xlsx memiliki kolom outlet dan target.";
 
 /** Menormalkan nama outlet untuk pencocokan pada file target. */
-export function normalize_target_outlet_name(value) {
+function normalize_target_outlet_name(value) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
@@ -1869,7 +1869,7 @@ export function normalize_target_outlet_name(value) {
 }
 
 /** Memvalidasi tanggal target dan mengubahnya menjadi Date UTC. */
-export function parse_target_date(date, {
+function parse_target_date(date, {
   label = "Tanggal target",
 } = {}) {
   const trimmed_date = String(date ?? "").trim();
@@ -1891,14 +1891,14 @@ export function parse_target_date(date, {
 }
 
 /** Memastikan tanggal akhir target tidak mendahului tanggal mulai. */
-export function assert_valid_range(start_date, end_date) {
+function assert_valid_range(start_date, end_date) {
   if (end_date < start_date) {
     throw new Error("Tanggal akhir tidak boleh lebih kecil dari tanggal awal.");
   }
 }
 
 /** Membaca file target melalui parser Python dan menghasilkan baris target. */
-export async function parse_target_report_workbook(file_path) {
+async function parse_target_report_workbook(file_path) {
   try {
     const parser_path = path.join(process.cwd(), "src/scripts/parse_target_report.py");
     const { stdout, stderr } = await exec_file("python3", [parser_path, file_path], {
@@ -1922,7 +1922,7 @@ export async function parse_target_report_workbook(file_path) {
 }
 
 /** Mengambil outlet aktif dalam peta berdasarkan UUID dan nama ternormalisasi. */
-export async function get_target_outlet_maps() {
+async function get_target_outlet_maps() {
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
@@ -1964,7 +1964,7 @@ function get_source_end_date_filter(source_start_date, source_end_date) {
 }
 
 /** Memperbarui periode banyak target sekaligus dengan pemeriksaan bentrok antar-outlet. */
-export async function bulkUpdateTargetDates({
+async function bulkUpdateTargetDates({
   model,
   label,
   source_start_date,
@@ -2085,7 +2085,7 @@ export async function bulkUpdateTargetDates({
 }
 
 /** Menghapus banyak target sekaligus berdasarkan periode yang dipilih. */
-export async function bulkDeleteTargetPeriod({
+async function bulkDeleteTargetPeriod({
   model,
   label,
   source_start_date,

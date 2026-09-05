@@ -14,12 +14,11 @@ export async function POST(request) {
       password,
     });
 
+    const token = await createSessionToken(session_payload);
     const response = NextResponse.json({
       success: true,
       data: session_payload,
     });
-
-    const token = await createSessionToken(session_payload);
 
     response.cookies.set(session_cookie_name, token, {
       httpOnly: true,
@@ -31,14 +30,23 @@ export async function POST(request) {
 
     return response;
   } catch (error) {
-    const is_login_error = error.message === "Username atau kata sandi salah.";
+    const error_message = error instanceof Error
+      ? error.message
+      : "Terjadi kesalahan pada server.";
+    const is_login_error = error_message === "Username atau kata sandi salah.";
+
+    if (!is_login_error) {
+      console.error("[POST /api/auth] Login error:", error);
+    }
 
     return NextResponse.json(
       {
         success: false,
         message: is_login_error
-          ? error.message
-          : "Terjadi kesalahan pada server.",
+          ? error_message
+          : process.env.NODE_ENV !== "production" && error instanceof Error
+            ? error_message
+            : "Terjadi kesalahan pada server.",
       },
       { status: is_login_error ? 401 : 500 },
     );

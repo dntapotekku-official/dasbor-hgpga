@@ -196,9 +196,9 @@ export default function SalesEntryModal({
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`karyawan-penjualan-${entry.id}`}>Nama</Label>
+                            <Label htmlFor={`insanku-penjualan-${entry.id}`}>Nama</Label>
                             <OptionDropdown
-                              id={`karyawan-penjualan-${entry.id}`}
+                              id={`insanku-penjualan-${entry.id}`}
                               value={entry.employee_uuid}
                               options={(active_outlet?.rows ?? []).map((row) => ({
                                 value: row.uuid,
@@ -207,7 +207,7 @@ export default function SalesEntryModal({
                               onValueChange={(employee_uuid) =>
                                 on_entry_change(entry.id, "employee_uuid", employee_uuid)
                               }
-                              ariaLabel={`Nama karyawan entri ${index + 1}`}
+                              ariaLabel={`Nama InsanKu entri ${index + 1}`}
                             />
                           </div>
                           <div className="space-y-2">

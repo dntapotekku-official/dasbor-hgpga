@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import {
-  getOutletKaryawan,
-  syncOutletKaryawan,
-  updateOutletKaryawan,
-} from "@/services/outletKaryawanService";
-import { requireRole } from "@/lib/auth";
+  getOutletInsanKu,
+  syncOutletInsanKu,
+  updateOutletInsanKu,
+} from "@/services/outletInsanKuService";
+import { requireMenuAccess } from "@/lib/auth";
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
-    const data = await getOutletKaryawan();
+    const data = await getOutletInsanKu();
 
     return NextResponse.json({
       success: true,
@@ -33,16 +33,16 @@ export const GET = async () => {
 
 export const POST = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
-    const data = await syncOutletKaryawan();
+    const data = await syncOutletInsanKu();
 
     if (!data?.success || !data.summary) {
-      throw new Error("Format data outlet-karyawan tidak valid.");
+      throw new Error("Format data outlet-insanku tidak valid.");
     }
 
     return NextResponse.json({
@@ -62,17 +62,17 @@ export const POST = async () => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = await updateOutletKaryawan({
-      uuid_karyawan: body?.uuid_karyawan,
+    const data = await updateOutletInsanKu({
+      uuid_insanku: body?.uuid_insanku,
       outlet_uuids: body?.outlet_uuids,
-      is_skip_sync_outlet_karyawan: body?.is_skip_sync_outlet_karyawan,
+      is_skip_sync_outlet_insanku: body?.is_skip_sync_outlet_insanku,
     });
 
     return NextResponse.json(data);

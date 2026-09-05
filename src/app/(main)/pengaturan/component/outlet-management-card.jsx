@@ -5,12 +5,16 @@ import { CircleOffIcon, PencilIcon, RotateCcwIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
+import OptionDropdown from "@/components/option-dropdown";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "./pengaturan-row-sheet";
-import { outlet_category_options } from "@/lib/outletCategories";
+import {
+  outlet_category_filter_options,
+  outlet_category_options,
+} from "@/lib/outletCategories";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,14 +32,29 @@ const PAGE_SIZE = 50;
 export default function OutletManagementCard() {
   const [sync_status, setSyncStatus] = useState("pending");
   const [outlet, setOutlet] = useState([]);
-  const { search, setSearch, filtered_items } = useSearch(outlet);
+  const { search, setSearch, filtered_items } = useSearch(outlet, ["name"]);
+  const [selected_category, setSelectedCategory] = useState("all");
+  const [selected_status, setSelectedStatus] = useState("all");
   const [selected_outlet, setSelectedOutlet] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [updating_exception_uuid, setUpdatingExceptionUuid] = useState(null);
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
+  const scoped_items = useMemo(
+    () =>
+      filtered_items.filter((item) => {
+        const matches_category =
+          selected_category === "all" || item.kategori === selected_category;
+        const matches_status =
+          selected_status === "all" ||
+          (selected_status === "excluded" ? item.excep : !item.excep);
+
+        return matches_category && matches_status;
+      }),
+    [filtered_items, selected_category, selected_status],
+  );
   const sorted_items = useMemo(() => {
-    return [...filtered_items].sort((a, b) => {
+    return [...scoped_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
 
       if (sort_key === "excep") {
@@ -47,7 +66,7 @@ export default function OutletManagementCard() {
         "id-ID",
       ) * direction;
     });
-  }, [filtered_items, sort_direction, sort_key]);
+  }, [scoped_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -100,7 +119,7 @@ export default function OutletManagementCard() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, setCurrentPage]);
+  }, [search, selected_category, selected_status, setCurrentPage]);
 
   const sync_outlet_handler = async () => {
     try {
@@ -209,23 +228,43 @@ export default function OutletManagementCard() {
 
   return (
     <Card className="gap-0 border-t-2 border-t-primary/70">
-      <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="border-b">
         <CardTitle>Outlet</CardTitle>
-        <SyncActionButton
-          onConfirm={sync_outlet_handler}
-          description="Sinkronisasi akan memperbarui daftar outlet dari sumber utama dan menimpa data terbaru yang tersedia."
-          isPending={sync_status === "syncing"}
-          className="w-full sm:w-auto"
-        />
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cari outlet..."
-            className="max-w-sm"
-          />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari outlet..."
+              className="w-full sm:max-w-sm"
+            />
+            <OptionDropdown
+              value={selected_category}
+              onValueChange={setSelectedCategory}
+              options={outlet_category_filter_options}
+              ariaLabel="Filter kategori outlet"
+              triggerClassName="w-full lg:w-52"
+            />
+            <OptionDropdown
+              value={selected_status}
+              onValueChange={setSelectedStatus}
+              options={[
+                { value: "all", label: "Semua status" },
+                { value: "active", label: "Aktif" },
+                { value: "excluded", label: "Dikecualikan" },
+              ]}
+              ariaLabel="Filter status outlet"
+              triggerClassName="w-full lg:w-48"
+            />
+            <SyncActionButton
+              onConfirm={sync_outlet_handler}
+              description="Sinkronisasi akan memperbarui daftar outlet dari sumber utama dan menimpa data terbaru yang tersedia."
+              isPending={sync_status === "syncing"}
+              className="w-full lg:ml-auto lg:w-auto"
+            />
+          </div>
 
           <div className="overflow-hidden rounded-lg border">
             <div className="max-h-[560px] overflow-auto">
@@ -319,7 +358,7 @@ export default function OutletManagementCard() {
               </Table>
             </div>
 
-            {filtered_items.length === 0 ? (
+            {scoped_items.length === 0 ? (
               <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
                 Tidak ada outlet yang cocok dengan pencarian.
               </div>
@@ -327,7 +366,7 @@ export default function OutletManagementCard() {
               <Pagination
                 current_page={current_page}
                 page_size={PAGE_SIZE}
-                total_items={filtered_items.length}
+                total_items={scoped_items.length}
                 total_pages={total_pages}
                 item_label="outlet"
                 on_previous={previous_page}

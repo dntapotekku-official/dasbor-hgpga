@@ -218,14 +218,14 @@ export default function ChartBarMultiple({
 
   return (
     <Card className="gap-0 border-t-2 border-t-primary/70">
-      <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="border-b">
         <CardTitle>{title}</CardTitle>
-        {action ? <div className="w-full sm:w-auto">{action}</div> : null}
       </CardHeader>
       <CardContent className="space-y-4">
-        {filter ? (
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
+        {filter || action ? (
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             {filter ? <div className="w-full sm:w-auto">{filter}</div> : null}
+            {action ? <div className="w-full sm:w-auto">{action}</div> : null}
           </div>
         ) : null}
         {has_data ? (

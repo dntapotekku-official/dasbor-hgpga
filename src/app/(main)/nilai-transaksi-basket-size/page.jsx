@@ -236,7 +236,7 @@ export default function NilaiTransaksiPage() {
   const { role } = useAuth();
   const [activeMetric, setActiveMetric] = useState("nilai-transaksi");
   const [selectedDate, setSelectedDate] = useState("2026-08-25");
-  const [outletSearch, setOutletSearch] = useState("");
+  const [selectedOutlet, setSelectedOutlet] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("non-pariwisata");
   const [rows, setRows] = useState([]);
   const [categoryMetrics, setCategoryMetrics] = useState({});
@@ -320,14 +320,22 @@ export default function NilaiTransaksiPage() {
         }),
     [activeMetric, rows, selectedCategory],
   );
-  const normalized_outlet_search = outletSearch.trim().toLowerCase();
+  const outlet_filter_options = useMemo(
+    () => [
+      { value: "all", label: "Semua outlet" },
+      ...category_outlet_rows.map((row) => ({
+        value: row.uuid,
+        label: row.outlet_name,
+      })),
+    ],
+    [category_outlet_rows],
+  );
   const filtered_outlet_rows = useMemo(
-    () => category_outlet_rows.filter(
-      (row) =>
-        !normalized_outlet_search
-        || row.outlet_name.toLowerCase().includes(normalized_outlet_search),
-    ),
-    [category_outlet_rows, normalized_outlet_search],
+    () =>
+      selectedOutlet === "all"
+        ? category_outlet_rows
+        : category_outlet_rows.filter((row) => row.uuid === selectedOutlet),
+    [category_outlet_rows, selectedOutlet],
   );
   const highest_category_value = category_outlet_rows.length
     ? Math.max(
@@ -338,7 +346,7 @@ export default function NilaiTransaksiPage() {
       )),
     )
     : null;
-  const displayed_metrics = normalized_outlet_search
+  const displayed_metrics = selectedOutlet !== "all"
     ? summarizeVisibleRows(filtered_outlet_rows)
     : (categoryMetrics[selectedCategory] ?? empty_metrics);
   const onImportButtonClick = () => {
@@ -446,7 +454,7 @@ export default function NilaiTransaksiPage() {
         setAvailableDates(metrics.available_dates ?? default_available_dates);
       } else {
         setSelectedDate(import_date);
-        setOutletSearch("");
+        setSelectedOutlet("all");
       }
 
       setIsImportModalOpen(false);
@@ -776,7 +784,7 @@ export default function NilaiTransaksiPage() {
                     options={outlet_category_slug_options}
                     onValueChange={(next_category) => {
                       setSelectedCategory(next_category);
-                      setOutletSearch("");
+                      setSelectedOutlet("all");
                     }}
                     ariaLabel="Filter kategori outlet"
                   />
@@ -791,7 +799,7 @@ export default function NilaiTransaksiPage() {
                     value={selectedDate}
                     onChange={(event) => {
                       setSelectedDate(event.target.value);
-                      setOutletSearch("");
+                      setSelectedOutlet("all");
                     }}
                     className="bg-card"
                     aria-label="Tanggal nilai transaksi"
@@ -806,7 +814,7 @@ export default function NilaiTransaksiPage() {
                   onClick={onExportButtonClick}
                 >
                   <FileSpreadsheetIcon className="size-4" />
-                  {isExporting ? "Mengekspor..." : "Export"}
+                  {isExporting ? "Mengekspor..." : "Ekspor"}
                 </Button>
               </div>
             </div>
@@ -846,12 +854,14 @@ export default function NilaiTransaksiPage() {
               <CardContent>
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 sm:w-[320px]">
-                    <Input
-                      value={outletSearch}
-                      onChange={(event) => setOutletSearch(event.target.value)}
-                      placeholder="Ketik nama outlet..."
-                      className="bg-card"
-                      aria-label="Cari outlet"
+                    <OptionDropdown
+                      value={selectedOutlet}
+                      onValueChange={setSelectedOutlet}
+                      options={outlet_filter_options}
+                      searchable
+                      ariaLabel="Filter outlet"
+                      searchPlaceholder="Cari outlet..."
+                      emptySearchMessage="Outlet tidak ditemukan."
                     />
                   </div>
                   {canImport ? (

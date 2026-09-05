@@ -3,11 +3,13 @@ import {
   getKepatuhanSopCCTVChart,
   syncKepatuhanSopCCTV,
 } from "@/services/kepatuhanSopCCTVService";
-import { requireRole, requireSession } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 
 export const GET = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      ["dashboard", "kepatuhan-sop-cctv"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -43,7 +45,10 @@ export const GET = async (request) => {
 
 export const POST = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(
+      "kepatuhan-sop-cctv",
+      ["admin"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;

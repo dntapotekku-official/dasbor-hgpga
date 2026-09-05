@@ -12,6 +12,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 export default function OptionDropdown({
   id,
@@ -22,6 +23,8 @@ export default function OptionDropdown({
   searchable = false,
   searchPlaceholder = "Cari...",
   emptyMessage = "Data tidak ditemukan.",
+  emptySearchMessage,
+  triggerClassName,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -57,7 +60,7 @@ export default function OptionDropdown({
             type="button"
             variant="outline"
             aria-label={ariaLabel}
-            className="w-full justify-between bg-card"
+            className={cn("w-full justify-between bg-card", triggerClassName)}
           />
         }
       >
@@ -96,7 +99,7 @@ export default function OptionDropdown({
           ))}
           {!filtered_options.length ? (
             <div className="px-2 py-3 text-center text-sm text-muted-foreground">
-              {emptyMessage}
+              {emptySearchMessage ?? emptyMessage}
             </div>
           ) : null}
         </DropdownMenuRadioGroup>

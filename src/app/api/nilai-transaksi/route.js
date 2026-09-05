@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
-import { requireRole, requireSession } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteNilaiTransaksiDate,
   bulkUpdateNilaiTransaksiDate,
@@ -14,7 +14,10 @@ import {
 
 export async function GET(request) {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      "nilai-transaksi-basket-size",
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -59,13 +62,17 @@ export async function GET(request) {
 export async function POST(request) {
   return import_outlet_report(request, {
     import_handler: importNilaiTransaksi,
+    menu_key: "nilai-transaksi-basket-size",
     temp_prefix: "nilai-transaksi",
   });
 }
 
 export async function PATCH(request) {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(
+      "nilai-transaksi-basket-size",
+      ["admin"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -102,7 +109,10 @@ export async function PATCH(request) {
 
 export async function DELETE(request) {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(
+      "nilai-transaksi-basket-size",
+      ["admin"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;

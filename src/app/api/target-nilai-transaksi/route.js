@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { import_target_report } from "@/app/api/_helpers/import-target-report";
-import { requireRole } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteTargetNilaiTransaksi,
   bulkUpdateTargetNilaiTransaksiDates,
@@ -14,7 +14,7 @@ import {
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -39,7 +39,7 @@ export const GET = async () => {
 
 export const PUT = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -67,7 +67,7 @@ export const PUT = async (request) => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -115,7 +115,7 @@ export const POST = (request) =>
 
 export const DELETE = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
     if (unauthorized_response) {
       return unauthorized_response;

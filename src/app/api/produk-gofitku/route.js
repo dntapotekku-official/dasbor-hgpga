@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireRole, requireSession } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import {
   createProdukGofitku,
   deleteProdukGofitku,
@@ -10,7 +10,10 @@ import {
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      ["penjualan-gofitku", "pengaturan-produk-gofitku"],
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -35,7 +38,9 @@ export const GET = async () => {
 
 export const PUT = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(
+      "pengaturan-produk-gofitku",
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -60,7 +65,9 @@ export const PUT = async (request) => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(
+      "pengaturan-produk-gofitku",
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -86,7 +93,9 @@ export const PATCH = async (request) => {
 
 export const DELETE = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(
+      "pengaturan-produk-gofitku",
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;

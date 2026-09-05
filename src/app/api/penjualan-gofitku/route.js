@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import getCurrentUser, { requireSession } from "@/lib/auth";
+import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
 import {
   createPenjualanGofitku,
   deletePenjualanGofitku,
@@ -26,7 +26,10 @@ function error_response(error) {
 
 export const GET = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      "penjualan-gofitku",
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -68,7 +71,10 @@ export const GET = async (request) => {
 
 export const POST = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      "penjualan-gofitku",
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -91,7 +97,10 @@ export const POST = async (request) => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      "penjualan-gofitku",
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -119,7 +128,10 @@ export const PATCH = async (request) => {
 
 export const DELETE = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      "penjualan-gofitku",
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;

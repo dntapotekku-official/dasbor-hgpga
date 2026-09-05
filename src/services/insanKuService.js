@@ -1,14 +1,17 @@
 import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
 import { randomUUID } from "node:crypto";
 import { dedupeByUuid } from "@/lib/utils";
 
-export async function fetchKaryawanPayload() {
+export async function fetchInsanKuPayload() {
   const url =
+    process.env.INSANKU_SLIP_GAJI_API_URL ??
+    process.env.INSANKU_SLIPGAJI_API_URL ??
     process.env.KARYAWAN_SLIP_GAJI_API_URL ??
     process.env.KARYAWAN_SLIPGAJI_API_URL;
 
   if (!url) {
-    throw new Error("Environment variable KARYAWAN_SLIP_GAJI_API_URL belum diatur.");
+    throw new Error("Environment variable INSANKU_SLIP_GAJI_API_URL belum diatur.");
   }
 
   const result = await fetch(url, {
@@ -18,21 +21,21 @@ export async function fetchKaryawanPayload() {
   });
 
   if (!result.ok) {
-    throw new Error(`Gagal menyinkronkan KARYAWAN_SLIP_GAJI_API_URL: ${result.status}`);
+    throw new Error(`Gagal menyinkronkan INSANKU_SLIP_GAJI_API_URL: ${result.status}`);
   }
 
   const response = await result.json();
   const payload = response.data ?? response;
 
   if (!Array.isArray(payload)) {
-    throw new Error("Response KARYAWAN_SLIP_GAJI_API_URL harus berupa array data karyawan.");
+    throw new Error("Response INSANKU_SLIP_GAJI_API_URL harus berupa array data InsanKu.");
   }
 
   return payload;
 }
 
-export function normalizeKaryawanRows(karyawan_payload) {
-  const data_karyawan = karyawan_payload
+export function normalizeInsanKuRows(insanku_payload) {
+  const data_insanku = insanku_payload
     .map((item) => {
       const uuid = String(
         item?.id_karyawans ?? item?.id_karyawan ?? item?.uuid ?? item?.id ?? "",
@@ -58,11 +61,11 @@ export function normalizeKaryawanRows(karyawan_payload) {
     })
     .filter(Boolean);
 
-  return dedupeByUuid(data_karyawan);
+  return dedupeByUuid(data_insanku);
 }
 
-export async function getKaryawanSettingsData() {
-  const data_karyawan = await prisma.tbl_karyawan.findMany({
+export async function getInsanKuSettingsData() {
+  const data_insanku = await prisma.tbl_insanku.findMany({
     where: {
       deleted_at: null,
     },
@@ -71,7 +74,7 @@ export async function getKaryawanSettingsData() {
       name: true,
       username: true,
       is_skip_sync: true,
-      outlet_karyawan: {
+      outlet_insanku: {
         where: {
           deleted_at: null,
           outlet: {
@@ -95,40 +98,40 @@ export async function getKaryawanSettingsData() {
     },
   });
 
-  return data_karyawan.map((item) => ({
+  return data_insanku.map((item) => ({
     uuid: item.uuid,
     name: item.name,
     username: item.username,
-    is_skip_sync_karyawan: Boolean(item.is_skip_sync),
-    is_skip_sync_outlet_karyawan: item.outlet_karyawan.some(
-      (outlet_karyawan) => outlet_karyawan.is_skip_sync,
+    is_skip_sync_insanku: Boolean(item.is_skip_sync),
+    is_skip_sync_outlet_insanku: item.outlet_insanku.some(
+      (outlet_insanku) => outlet_insanku.is_skip_sync,
     ),
     outlet_uuids:
-      item.outlet_karyawan.length > 0
-        ? item.outlet_karyawan.map((outlet_karyawan) => outlet_karyawan.outlet.uuid)
+      item.outlet_insanku.length > 0
+        ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.uuid)
         : [],
     outlet_names:
-      item.outlet_karyawan.length > 0
-        ? item.outlet_karyawan.map((outlet_karyawan) => outlet_karyawan.outlet.name)
+      item.outlet_insanku.length > 0
+        ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.name)
         : [],
     outlet_placements:
-      item.outlet_karyawan.length > 0
-        ? item.outlet_karyawan.map((outlet_karyawan) => ({
-            uuid: outlet_karyawan.uuid,
-            outlet_uuid: outlet_karyawan.outlet.uuid,
-            outlet_name: outlet_karyawan.outlet.name,
+      item.outlet_insanku.length > 0
+        ? item.outlet_insanku.map((outlet_insanku) => ({
+            uuid: outlet_insanku.uuid,
+            outlet_uuid: outlet_insanku.outlet.uuid,
+            outlet_name: outlet_insanku.outlet.name,
           }))
         : [],
   }));
 }
 
-export async function syncKaryawan() {
-  const karyawan_payload = await fetchKaryawanPayload();
-  const unique_karyawan = normalizeKaryawanRows(karyawan_payload);
-  const incoming_karyawan_uuid_set = new Set(
-    unique_karyawan.map((item) => item.uuid),
+export async function syncInsanKu() {
+  const insanku_payload = await fetchInsanKuPayload();
+  const unique_insanku = normalizeInsanKuRows(insanku_payload);
+  const incoming_insanku_uuid_set = new Set(
+    unique_insanku.map((item) => item.uuid),
   );
-  const existing_karyawan = await prisma.tbl_karyawan.findMany({
+  const existing_insanku = await prisma.tbl_insanku.findMany({
     select: {
       uuid: true,
       username: true,
@@ -137,17 +140,22 @@ export async function syncKaryawan() {
       deleted_at: true,
     },
   });
-  const existing_karyawan_map = new Map(
-    existing_karyawan.map((item) => [item.uuid, item]),
+  const existing_insanku_map = new Map(
+    existing_insanku.map((item) => [item.uuid, item]),
   );
-  const new_karyawan = unique_karyawan.filter(
-    (item) => !existing_karyawan_map.has(item.uuid),
+  const new_insanku = await Promise.all(
+    unique_insanku
+      .filter((item) => !existing_insanku_map.has(item.uuid))
+      .map(async (item) => ({
+        ...item,
+        password: await hashPassword(item.password),
+      })),
   );
-  const update_karyawan = unique_karyawan
-    .filter((item) => existing_karyawan_map.has(item.uuid))
-    .filter((item) => !existing_karyawan_map.get(item.uuid)?.is_skip_sync)
+  const update_insanku = unique_insanku
+    .filter((item) => existing_insanku_map.has(item.uuid))
+    .filter((item) => !existing_insanku_map.get(item.uuid)?.is_skip_sync)
     .map((item) => {
-      const existing_item = existing_karyawan_map.get(item.uuid);
+      const existing_item = existing_insanku_map.get(item.uuid);
 
       return {
         ...item,
@@ -158,33 +166,33 @@ export async function syncKaryawan() {
         password: existing_item?.password ?? item.password,
       };
     });
-  const skipped_karyawan = unique_karyawan.filter(
-    (item) => existing_karyawan_map.get(item.uuid)?.is_skip_sync,
+  const skipped_insanku = unique_insanku.filter(
+    (item) => existing_insanku_map.get(item.uuid)?.is_skip_sync,
   );
-  const deleted_karyawan = existing_karyawan.filter(
+  const deleted_insanku = existing_insanku.filter(
     (item) =>
-      !incoming_karyawan_uuid_set.has(item.uuid) &&
+      !incoming_insanku_uuid_set.has(item.uuid) &&
       !item.is_skip_sync &&
       item.deleted_at === null,
   );
-  const skipped_deleted_karyawan = existing_karyawan.filter(
+  const skipped_deleted_insanku = existing_insanku.filter(
     (item) =>
-      !incoming_karyawan_uuid_set.has(item.uuid) &&
+      !incoming_insanku_uuid_set.has(item.uuid) &&
       item.is_skip_sync &&
       item.deleted_at === null,
   );
 
   await prisma.$transaction(async (tx) => {
-    if (new_karyawan.length > 0) {
-      await tx.tbl_karyawan.createMany({
-        data: new_karyawan,
+    if (new_insanku.length > 0) {
+      await tx.tbl_insanku.createMany({
+        data: new_insanku,
         skipDuplicates: true,
       });
     }
 
     await Promise.all(
-      update_karyawan.map((item) =>
-        tx.tbl_karyawan.update({
+      update_insanku.map((item) =>
+        tx.tbl_insanku.update({
           where: { uuid: item.uuid },
           data: {
             name: item.name,
@@ -198,13 +206,13 @@ export async function syncKaryawan() {
       ),
     );
 
-    if (deleted_karyawan.length > 0) {
-      const deleted_karyawan_uuids = deleted_karyawan.map((item) => item.uuid);
+    if (deleted_insanku.length > 0) {
+      const deleted_insanku_uuids = deleted_insanku.map((item) => item.uuid);
       const deleted_at = new Date();
-      const deleted_outlet_karyawan = await tx.tbl_outlet_karyawan.findMany({
+      const deleted_outlet_insanku = await tx.tbl_outlet_insanku.findMany({
         where: {
-          uuid_karyawan: {
-            in: deleted_karyawan_uuids,
+          uuid_insanku: {
+            in: deleted_insanku_uuids,
           },
           deleted_at: null,
         },
@@ -212,15 +220,15 @@ export async function syncKaryawan() {
           uuid: true,
         },
       });
-      const deleted_outlet_karyawan_uuids = deleted_outlet_karyawan.map(
+      const deleted_outlet_insanku_uuids = deleted_outlet_insanku.map(
         (item) => item.uuid,
       );
 
-      if (deleted_outlet_karyawan_uuids.length > 0) {
+      if (deleted_outlet_insanku_uuids.length > 0) {
         await tx.tbl_penjualan_gofitku.updateMany({
           where: {
-            uuid_outlet_karyawan: {
-              in: deleted_outlet_karyawan_uuids,
+            uuid_outlet_insanku: {
+              in: deleted_outlet_insanku_uuids,
             },
             deleted_at: null,
           },
@@ -230,10 +238,10 @@ export async function syncKaryawan() {
         });
       }
 
-      await tx.tbl_atribut_karyawan.updateMany({
+      await tx.tbl_atribut_insanku.updateMany({
         where: {
-          uuid_karyawan: {
-            in: deleted_karyawan_uuids,
+          uuid_insanku: {
+            in: deleted_insanku_uuids,
           },
           deleted_at: null,
         },
@@ -242,10 +250,10 @@ export async function syncKaryawan() {
         },
       });
 
-      await tx.tbl_outlet_karyawan.updateMany({
+      await tx.tbl_outlet_insanku.updateMany({
         where: {
-          uuid_karyawan: {
-            in: deleted_karyawan_uuids,
+          uuid_insanku: {
+            in: deleted_insanku_uuids,
           },
           deleted_at: null,
         },
@@ -254,10 +262,10 @@ export async function syncKaryawan() {
         },
       });
 
-      await tx.tbl_karyawan.updateMany({
+      await tx.tbl_insanku.updateMany({
         where: {
           uuid: {
-            in: deleted_karyawan_uuids,
+            in: deleted_insanku_uuids,
           },
           deleted_at: null,
         },
@@ -271,36 +279,36 @@ export async function syncKaryawan() {
   return {
     success: true,
     data: {
-      data_karyawan: unique_karyawan,
+      data_insanku: unique_insanku,
     },
     summary: {
-      inserted_karyawan: new_karyawan.length,
-      updated_karyawan: update_karyawan.length,
-      skipped_karyawan: skipped_karyawan.length,
-      deleted_karyawan: deleted_karyawan.length,
-      retained_skipped_karyawan: skipped_deleted_karyawan.length,
+      inserted_insanku: new_insanku.length,
+      updated_insanku: update_insanku.length,
+      skipped_insanku: skipped_insanku.length,
+      deleted_insanku: deleted_insanku.length,
+      retained_skipped_insanku: skipped_deleted_insanku.length,
     },
   };
 }
 
-export async function getKaryawan() {
+export async function getInsanKu() {
   return {
-    data_karyawan: await getKaryawanSettingsData(),
+    data_insanku: await getInsanKuSettingsData(),
   };
 }
 
-export async function updateKaryawan({
-  uuid_karyawan,
+export async function updateInsanKu({
+  uuid_insanku,
   name,
   username,
   password,
   outlet_placements = [],
   outlet_uuids = [],
-  is_skip_sync_karyawan,
-  is_skip_sync_outlet_karyawan,
+  is_skip_sync_insanku,
+  is_skip_sync_outlet_insanku,
 }) {
-  if (!uuid_karyawan) {
-    throw new Error("UUID karyawan wajib diisi.");
+  if (!uuid_insanku) {
+    throw new Error("UUID InsanKu wajib diisi.");
   }
 
   const trimmed_name = String(name ?? "").trim();
@@ -337,11 +345,11 @@ export async function updateKaryawan({
   );
 
   if (!trimmed_name) {
-    throw new Error("Nama karyawan wajib diisi.");
+    throw new Error("Nama InsanKu wajib diisi.");
   }
 
   if (!trimmed_username) {
-    throw new Error("Username karyawan wajib diisi.");
+    throw new Error("Username InsanKu wajib diisi.");
   }
 
   if (trimmed_password && trimmed_password.length < 6) {
@@ -356,20 +364,20 @@ export async function updateKaryawan({
     throw new Error("Outlet yang sama tidak boleh dipilih lebih dari satu kali.");
   }
 
-  if (Boolean(is_skip_sync_outlet_karyawan) && unique_outlet_uuids.length === 0) {
-    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika karyawan punya outlet.");
+  if (Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length === 0) {
+    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika InsanKu punya outlet.");
   }
 
-  const existing_karyawan = await prisma.tbl_karyawan.findUnique({
-    where: { uuid: uuid_karyawan },
+  const existing_insanku = await prisma.tbl_insanku.findUnique({
+    where: { uuid: uuid_insanku },
     select: {
       uuid: true,
       deleted_at: true,
     },
   });
 
-  if (!existing_karyawan || existing_karyawan.deleted_at) {
-    throw new Error("Data karyawan tidak ditemukan.");
+  if (!existing_insanku || existing_insanku.deleted_at) {
+    throw new Error("Data InsanKu tidak ditemukan.");
   }
 
   const valid_outlets = await prisma.tbl_outlet.findMany({
@@ -391,24 +399,28 @@ export async function updateKaryawan({
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.tbl_karyawan.update({
-      where: { uuid: uuid_karyawan },
+    const hashed_password = trimmed_password
+      ? await hashPassword(trimmed_password)
+      : null;
+
+    await tx.tbl_insanku.update({
+      where: { uuid: uuid_insanku },
       data: {
         name: trimmed_name,
         username: trimmed_username,
         ...(trimmed_password
           ? {
-              password: trimmed_password,
+              password: hashed_password,
               is_password_change: false,
             }
           : {}),
-        is_skip_sync: Boolean(is_skip_sync_karyawan),
+        is_skip_sync: Boolean(is_skip_sync_insanku),
       },
     });
 
-    const current_relations = await tx.tbl_outlet_karyawan.findMany({
+    const current_relations = await tx.tbl_outlet_insanku.findMany({
       where: {
-        uuid_karyawan,
+        uuid_insanku,
       },
       select: {
         uuid: true,
@@ -427,7 +439,7 @@ export async function updateKaryawan({
         (placement_uuid) => !current_relation_uuid_set.has(placement_uuid),
       )
     ) {
-      throw new Error("Sebagian penempatan outlet tidak ditemukan untuk karyawan ini.");
+      throw new Error("Sebagian penempatan outlet tidak ditemukan untuk InsanKu ini.");
     }
 
     const current_relations_by_uuid = new Map(
@@ -441,7 +453,7 @@ export async function updateKaryawan({
       .map((item) => item.uuid);
 
     if (relation_uuids_to_remove.length > 0) {
-      await tx.tbl_outlet_karyawan.updateMany({
+      await tx.tbl_outlet_insanku.updateMany({
         where: {
           uuid: {
             in: relation_uuids_to_remove,
@@ -453,13 +465,13 @@ export async function updateKaryawan({
       });
     }
 
-    await tx.tbl_outlet_karyawan.updateMany({
+    await tx.tbl_outlet_insanku.updateMany({
       where: {
-        uuid_karyawan,
+        uuid_insanku,
         deleted_at: null,
       },
       data: {
-        is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+        is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
       },
     });
 
@@ -472,13 +484,13 @@ export async function updateKaryawan({
         }
 
         if (current_relation.uuid_outlet === placement.outlet_uuid) {
-          await tx.tbl_outlet_karyawan.update({
+          await tx.tbl_outlet_insanku.update({
             where: {
               uuid: placement.uuid,
             },
             data: {
               deleted_at: null,
-              is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+              is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
             },
           });
           continue;
@@ -489,17 +501,17 @@ export async function updateKaryawan({
         );
 
         if (existing_target_relation && existing_target_relation.uuid !== placement.uuid) {
-          await tx.tbl_outlet_karyawan.update({
+          await tx.tbl_outlet_insanku.update({
             where: {
               uuid: existing_target_relation.uuid,
             },
             data: {
               deleted_at: null,
-              is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+              is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
             },
           });
 
-          await tx.tbl_outlet_karyawan.update({
+          await tx.tbl_outlet_insanku.update({
             where: {
               uuid: placement.uuid,
             },
@@ -511,14 +523,14 @@ export async function updateKaryawan({
           continue;
         }
 
-        await tx.tbl_outlet_karyawan.update({
+        await tx.tbl_outlet_insanku.update({
           where: {
             uuid: placement.uuid,
           },
           data: {
             uuid_outlet: placement.outlet_uuid,
             deleted_at: null,
-            is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+            is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
           },
         });
         continue;
@@ -529,37 +541,37 @@ export async function updateKaryawan({
       );
 
       if (existing_target_relation) {
-        await tx.tbl_outlet_karyawan.update({
+        await tx.tbl_outlet_insanku.update({
           where: {
             uuid: existing_target_relation.uuid,
           },
           data: {
             deleted_at: null,
-            is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+            is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
           },
         });
         continue;
       }
 
-      await tx.tbl_outlet_karyawan.create({
+      await tx.tbl_outlet_insanku.create({
         data: {
           uuid: randomUUID(),
           uuid_outlet: placement.outlet_uuid,
-          uuid_karyawan,
-          is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+          uuid_insanku,
+          is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
         },
       });
     }
   });
 
-  const refreshed_data = await getKaryawan();
-  const updated_karyawan = refreshed_data.data_karyawan.find(
-    (item) => item.uuid === uuid_karyawan,
+  const refreshed_data = await getInsanKu();
+  const updated_insanku = refreshed_data.data_insanku.find(
+    (item) => item.uuid === uuid_insanku,
   );
 
   return {
     success: true,
-    data: updated_karyawan ?? null,
-    message: "Data karyawan berhasil diperbarui.",
+    data: updated_insanku ?? null,
+    message: "Data InsanKu berhasil diperbarui.",
   };
 }

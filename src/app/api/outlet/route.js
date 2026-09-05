@@ -5,15 +5,26 @@ import {
   updateOutlet,
   updateOutletException,
 } from "@/services/outletService";
-import { requireRole, requireSession } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 
 export const GET = async (request) => {
   try {
     const include_excluded =
       request.nextUrl.searchParams.get("include_excluded") === "true";
     const unauthorized_response = include_excluded
-      ? await requireRole(["admin"])
-      : await requireSession();
+      ? await requireMenuAccess("pengaturan-outlet")
+      : await requireMenuAccess(
+          [
+            "dashboard",
+            "kepatuhan-sop-cctv",
+            "penjualan-gofitku",
+            "nilai-transaksi-basket-size",
+            "pengaturan-pengguna",
+            "pengaturan-kunjungan",
+            "pengaturan-target",
+          ],
+          ["member"],
+        );
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -40,7 +51,7 @@ export const GET = async (request) => {
 
 export const POST = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-outlet");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -66,7 +77,7 @@ export const POST = async () => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-outlet");
 
     if (unauthorized_response) {
       return unauthorized_response;

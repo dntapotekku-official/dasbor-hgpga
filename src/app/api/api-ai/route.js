@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { requireRole } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import { getAiApiSettings, saveApiAiSettings } from "@/services/apiAiService";
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-api-ai");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -33,7 +33,7 @@ export const GET = async () => {
 
 export const POST = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-api-ai");
 
     if (unauthorized_response) {
       return unauthorized_response;

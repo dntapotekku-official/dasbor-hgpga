@@ -65,14 +65,14 @@ async function get_member_outlet_uuids(username) {
     return [];
   }
 
-  const member_relations = await prisma.tbl_outlet_karyawan.findMany({
+  const member_relations = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
       outlet: {
         deleted_at: null,
         excep: false,
       },
-      karyawan: {
+      insanku: {
         deleted_at: null,
         username: trimmed_username,
       },
@@ -116,8 +116,8 @@ async function assert_outlet_access({ outlet_uuid, username, role }) {
   }
 }
 
-async function get_outlet_karyawan_rows(accessible_outlet_uuids) {
-  return prisma.tbl_outlet_karyawan.findMany({
+async function get_outlet_insanku_rows(accessible_outlet_uuids) {
+  return prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
       ...(accessible_outlet_uuids
@@ -131,7 +131,7 @@ async function get_outlet_karyawan_rows(accessible_outlet_uuids) {
         deleted_at: null,
         excep: false,
       },
-      karyawan: {
+      insanku: {
         deleted_at: null,
       },
     },
@@ -142,7 +142,7 @@ async function get_outlet_karyawan_rows(accessible_outlet_uuids) {
         },
       },
       {
-        karyawan: {
+        insanku: {
           name: "asc",
         },
       },
@@ -150,7 +150,7 @@ async function get_outlet_karyawan_rows(accessible_outlet_uuids) {
     select: {
       uuid: true,
       uuid_outlet: true,
-      uuid_karyawan: true,
+      uuid_insanku: true,
       outlet: {
         select: {
           uuid: true,
@@ -158,7 +158,7 @@ async function get_outlet_karyawan_rows(accessible_outlet_uuids) {
           category: true,
         },
       },
-      karyawan: {
+      insanku: {
         select: {
           uuid: true,
           name: true,
@@ -209,7 +209,7 @@ export async function getPenjualanGofitku({
     ? [trimmed_outlet_uuid]
     : member_outlet_uuids;
 
-  const outlet_karyawan_rows = await get_outlet_karyawan_rows(
+  const outlet_insanku_rows = await get_outlet_insanku_rows(
     accessible_outlet_uuids,
   );
   const active_targets = await prisma.tbl_target_gofitku.findMany({
@@ -256,12 +256,12 @@ export async function getPenjualanGofitku({
     active_target_map.set(uuid_outlet, item.value ?? 0);
   }
 
-  const relation_uuid_set = outlet_karyawan_rows.map((item) => item.uuid);
+  const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
   const sales_rows = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.findMany({
         where: {
           deleted_at: null,
-          uuid_outlet_karyawan: {
+          uuid_outlet_insanku: {
             in: relation_uuid_set,
           },
           date: {
@@ -279,7 +279,7 @@ export async function getPenjualanGofitku({
         ],
         select: {
           uuid: true,
-          uuid_outlet_karyawan: true,
+          uuid_outlet_insanku: true,
           uuid_produk_gofitku: true,
           name: true,
           qty: true,
@@ -294,10 +294,10 @@ export async function getPenjualanGofitku({
   });
   const summary_map = new Map();
   
-  for (const relation of outlet_karyawan_rows) {
+  for (const relation of outlet_insanku_rows) {
     summary_map.set(relation.uuid, {
-      uuid: relation.uuid_karyawan ?? relation.uuid,
-      name: relation.karyawan?.name ?? "-",
+      uuid: relation.uuid_insanku ?? relation.uuid,
+      name: relation.insanku?.name ?? "-",
       today_input: 0,
       monthly_total: 0,
       daily_totals: {},
@@ -306,7 +306,7 @@ export async function getPenjualanGofitku({
   }
   
   for (const sale of sales_rows) {
-    const current_summary = summary_map.get(sale.uuid_outlet_karyawan);
+    const current_summary = summary_map.get(sale.uuid_outlet_insanku);
   
     if (!current_summary) {
       continue;
@@ -320,7 +320,7 @@ export async function getPenjualanGofitku({
   }
   
   for (const sale of today_sales) {
-    const current_summary = summary_map.get(sale.uuid_outlet_karyawan);
+    const current_summary = summary_map.get(sale.uuid_outlet_insanku);
   
     if (!current_summary) {
       continue;
@@ -331,7 +331,7 @@ export async function getPenjualanGofitku({
   
   const groups_map = new Map();
   
-  for (const relation of outlet_karyawan_rows) {
+  for (const relation of outlet_insanku_rows) {
     if (!groups_map.has(relation.uuid_outlet)) {
       groups_map.set(relation.uuid_outlet, {
         uuid: relation.outlet?.uuid ?? relation.uuid_outlet,
@@ -345,10 +345,10 @@ export async function getPenjualanGofitku({
     groups_map.get(relation.uuid_outlet).rows.push(summary_map.get(relation.uuid));
   }
   
-  const relation_map = new Map(outlet_karyawan_rows.map((item) => [item.uuid, item]));
+  const relation_map = new Map(outlet_insanku_rows.map((item) => [item.uuid, item]));
   
   for (const sale of today_sales) {
-    const relation = relation_map.get(sale.uuid_outlet_karyawan);
+    const relation = relation_map.get(sale.uuid_outlet_insanku);
   
     if (!relation) {
       continue;
@@ -362,8 +362,8 @@ export async function getPenjualanGofitku({
   
     current_group.detail_rows.push({
       uuid: sale.uuid,
-      employee_uuid: relation.uuid_karyawan ?? "",
-      name: relation.karyawan?.name ?? "-",
+      employee_uuid: relation.uuid_insanku ?? "",
+      name: relation.insanku?.name ?? "-",
       product_name: sale.name ?? "-",
       produk_uuid: sale.uuid_produk_gofitku ?? "",
       today_input: Number(sale.qty || 0),
@@ -388,15 +388,15 @@ export async function getPenjualanGofitkuExport({ username, role }) {
     };
   }
 
-  const outlet_karyawan_rows = await get_outlet_karyawan_rows(
+  const outlet_insanku_rows = await get_outlet_insanku_rows(
     accessible_outlet_uuids,
   );
-  const relation_uuid_set = outlet_karyawan_rows.map((item) => item.uuid);
+  const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
   const sales_rows = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.findMany({
         where: {
           deleted_at: null,
-          uuid_outlet_karyawan: {
+          uuid_outlet_insanku: {
             in: relation_uuid_set,
           },
         },
@@ -409,7 +409,7 @@ export async function getPenjualanGofitkuExport({ username, role }) {
           },
         ],
         select: {
-          uuid_outlet_karyawan: true,
+          uuid_outlet_insanku: true,
           qty: true,
           date: true,
         },
@@ -447,12 +447,12 @@ export async function getPenjualanGofitkuExport({ username, role }) {
     },
   });
   const relation_map = new Map(
-    outlet_karyawan_rows.map((item) => [item.uuid, item]),
+    outlet_insanku_rows.map((item) => [item.uuid, item]),
   );
   const relations_by_outlet = new Map();
   const groups_map = new Map();
   
-  for (const relation of outlet_karyawan_rows) {
+  for (const relation of outlet_insanku_rows) {
     if (!groups_map.has(relation.uuid_outlet)) {
       groups_map.set(relation.uuid_outlet, {
         uuid: relation.outlet?.uuid ?? relation.uuid_outlet,
@@ -504,8 +504,8 @@ export async function getPenjualanGofitkuExport({ username, role }) {
         group_relations.map((relation) => [
           relation.uuid,
           {
-            uuid: relation.uuid_karyawan ?? relation.uuid,
-            name: relation.karyawan?.name ?? "-",
+            uuid: relation.uuid_insanku ?? relation.uuid,
+            name: relation.insanku?.name ?? "-",
             monthly_total: 0,
             daily_totals: {},
             target,
@@ -514,7 +514,7 @@ export async function getPenjualanGofitkuExport({ username, role }) {
       );
   
       for (const sale of month_sales) {
-        const relation = relation_map.get(sale.uuid_outlet_karyawan);
+        const relation = relation_map.get(sale.uuid_outlet_insanku);
   
         if (!relation || relation.uuid_outlet !== group.uuid) {
           continue;
@@ -562,7 +562,7 @@ export async function getPenjualanGofitkuTopOutletChart({
     };
   }
 
-  const outlet_karyawan_rows = await prisma.tbl_outlet_karyawan.findMany({
+  const outlet_insanku_rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
       ...(accessible_outlet_uuids
@@ -588,13 +588,13 @@ export async function getPenjualanGofitkuTopOutletChart({
       },
     },
   });
-  const relation_uuid_set = outlet_karyawan_rows.map((item) => item.uuid);
+  const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
   const sales_totals = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.groupBy({
-        by: ["uuid_outlet_karyawan"],
+        by: ["uuid_outlet_insanku"],
         where: {
           deleted_at: null,
-          uuid_outlet_karyawan: {
+          uuid_outlet_insanku: {
             in: relation_uuid_set,
           },
         },
@@ -603,10 +603,10 @@ export async function getPenjualanGofitkuTopOutletChart({
         },
       })
     : [];
-  const relation_map = new Map(outlet_karyawan_rows.map((item) => [item.uuid, item]));
+  const relation_map = new Map(outlet_insanku_rows.map((item) => [item.uuid, item]));
   const outlet_chart_map = new Map();
   
-  for (const relation of outlet_karyawan_rows) {
+  for (const relation of outlet_insanku_rows) {
     if (!outlet_chart_map.has(relation.uuid_outlet)) {
       outlet_chart_map.set(relation.uuid_outlet, {
         key: relation.outlet?.uuid ?? relation.uuid_outlet,
@@ -617,7 +617,7 @@ export async function getPenjualanGofitkuTopOutletChart({
   }
   
   for (const total_row of sales_totals) {
-    const relation = relation_map.get(total_row.uuid_outlet_karyawan);
+    const relation = relation_map.get(total_row.uuid_outlet_insanku);
   
     if (!relation) {
       continue;
@@ -652,7 +652,7 @@ export async function getPenjualanGofitkuTopProdukChart({
     };
   }
 
-  const outlet_karyawan_rows = await prisma.tbl_outlet_karyawan.findMany({
+  const outlet_insanku_rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
       ...(accessible_outlet_uuids
@@ -671,13 +671,13 @@ export async function getPenjualanGofitkuTopProdukChart({
       uuid: true,
     },
   });
-  const relation_uuid_set = outlet_karyawan_rows.map((item) => item.uuid);
+  const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
   const product_totals = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.groupBy({
         by: ["name"],
         where: {
           deleted_at: null,
-          uuid_outlet_karyawan: {
+          uuid_outlet_insanku: {
             in: relation_uuid_set,
           },
         },
@@ -737,10 +737,10 @@ export async function createPenjualanGofitku({
     new Set(normalized_entries.map((entry) => entry.produk_uuid).filter(Boolean)),
   );
 
-  const outlet_karyawan_rows = await prisma.tbl_outlet_karyawan.findMany({
+  const outlet_insanku_rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       uuid_outlet: trimmed_outlet_uuid,
-      uuid_karyawan: {
+      uuid_insanku: {
         in: employee_uuid_set,
       },
       deleted_at: null,
@@ -751,16 +751,16 @@ export async function createPenjualanGofitku({
     },
     select: {
       uuid: true,
-      uuid_karyawan: true,
+      uuid_insanku: true,
     },
   });
 
   const relation_map = new Map(
-    outlet_karyawan_rows.map((item) => [item.uuid_karyawan, item.uuid]),
+    outlet_insanku_rows.map((item) => [item.uuid_insanku, item.uuid]),
   );
 
   if (relation_map.size !== employee_uuid_set.length) {
-    throw new Error("Sebagian karyawan tidak terhubung dengan outlet yang dipilih.");
+    throw new Error("Sebagian InsanKu tidak terhubung dengan outlet yang dipilih.");
   }
 
   const product_rows = product_uuid_set.length
@@ -794,7 +794,7 @@ export async function createPenjualanGofitku({
       return prisma.tbl_penjualan_gofitku.create({
         data: {
           uuid: randomUUID(),
-          uuid_outlet_karyawan: relation_map.get(entry.employee_uuid) ?? null,
+          uuid_outlet_insanku: relation_map.get(entry.employee_uuid) ?? null,
           uuid_produk_gofitku: entry.produk_uuid || null,
           name: fallback_name,
           date,
@@ -837,7 +837,7 @@ export async function updatePenjualanGofitku({
   }
 
   if (!trimmed_employee_uuid) {
-    throw new Error("Karyawan wajib diisi.");
+    throw new Error("InsanKu wajib diisi.");
   }
 
   await assert_outlet_access({
@@ -860,10 +860,10 @@ export async function updatePenjualanGofitku({
     throw new Error("Data penjualan tidak ditemukan.");
   }
 
-  const outlet_karyawan = await prisma.tbl_outlet_karyawan.findFirst({
+  const outlet_insanku = await prisma.tbl_outlet_insanku.findFirst({
     where: {
       uuid_outlet: trimmed_outlet_uuid,
-      uuid_karyawan: trimmed_employee_uuid,
+      uuid_insanku: trimmed_employee_uuid,
       deleted_at: null,
       outlet: {
         deleted_at: null,
@@ -875,8 +875,8 @@ export async function updatePenjualanGofitku({
     },
   });
 
-  if (!outlet_karyawan) {
-    throw new Error("Karyawan tidak terhubung dengan outlet yang dipilih.");
+  if (!outlet_insanku) {
+    throw new Error("InsanKu tidak terhubung dengan outlet yang dipilih.");
   }
 
   const product_row = trimmed_produk_uuid
@@ -909,7 +909,7 @@ export async function updatePenjualanGofitku({
       uuid: trimmed_uuid,
     },
     data: {
-      uuid_outlet_karyawan: outlet_karyawan.uuid,
+      uuid_outlet_insanku: outlet_insanku.uuid,
       uuid_produk_gofitku: trimmed_produk_uuid || null,
       name: fallback_name,
       date: parsed_date,
@@ -950,7 +950,7 @@ export async function deletePenjualanGofitku({
       deleted_at: null,
       ...(trimmed_outlet_uuid
         ? {
-            outlet_karyawan: {
+            outlet_insanku: {
               uuid_outlet: trimmed_outlet_uuid,
             },
           }
@@ -983,7 +983,7 @@ const exec_file = promisify(execFile);
 const invalid_excel_format_message =
   "Format Excel tidak sesuai yang diharapkan. Pastikan file .xlsx memiliki kolom outlet dan target.";
 
-export function normalize_target_outlet_name(value) {
+function normalize_target_outlet_name(value) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
@@ -992,7 +992,7 @@ export function normalize_target_outlet_name(value) {
     .replace(/[^a-z0-9 ]/g, "");
 }
 
-export function parse_target_date(date, {
+function parse_target_date(date, {
   label = "Tanggal target",
 } = {}) {
   const trimmed_date = String(date ?? "").trim();
@@ -1013,13 +1013,13 @@ export function parse_target_date(date, {
   return parsed_date;
 }
 
-export function assert_valid_range(start_date, end_date) {
+function assert_valid_range(start_date, end_date) {
   if (end_date < start_date) {
     throw new Error("Tanggal akhir tidak boleh lebih kecil dari tanggal awal.");
   }
 }
 
-export async function parse_target_report_workbook(file_path) {
+async function parse_target_report_workbook(file_path) {
   try {
     const parser_path = path.join(process.cwd(), "src/scripts/parse_target_report.py");
     const { stdout, stderr } = await exec_file("python3", [parser_path, file_path], {
@@ -1042,7 +1042,7 @@ export async function parse_target_report_workbook(file_path) {
   }
 }
 
-export async function get_target_outlet_maps() {
+async function get_target_outlet_maps() {
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
@@ -1077,7 +1077,7 @@ function get_source_end_date_filter(source_start_date, source_end_date) {
   return [{ end_date: source_end_date }];
 }
 
-export async function bulkUpdateTargetDates({
+async function bulkUpdateTargetDates({
   model,
   label,
   source_start_date,
@@ -1197,7 +1197,7 @@ export async function bulkUpdateTargetDates({
   });
 }
 
-export async function bulkDeleteTargetPeriod({
+async function bulkDeleteTargetPeriod({
   model,
   label,
   source_start_date,

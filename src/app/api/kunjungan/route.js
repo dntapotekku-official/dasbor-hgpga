@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
-import { requireRole, requireSession } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import {
   createKunjungan,
   deleteKunjungan,
@@ -12,7 +12,7 @@ import {
 
 export async function GET() {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -37,7 +37,7 @@ export async function GET() {
 
 export async function PUT(request) {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -65,13 +65,14 @@ export async function PUT(request) {
 export async function POST(request) {
   return import_outlet_report(request, {
     import_handler: importKunjungan,
+    menu_key: "pengaturan-kunjungan",
     temp_prefix: "kunjungan",
   });
 }
 
 export async function PATCH(request) {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -99,7 +100,7 @@ export async function PATCH(request) {
 
 export async function DELETE(request) {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
 
     if (unauthorized_response) {
       return unauthorized_response;

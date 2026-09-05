@@ -90,13 +90,13 @@ export default function AiApiPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Sinkronkan dan pantau data outlet, karyawan, dan admin."
+          description="Sinkronkan dan pantau data outlet, InsanKu, dan admin, serta kelola pengaturan sistem lainnya."
         />
       </div>
       <div className="px-4 lg:px-6">
         <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
-            <CardTitle>AI API</CardTitle>
+            <CardTitle>API AI</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handle_submit} className="max-w-3xl space-y-5">

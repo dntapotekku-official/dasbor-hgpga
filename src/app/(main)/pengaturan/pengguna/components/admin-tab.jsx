@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import OptionDropdown from "@/components/option-dropdown";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
 import usePagination from "@/hooks/usePagination";
@@ -15,6 +16,7 @@ import {
   admin_account_roles,
   isSuperadmin,
 } from "@/lib/role";
+import { menu_access_options } from "@/lib/menu-access";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +36,8 @@ export default function AdminTab() {
   const router = useRouter();
   const { role, user } = useAuth();
   const [admin, setAdmin] = useState([]);
-  const { search, setSearch, filtered_items } = useSearch(admin);
+  const { search, setSearch, filtered_items } = useSearch(admin, ["name"]);
+  const [selected_role, setSelectedRole] = useState("all");
   const [selected_admin, setSelectedAdmin] = useState(null);
   const [deleting_admin, setDeletingAdmin] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
@@ -42,8 +45,15 @@ export default function AdminTab() {
   const [is_deleting_admin, setIsDeletingAdmin] = useState(false);
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
+  const role_filtered_items = useMemo(
+    () =>
+      selected_role === "all"
+        ? filtered_items
+        : filtered_items.filter((item) => item.role === selected_role),
+    [filtered_items, selected_role],
+  );
   const sorted_items = useMemo(() => {
-    return [...filtered_items].sort((a, b) => {
+    return [...role_filtered_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
 
       return String(a[sort_key] ?? "").localeCompare(
@@ -51,7 +61,7 @@ export default function AdminTab() {
         "id-ID",
       ) * direction;
     });
-  }, [filtered_items, sort_direction, sort_key]);
+  }, [role_filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -87,15 +97,11 @@ export default function AdminTab() {
     value: admin_role,
     label: format_role_label(admin_role),
   }));
-  const has_superadmin = admin.some((item) => isSuperadmin(item.role));
-  const role_helper = isSuperadmin(role)
-    ? "Superadmin dapat mengelola seluruh role akun."
-    : has_superadmin
-      ? "Hanya superadmin yang dapat menetapkan role Superadmin."
-      : "Admin dapat menetapkan Superadmin pertama untuk aktivasi awal.";
+  const role_helper = "Superadmin dapat mengelola seluruh role akun.";
 
   const can_manage_admin = (row) =>
     !isSuperadmin(row?.role) || isSuperadmin(role);
+  const can_delete_admin = (row) => !isSuperadmin(row?.role);
 
   useEffect(() => {
     let should_ignore = false;
@@ -134,7 +140,7 @@ export default function AdminTab() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, setCurrentPage]);
+  }, [search, selected_role, setCurrentPage]);
 
   const handle_save = async (next_admin) => {
     const response = await fetch("/api/admin", {
@@ -147,6 +153,7 @@ export default function AdminTab() {
         name: next_admin.name,
         username: next_admin.username,
         role: next_admin.role,
+        menu_access_keys: next_admin.menu_access_keys,
       }),
     });
     const payload = await response.json();
@@ -177,6 +184,7 @@ export default function AdminTab() {
         username: new_admin.username,
         password: new_admin.password,
         role: new_admin.role,
+        menu_access_keys: new_admin.menu_access_keys,
       }),
     });
     const payload = await response.json();
@@ -239,8 +247,18 @@ export default function AdminTab() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari admin atau superadmin..."
+              placeholder="Cari nama admin..."
               className="w-full sm:max-w-sm"
+            />
+            <OptionDropdown
+              value={selected_role}
+              onValueChange={setSelectedRole}
+              options={[
+                { value: "all", label: "Semua role" },
+                ...admin_role_options,
+              ]}
+              ariaLabel="Filter role akun"
+              triggerClassName="w-full sm:w-48"
             />
             <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
               <Button
@@ -287,6 +305,7 @@ export default function AdminTab() {
                         onSort={toggle_sort}
                       />
                     </TableHead>
+                    <TableHead>Akses Menu</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -297,6 +316,13 @@ export default function AdminTab() {
                       <TableCell className="font-medium">{row.name}</TableCell>
                       <TableCell>{row.username}</TableCell>
                       <TableCell>{format_role_label(row.role)}</TableCell>
+                      <TableCell>
+                        {isSuperadmin(row.role)
+                          ? "Semua menu"
+                          : row.role === "admin"
+                            ? `${row.menu_access_keys?.length ?? 0} menu`
+                            : "Sesuai role"}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
                           {can_manage_admin(row) ? (
@@ -313,15 +339,17 @@ export default function AdminTab() {
                                 <PencilIcon className="size-4" />
                                 Edit
                               </Button>
-                              <Button
-                                type="button"
-                                variant="delete"
-                                size="sm"
-                                onClick={() => setDeletingAdmin(row)}
-                              >
-                                <Trash2Icon className="size-4" />
-                                Hapus
-                              </Button>
+                              {can_delete_admin(row) ? (
+                                <Button
+                                  type="button"
+                                  variant="delete"
+                                  size="sm"
+                                  onClick={() => setDeletingAdmin(row)}
+                                >
+                                  <Trash2Icon className="size-4" />
+                                  Hapus
+                                </Button>
+                              ) : null}
                             </>
                           ) : (
                             <span className="text-sm text-muted-foreground">
@@ -336,7 +364,7 @@ export default function AdminTab() {
               </Table>
             </div>
 
-            {filtered_items.length === 0 ? (
+            {role_filtered_items.length === 0 ? (
               <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
                 Tidak ada admin atau superadmin yang cocok dengan pencarian.
               </div>
@@ -344,7 +372,7 @@ export default function AdminTab() {
               <Pagination
                 current_page={current_page}
                 page_size={PAGE_SIZE}
-                total_items={filtered_items.length}
+                total_items={role_filtered_items.length}
                 total_pages={total_pages}
                 item_label="akun"
                 on_previous={previous_page}
@@ -379,6 +407,21 @@ export default function AdminTab() {
                 options: admin_role_options,
                 helper: role_helper,
               },
+              {
+                key: "menu_access_keys",
+                label: "Hak Akses Menu",
+                type: "multiselect",
+                placeholder: "Pilih menu yang dapat diakses",
+                options: menu_access_options,
+                selection_label: "menu",
+                search_placeholder: "Cari nama menu...",
+                empty_search_message: "Menu tidak ditemukan.",
+                disabled: (draft) => draft.role !== "admin",
+                helper: (draft) =>
+                  draft.role === "admin"
+                    ? "Admin hanya dapat membuka menu yang dipilih."
+                    : "Hak akses khusus hanya diterapkan pada role Admin.",
+              },
             ]}
             on_save={handle_save}
           />
@@ -394,6 +437,7 @@ export default function AdminTab() {
               username: "",
               password: "",
               role: "admin",
+              menu_access_keys: [],
             }}
             fields={[
               {
@@ -418,6 +462,21 @@ export default function AdminTab() {
                 placeholder: "Pilih role",
                 options: admin_role_options,
                 helper: role_helper,
+              },
+              {
+                key: "menu_access_keys",
+                label: "Hak Akses Menu",
+                type: "multiselect",
+                placeholder: "Pilih menu yang dapat diakses",
+                options: menu_access_options,
+                selection_label: "menu",
+                search_placeholder: "Cari nama menu...",
+                empty_search_message: "Menu tidak ditemukan.",
+                disabled: (draft) => draft.role !== "admin",
+                helper: (draft) =>
+                  draft.role === "admin"
+                    ? "Admin hanya dapat membuka menu yang dipilih."
+                    : "Hak akses khusus hanya diterapkan pada role Admin.",
               },
             ]}
             on_save={handle_create}

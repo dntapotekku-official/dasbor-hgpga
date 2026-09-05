@@ -630,25 +630,25 @@ export default function PenjualanGoFitKuPage() {
       const payload = await result.json();
 
       if (!result.ok || !payload.success) {
-        throw new Error(payload.message || "Gagal mengambil data export.");
+        throw new Error(payload.message || "Gagal mengambil data ekspor.");
       }
 
       const export_groups = payload.data?.outlet_groups ?? [];
 
       if (!export_groups.length) {
-        toast.error("Data penjualan belum tersedia untuk diexport.");
+        toast.error("Data penjualan belum tersedia untuk diekspor.");
         return;
       }
 
       if (!export_groups.some((group) => group.monthly_groups?.length)) {
-        toast.error("Data penjualan bulanan belum tersedia untuk diexport.");
+        toast.error("Data penjualan bulanan belum tersedia untuk diekspor.");
         return;
       }
 
       export_penjualan_gofitku(export_groups);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal export data penjualan.",
+        error instanceof Error ? error.message : "Gagal mengekspor data penjualan.",
       );
     }
   };
@@ -729,7 +729,7 @@ export default function PenjualanGoFitKuPage() {
                     className="bg-emerald-600 text-white hover:bg-emerald-700"
                   >
                     <FileSpreadsheetIcon className="size-4" />
-                    Export
+                    Ekspor
                   </Button>
                 </div>
               </div>
@@ -814,9 +814,9 @@ export default function PenjualanGoFitKuPage() {
               label: item.name,
             })),
             searchable: true,
-            search_placeholder: "Cari karyawan...",
-            empty_search_message: "Karyawan tidak ditemukan.",
-            aria_label: "Nama karyawan penjualan",
+            search_placeholder: "Cari InsanKu...",
+            empty_search_message: "InsanKu tidak ditemukan.",
+            aria_label: "Nama InsanKu penjualan",
           },
           {
             key: "produk_uuid",

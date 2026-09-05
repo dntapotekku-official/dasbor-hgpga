@@ -15,7 +15,6 @@ export default function BasketSizeTab() {
       delete_description_template="Target untuk range {range} akan dihapus dari daftar aktif."
       target_placeholder="Masukkan nilai target, contoh 2.08"
       target_helper="Gunakan titik untuk desimal, misalnya 2.08."
-      search_placeholder="Cari target..."
       target_value_format="decimal"
       import_date_mode="single"
     />

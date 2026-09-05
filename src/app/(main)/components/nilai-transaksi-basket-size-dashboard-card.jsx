@@ -73,6 +73,7 @@ function MetricHeading({ icon, title, description }) {
 export default function NilaiTransaksiBasketSizeDashboardCard({
   metrics,
   highest_nilai_transaksi_by_category = [],
+  showDetailLink = true,
 }) {
   return (
     <Card className="gap-0 overflow-hidden">
@@ -106,11 +107,11 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
             <SummaryValue
               label="Target"
-              value={<CurrencyValue value={metrics.nt_target} />}
+              value={<CurrencyValue value={metrics.nt_target} align="split" />}
             />
             <SummaryValue
               label="TPP (Bulan berjalan)"
-              value={<CurrencyValue value={metrics.nt_current_month_total_revenue} />}
+              value={<CurrencyValue value={metrics.nt_current_month_total_revenue} align="split" />}
             />
             <SummaryValue
               label="Dilayani (Bulan berjalan)"
@@ -118,15 +119,15 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
             />
             <SummaryValue
               label="Harian"
-              value={<CurrencyValue value={metrics.nt_daily} />}
+              value={<CurrencyValue value={metrics.nt_daily} align="split" />}
             />
             <SummaryValue
               label="Bulan berjalan"
-              value={<CurrencyValue value={metrics.nt_current_month} />}
+              value={<CurrencyValue value={metrics.nt_current_month} align="split" />}
             />
             <SummaryValue
               label="Bulan lalu"
-              value={<CurrencyValue value={metrics.nt_last_month} />}
+              value={<CurrencyValue value={metrics.nt_last_month} align="split" />}
             />
             <SummaryValue
               label="Growth"
@@ -156,7 +157,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
                       {item.outlet_name}
                     </span>
                     <span className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
-                      <CurrencyValue value={item.value} />
+                      <CurrencyValue value={item.value} align="split" />
                     </span>
                   </div>
                 ))}
@@ -216,7 +217,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
         </section>
       </div>
 
-      <CardFooter className="border-t p-2">
+      {showDetailLink ? <CardFooter className="border-t p-2">
         <Link
           href="/nilai-transaksi-basket-size"
           className={buttonVariants({
@@ -228,7 +229,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
           Lihat Detail
           <ArrowRightIcon data-icon="inline-end" />
         </Link>
-      </CardFooter>
+      </CardFooter> : null}
     </Card>
   );
 }

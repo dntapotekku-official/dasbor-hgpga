@@ -15,7 +15,6 @@ export default function NilaiTransaksiTab() {
       delete_description_template="Target untuk range {range} akan dihapus dari daftar aktif."
       target_placeholder="Masukkan nilai target, contoh 150000"
       target_helper="Target nilai transaksi menggunakan angka bulat tanpa desimal."
-      search_placeholder="Cari target..."
       target_value_format="currency"
       import_date_mode="single"
     />

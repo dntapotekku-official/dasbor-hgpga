@@ -208,6 +208,7 @@ export default function PengaturanRowSheet({
                   <button
                     type="button"
                     id={field.key}
+                    disabled={is_disabled}
                     onClick={() =>
                       setOpenFieldKey((current) => {
                         const next_key = current === field.key ? null : field.key;
@@ -222,7 +223,7 @@ export default function PengaturanRowSheet({
                         return next_key;
                       })
                     }
-                    className="flex w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="flex w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-left text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span className="truncate text-foreground">
                       {Array.isArray(draft[field.key]) && draft[field.key].length > 0
@@ -231,7 +232,7 @@ export default function PengaturanRowSheet({
                     </span>
                     <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
                   </button>
-                  {open_field_key === field.key ? (
+                  {open_field_key === field.key && !is_disabled ? (
                     <div className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-2 shadow-lg">
                       <div className="relative p-1">
                         <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />

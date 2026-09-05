@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import {
-  getKaryawan,
-  syncKaryawan,
-  updateKaryawan,
-} from "@/services/karyawanService";
-import { requireRole } from "@/lib/auth";
+  getInsanKu,
+  syncInsanKu,
+  updateInsanKu,
+} from "@/services/insanKuService";
+import { requireMenuAccess } from "@/lib/auth";
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
-    const data = await getKaryawan();
+    const data = await getInsanKu();
 
     return NextResponse.json({
       success: true,
@@ -33,13 +33,13 @@ export const GET = async () => {
 
 export const POST = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
-    const data = await syncKaryawan();
+    const data = await syncInsanKu();
 
     return NextResponse.json({
       success: true,
@@ -59,22 +59,22 @@ export const POST = async () => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = await updateKaryawan({
-      uuid_karyawan: body?.uuid_karyawan,
+    const data = await updateInsanKu({
+      uuid_insanku: body?.uuid_insanku,
       name: body?.name,
       username: body?.username,
       password: body?.password,
       outlet_placements: body?.outlet_placements,
       outlet_uuids: body?.outlet_uuids,
-      is_skip_sync_karyawan: body?.is_skip_sync_karyawan,
-      is_skip_sync_outlet_karyawan: body?.is_skip_sync_outlet_karyawan,
+      is_skip_sync_insanku: body?.is_skip_sync_insanku,
+      is_skip_sync_outlet_insanku: body?.is_skip_sync_outlet_insanku,
     });
 
     return NextResponse.json(data);

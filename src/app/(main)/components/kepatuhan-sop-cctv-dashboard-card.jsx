@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 const default_outlet = { value: "semua-outlet", label: "Semua Outlet" };
 const format_number = (value) => Number(value || 0).toLocaleString("id-ID");
 
-export default function KepatuhanSopCctvDashboardCard() {
+export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true }) {
   const current_day_range = useMemo(() => {
     const today = new Date();
     const today_param = today.toISOString().slice(0, 10);
@@ -294,7 +294,7 @@ export default function KepatuhanSopCctvDashboardCard() {
           </div>
         )}
       </CardContent>
-      <CardFooter className="p-2">
+      {showDetailLink ? <CardFooter className="p-2">
         <Button
           nativeButton={false}
           variant="ghost"
@@ -305,7 +305,7 @@ export default function KepatuhanSopCctvDashboardCard() {
           Lihat Detail
           <ArrowRightIcon data-icon="inline-end" />
         </Button>
-      </CardFooter>
+      </CardFooter> : null}
     </Card>
   );
 }

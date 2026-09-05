@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
-import { hasRoleAccess, normalizeRole } from "@/lib/role"
+import { canAccessMenu } from "@/lib/menu-access"
 import {
   Sidebar,
   SidebarContent,
@@ -26,12 +26,12 @@ import {
   CrosshairIcon,
   IdCardIcon,
   LayoutDashboardIcon,
-  PackageSearchIcon,
+  PackageIcon,
   PillBottleIcon,
   Settings2Icon,
   StoreIcon,
   UserRoundCogIcon,
-  UserSearchIcon,
+  UsersRoundIcon,
   ShirtIcon,
 } from "lucide-react"
 
@@ -43,7 +43,8 @@ const data = {
       icon: (
         <LayoutDashboardIcon />
       ),
-      roles: ["admin", "viewer", "member"],
+      roles: ["member"],
+      menuKey: "dashboard",
     },
     {
       title: "Kepuasan Internal",
@@ -51,7 +52,7 @@ const data = {
       icon: (
         <ChartBarIcon />
       ),
-      roles: ["admin", "viewer"],
+      menuKey: "kepuasan-internal",
     },
     {
       title: "Kepatuhan SOP CCTV",
@@ -59,7 +60,7 @@ const data = {
       icon: (
         <CctvIcon />
       ),
-      roles: ["admin", "viewer"],
+      menuKey: "kepatuhan-sop-cctv",
     },
     {
       title: "Penjualan GoFitKu",
@@ -67,7 +68,8 @@ const data = {
       icon: (
         <PillBottleIcon />
       ),
-      roles: ["admin", "viewer", "member"],
+      roles: ["member"],
+      menuKey: "penjualan-gofitku",
     },
     {
       title: "Nilai Transaksi & Basket Size",
@@ -75,7 +77,8 @@ const data = {
       icon: (
         <BadgeDollarSignIcon />
       ),
-      roles: ["admin", "viewer", "member"],
+      roles: ["member"],
+      menuKey: "nilai-transaksi-basket-size",
     },
     {
       title: "Nilai Magang",
@@ -83,7 +86,7 @@ const data = {
       icon: (
         <ClipboardCheckIcon />
       ),
-      roles: ["admin", "viewer"],
+      menuKey: "nilai-magang",
     },
     {
       title: "Atribut InsanKu",
@@ -91,7 +94,8 @@ const data = {
       icon: (
         <IdCardIcon />
       ),
-      roles: ["admin", "viewer", "member"],
+      roles: ["member"],
+      menuKey: "atribut-insanku",
     },
     {
       title: "Pengaturan",
@@ -105,42 +109,49 @@ const data = {
           url: "/pengaturan/pengguna",
           icon: <UserRoundCogIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-pengguna",
         },
         {
           title: "Outlet",
           url: "/pengaturan/outlet",
           icon: <StoreIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-outlet",
         },
         {
           title: "Kunjungan",
           url: "/pengaturan/kunjungan",
-          icon: <UserSearchIcon />,
+          icon: <UsersRoundIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-kunjungan",
         },
         {
           title: "Produk Gofitku",
           url: "/pengaturan/produk-gofitku",
-          icon: <PackageSearchIcon />,
+          icon: <PackageIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-produk-gofitku",
         },
         {
           title: "Target",
           url: "/pengaturan/target",
           icon: <CrosshairIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-target",
         },
         {
           title: "Atribut",
           url: "/pengaturan/atribut",
           icon: <ShirtIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-atribut",
         },
         {
-          title: "API API",
+          title: "API AI",
           url: "/pengaturan/api-ai",
           icon: <BotMessageSquareIcon />,
           roles: ["admin"],
+          menuKey: "pengaturan-api-ai",
         },
       ],
     },
@@ -155,18 +166,24 @@ export function AppSidebar({
     name: user?.name ?? "Performance Report User",
     username: user?.username ?? user?.role ?? "user",
   };
-  const normalized_role = normalizeRole(user?.role ?? "member");
   const nav_items = data.navMain
-    .filter((item) => !item.roles || hasRoleAccess(normalized_role, item.roles))
     .map((item) => ({
       ...item,
       items: Array.isArray(item.items)
         ? item.items.filter(
             (child_item) =>
-              !child_item.roles || hasRoleAccess(normalized_role, child_item.roles),
+              !child_item.menuKey ||
+              canAccessMenu(user, child_item.menuKey, child_item.roles),
           )
         : undefined,
-    }));
+    }))
+    .filter((item) => {
+      if (Array.isArray(item.items)) {
+        return item.items.length > 0;
+      }
+
+      return !item.menuKey || canAccessMenu(user, item.menuKey, item.roles);
+    });
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>

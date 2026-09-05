@@ -14,7 +14,7 @@ import {
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireRole(["superadmin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -39,7 +39,7 @@ export const GET = async () => {
 
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireRole(["superadmin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -52,6 +52,7 @@ export const PATCH = async (request) => {
       name: body?.name,
       username: body?.username,
       role: body?.role,
+      menu_access_keys: body?.menu_access_keys,
       actor_role: current_user?.role,
     });
 
@@ -89,7 +90,7 @@ export const PATCH = async (request) => {
 
 export const PUT = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireRole(["superadmin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -102,6 +103,7 @@ export const PUT = async (request) => {
       username: body?.username,
       password: body?.password,
       role: body?.role,
+      menu_access_keys: body?.menu_access_keys,
       actor_role: current_user?.role,
     });
 
@@ -119,7 +121,7 @@ export const PUT = async (request) => {
 
 export const DELETE = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireRole(["superadmin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;

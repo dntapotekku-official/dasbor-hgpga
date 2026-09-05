@@ -297,105 +297,107 @@ export default function KepatuhanSopCctvPage() {
       </div>
       <div className="space-y-4 px-4 lg:px-6">
         <Card className="gap-0 border-t-2 border-t-primary/70">
-          <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="border-b">
             <CardTitle>Tren Harian</CardTitle>
-            <SyncActionButton
-              onConfirm={syncKepatuhanSopCCTVHandler}
-              description="Sinkronisasi akan memperbarui data kepatuhan SOP CCTV sesuai filter tanggal dan outlet yang sedang aktif."
-              isPending={sync_status === "loading"}
-              className="w-full sm:w-auto"
-            />
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(320px,360px)] sm:items-end lg:w-auto">
-              <div className="flex min-w-0 flex-col gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Outlet
-                </span>
-                <DropdownMenu
-                  open={is_outlet_menu_open}
-                  onOpenChange={(open) => {
-                    setIsOutletMenuOpen(open);
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="grid w-full gap-3 sm:grid-cols-[minmax(220px,320px)_minmax(320px,360px)] sm:items-end lg:w-auto">
+                <div className="flex min-w-0 flex-col gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Outlet
+                  </span>
+                  <DropdownMenu
+                    open={is_outlet_menu_open}
+                    onOpenChange={(open) => {
+                      setIsOutletMenuOpen(open);
 
-                    if (!open) {
-                      setOutletSearch("");
-                    }
-                  }}
-                >
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-between bg-card"
-                      />
-                    }
-                  >
-                    <span className="truncate">{selected_outlet_label}</span>
-                    <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[320px]">
-                    <div className="relative p-1">
-                      <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={outlet_search}
-                        onChange={(event) => setOutletSearch(event.target.value)}
-                        onKeyDown={(event) => event.stopPropagation()}
-                        placeholder="Cari outlet..."
-                        className="h-9 pl-8"
-                      />
-                    </div>
-                    <DropdownMenuRadioGroup
-                      value={active_outlet}
-                      onValueChange={(outlet) => {
-                        setSelectedOutlet(outlet);
-                        setIsOutletMenuOpen(false);
+                      if (!open) {
                         setOutletSearch("");
-                      }}
+                      }
+                    }}
+                  >
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-between bg-card"
+                        />
+                      }
                     >
-                      {filtered_outlet_options.map((outlet) => (
-                        <DropdownMenuRadioItem
-                          key={outlet.value}
-                          value={outlet.value}
-                          className="py-2 text-sm"
-                        >
-                          {outlet.label}
-                        </DropdownMenuRadioItem>
-                      ))}
-                      {!filtered_outlet_options.length ? (
-                        <div className="px-2 py-3 text-center text-sm text-muted-foreground">
-                          Outlet tidak ditemukan.
-                        </div>
-                      ) : null}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="flex min-w-0 flex-col gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Rentang Tanggal
-                </span>
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
-                  <Input
-                    type="date"
-                    value={start_date}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    className="bg-card"
-                    aria-label="Mulai tanggal"
-                  />
-                  <div className="flex items-center justify-center text-muted-foreground">
-                    <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
-                    <span className="sr-only">sampai</span>
+                      <span className="truncate">{selected_outlet_label}</span>
+                      <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[320px]">
+                      <div className="relative p-1">
+                        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={outlet_search}
+                          onChange={(event) => setOutletSearch(event.target.value)}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          placeholder="Cari outlet..."
+                          className="h-9 pl-8"
+                        />
+                      </div>
+                      <DropdownMenuRadioGroup
+                        value={active_outlet}
+                        onValueChange={(outlet) => {
+                          setSelectedOutlet(outlet);
+                          setIsOutletMenuOpen(false);
+                          setOutletSearch("");
+                        }}
+                      >
+                        {filtered_outlet_options.map((outlet) => (
+                          <DropdownMenuRadioItem
+                            key={outlet.value}
+                            value={outlet.value}
+                            className="py-2 text-sm"
+                          >
+                            {outlet.label}
+                          </DropdownMenuRadioItem>
+                        ))}
+                        {!filtered_outlet_options.length ? (
+                          <div className="px-2 py-3 text-center text-sm text-muted-foreground">
+                            Outlet tidak ditemukan.
+                          </div>
+                        ) : null}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex min-w-0 flex-col gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Rentang Tanggal
+                  </span>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+                    <Input
+                      type="date"
+                      value={start_date}
+                      onChange={(event) => setStartDate(event.target.value)}
+                      className="bg-card"
+                      aria-label="Mulai tanggal"
+                    />
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                      <span className="sr-only">sampai</span>
+                    </div>
+                    <Input
+                      type="date"
+                      value={end_date}
+                      onChange={(event) => setEndDate(event.target.value)}
+                      className="bg-card"
+                      aria-label="Sampai tanggal"
+                    />
                   </div>
-                  <Input
-                    type="date"
-                    value={end_date}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    className="bg-card"
-                    aria-label="Sampai tanggal"
-                  />
                 </div>
               </div>
+              <SyncActionButton
+                onConfirm={syncKepatuhanSopCCTVHandler}
+                description="Sinkronisasi akan memperbarui data kepatuhan SOP CCTV sesuai filter tanggal dan outlet yang sedang aktif."
+                isPending={sync_status === "loading"}
+                className="w-full shrink-0 lg:w-auto"
+              />
             </div>
             {chart_data.length || !table_rows.length ? (
               <ChartBarMultiple

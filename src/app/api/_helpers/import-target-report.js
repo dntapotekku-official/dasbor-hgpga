@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { NextResponse } from "next/server";
 
-import { requireRole } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 
 export async function import_target_report(request, {
   import_handler,
@@ -14,7 +14,7 @@ export async function import_target_report(request, {
   let temp_file_path = "";
 
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
     if (unauthorized_response) {
       return unauthorized_response;

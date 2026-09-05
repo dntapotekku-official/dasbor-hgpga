@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { requireRole } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import {
   createAtribut,
   deleteAtribut,
   getAtributMaster,
+  reorderAtribut,
   updateAtribut,
-} from "@/services/atributInsankuService";
+} from "@/services/atributInsanKuService";
 
 export const GET = async () => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-atribut");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -35,7 +36,7 @@ export const GET = async () => {
 
 export const PUT = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-atribut");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -61,9 +62,34 @@ export const PUT = async (request) => {
   }
 };
 
+export const POST = async (request) => {
+  try {
+    const unauthorized_response = await requireMenuAccess("pengaturan-atribut");
+
+    if (unauthorized_response) {
+      return unauthorized_response;
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const data = await reorderAtribut({
+      ordered_uuids: body?.ordered_uuids,
+    });
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
+      },
+      { status: 500 },
+    );
+  }
+};
+
 export const PATCH = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-atribut");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -92,7 +118,7 @@ export const PATCH = async (request) => {
 
 export const DELETE = async (request) => {
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess("pengaturan-atribut");
 
     if (unauthorized_response) {
       return unauthorized_response;

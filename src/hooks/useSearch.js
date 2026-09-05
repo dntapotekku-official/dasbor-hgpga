@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-export default function useSearch(items) {
+export default function useSearch(items, search_fields) {
   const [search, setSearch] = useState("");
 
   const filtered_items = useMemo(() => {
@@ -13,11 +13,16 @@ export default function useSearch(items) {
     }
 
     return items.filter((item) =>
-      Object.values(item).some((value) =>
-        String(value).toLowerCase().includes(keyword),
-      ),
+      search_fields.some((field) => {
+        const value = item?.[field];
+        const values = Array.isArray(value) ? value : [value];
+
+        return values.some((entry) =>
+          String(entry ?? "").toLowerCase().includes(keyword),
+        );
+      }),
     );
-  }, [items, search]);
+  }, [items, search, search_fields]);
 
   return {
     search,

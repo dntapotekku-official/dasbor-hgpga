@@ -1,30 +1,60 @@
 import { prisma } from "@/lib/prisma";
-import { normalizeRole } from "@/lib/role";
+import { hashPassword, verifyPassword } from "@/lib/password";
+import { isAdminAccountRole, normalizeRole } from "@/lib/role";
 
 export default async function authenticateUser({ username, password }) {
-  let user = await prisma.tbl_admin.findUnique({
-    where: { username },
-  });
-  let role = "ADMIN";
+  const normalized_username = String(username ?? "").trim();
+  const normalized_password = String(password ?? "");
 
-  if (!user) {
-    user = await prisma.tbl_karyawan.findUnique({
-      where: { username },
-    });
-    role = "VIEWER";
-  }
-
-  if (!user || user.password !== password) {
+  if (!normalized_username || !normalized_password) {
     throw new Error("Username atau kata sandi salah.");
   }
 
+  let user = await prisma.tbl_admin.findFirst({
+    where: { username: normalized_username, deleted_at: null },
+  });
+  const is_admin_account = Boolean(user);
+
+  if (!user) {
+    user = await prisma.tbl_insanku.findFirst({
+      where: { username: normalized_username, deleted_at: null },
+    });
+  }
+
+  const password_result = await verifyPassword(normalized_password, user?.password);
+
+  if (!user || !password_result.valid) {
+    throw new Error("Username atau kata sandi salah.");
+  }
+
+  if (password_result.needs_rehash) {
+    const hashed_password = await hashPassword(normalized_password);
+
+    if (is_admin_account) {
+      await prisma.tbl_admin.update({
+        where: { uuid: user.uuid },
+        data: { password: hashed_password },
+      });
+    } else {
+      await prisma.tbl_insanku.update({
+        where: { uuid: user.uuid },
+        data: { password: hashed_password },
+      });
+    }
+  }
+
+  const role = is_admin_account ? normalizeRole(user.role) : "member";
+
+  if (is_admin_account && !isAdminAccountRole(role)) {
+    throw new Error("Role akun admin tidak valid.");
+  }
+
   return {
-    user,
     session_payload: {
       uuid: user.uuid,
       username: user.username,
       name: user.name,
-      role: user.role ?? role,
+      role,
     },
   };
 }
@@ -36,73 +66,79 @@ export async function updateOwnPassword({
   new_password,
   confirm_password,
 }) {
-  const trimmed_current_password = String(current_password ?? "").trim();
-  const trimmed_new_password = String(new_password ?? "").trim();
-  const trimmed_confirm_password = String(confirm_password ?? "").trim();
+  const normalized_current_password = String(current_password ?? "");
+  const normalized_new_password = String(new_password ?? "");
+  const normalized_confirm_password = String(confirm_password ?? "");
   const normalized_role = normalizeRole(user_role);
   const is_member = normalized_role === "member";
+
+  if (!is_member && !isAdminAccountRole(normalized_role)) {
+    throw new Error("Role pengguna tidak valid.");
+  }
 
   if (!user_uuid) {
     throw new Error("Sesi pengguna tidak valid.");
   }
 
-  if (!trimmed_current_password) {
+  if (!normalized_current_password) {
     throw new Error("Password saat ini wajib diisi.");
   }
 
-  if (!trimmed_new_password) {
+  if (!normalized_new_password) {
     throw new Error("Password baru wajib diisi.");
   }
 
-  if (trimmed_new_password.length < 6) {
+  if (normalized_new_password.length < 6) {
     throw new Error("Password baru minimal 6 karakter.");
   }
 
-  if (trimmed_new_password !== trimmed_confirm_password) {
+  if (normalized_new_password !== normalized_confirm_password) {
     throw new Error("Konfirmasi password baru tidak cocok.");
   }
 
-  const user = is_member
-    ? await prisma.tbl_karyawan.findFirst({
-        where: {
-          uuid: user_uuid,
-          deleted_at: null,
-        },
-        select: {
-          uuid: true,
-          password: true,
-        },
-      })
-    : await prisma.tbl_admin.findFirst({
-        where: {
-          uuid: user_uuid,
-          deleted_at: null,
-        },
-        select: {
-          uuid: true,
-          password: true,
-        },
-      });
+  const user_model = is_member ? prisma.tbl_insanku : prisma.tbl_admin;
+  const user = await user_model.findFirst({
+    where: {
+      uuid: user_uuid,
+      deleted_at: null,
+    },
+    select: {
+      uuid: true,
+      password: true,
+    },
+  });
 
   if (!user) {
     throw new Error("Akun tidak ditemukan.");
   }
 
-  if (String(user.password ?? "") !== trimmed_current_password) {
+  const current_password_result = await verifyPassword(
+    normalized_current_password,
+    user.password,
+  );
+
+  if (!current_password_result.valid) {
     throw new Error("Password saat ini salah.");
   }
 
-  if (trimmed_current_password === trimmed_new_password) {
+  const new_password_result = await verifyPassword(
+    normalized_new_password,
+    user.password,
+  );
+
+  if (new_password_result.valid) {
     throw new Error("Password baru harus berbeda dari password saat ini.");
   }
 
+  const hashed_password = await hashPassword(normalized_new_password);
+
   if (is_member) {
-    await prisma.tbl_karyawan.update({
+    await prisma.tbl_insanku.update({
       where: {
         uuid: user_uuid,
       },
       data: {
-        password: trimmed_new_password,
+        password: hashed_password,
         is_password_change: true,
       },
     });
@@ -112,7 +148,7 @@ export async function updateOwnPassword({
         uuid: user_uuid,
       },
       data: {
-        password: trimmed_new_password,
+        password: hashed_password,
         is_password_change: true,
       },
     });

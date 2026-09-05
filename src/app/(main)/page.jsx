@@ -21,6 +21,7 @@ import {
 } from "@/services/penjualanGofitkuService";
 import { getNilaiTransaksiBasketSize } from "@/services/nilaiTransaksiBasketSizeService";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
+import { canAccessMenu } from "@/lib/menu-access";
 import KepatuhanSopCctvDashboardCard from "./components/kepatuhan-sop-cctv-dashboard-card";
 import NilaiTransaksiBasketSizeDashboardCard from "./components/nilai-transaksi-basket-size-dashboard-card";
 
@@ -64,6 +65,14 @@ export default async function Page() {
   const product_chart_data = product_chart.chart_data ?? [];
   const outlet_chart_height = Math.max(320, outlet_chart_data.length * 42);
   const user_display_name = user?.name || user?.username || "User";
+  const can_view_kepuasan = canAccessMenu(user, "kepuasan-internal");
+  const can_view_cctv = canAccessMenu(user, "kepatuhan-sop-cctv");
+  const can_view_gofitku = canAccessMenu(user, "penjualan-gofitku", ["member"]);
+  const can_view_ntbs = canAccessMenu(
+    user,
+    "nilai-transaksi-basket-size",
+    ["member"],
+  );
   const highest_nilai_transaksi_by_category = outlet_category_slug_options
     .map((category) => {
       const row = (nilai_transaksi_basket_size.rows ?? [])
@@ -90,8 +99,7 @@ export default async function Page() {
         <PageHeading
           title={
             <span className="inline-flex items-center gap-2">
-              <HandIcon className="size-5 text-primary" />
-              Hai, {user_display_name}
+              Selamat Datang👋, {user_display_name}
             </span>
           }
           description="Ringkasan utama aktivitas dan data operasional dalam Performance Report."
@@ -108,7 +116,7 @@ export default async function Page() {
           data={pie_data}
           emptyMessage="Data kepuasan internal belum tersedia."
           icon={<PieChartIcon className="size-5 text-rose-700" />}
-          action={
+          action={can_view_kepuasan ? (
             <Link
               href="/kepuasan-internal"
               className={buttonVariants({
@@ -120,9 +128,9 @@ export default async function Page() {
               Lihat Detail
               <ArrowRightIcon data-icon="inline-end" />
             </Link>
-          }
+          ) : null}
         />
-        <KepatuhanSopCctvDashboardCard />
+        <KepatuhanSopCctvDashboardCard showDetailLink={can_view_cctv} />
       </div>
       <div className="px-4 lg:px-6">
         <Card>
@@ -152,7 +160,7 @@ export default async function Page() {
               emptyMessage="Diagram penjualan produk belum tersedia."
             />
           </div>
-          <CardFooter className="p-2">
+          {can_view_gofitku ? <CardFooter className="p-2">
             <Link
               href="/penjualan-gofitku"
               className={buttonVariants({
@@ -164,13 +172,14 @@ export default async function Page() {
               Lihat Detail
               <ArrowRightIcon data-icon="inline-end" />
             </Link>
-          </CardFooter>
+          </CardFooter> : null}
         </Card>
       </div>
       <div className="px-4 lg:px-6">
         <NilaiTransaksiBasketSizeDashboardCard
           metrics={nilai_transaksi_basket_size.overall_metrics}
           highest_nilai_transaksi_by_category={highest_nilai_transaksi_by_category}
+          showDetailLink={can_view_ntbs}
         />
       </div>
     </>

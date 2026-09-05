@@ -8,7 +8,7 @@ export async function getKepuasanInternalChart({ year } = {}) {
     throw new Error("Tahun tidak valid.");
   }
 
-  const [rows, total_karyawan] = await Promise.all([
+  const [rows, total_insanku] = await Promise.all([
     prisma.tbl_kepuasan_internal.findMany({
       where: {
         deleted_at: null,
@@ -24,7 +24,7 @@ export async function getKepuasanInternalChart({ year } = {}) {
       orderBy: { date: "asc" },
       select: { date: true, puas: true, tidak_puas: true },
     }),
-    prisma.tbl_karyawan.count({
+    prisma.tbl_insanku.count({
       where: { deleted_at: null },
     }),
   ]);
@@ -57,7 +57,7 @@ export async function getKepuasanInternalChart({ year } = {}) {
         month: labels[index],
         puas: item.puas,
         tidak_puas: item.tidak_puas,
-        total_karyawan,
+        total_insanku,
       })),
     },
   };

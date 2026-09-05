@@ -17,7 +17,6 @@ import PageHeading from "@/components/page-heading";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
 import usePagination from "@/hooks/usePagination";
-import useSearch from "@/hooks/useSearch";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -203,7 +202,25 @@ export default function KunjunganPage() {
   const [is_delete_pending, setIsDeletePending] = useState(false);
   const [sort_key, setSortKey] = useState("date");
   const [sort_direction, setSortDirection] = useState("desc");
-  const { search, setSearch, filtered_items } = useSearch(kunjungan);
+  const [selected_outlet, setSelectedOutlet] = useState("all");
+  const [selected_date, setSelectedDate] = useState("");
+  const outlet_filter_options = useMemo(
+    () => [
+      { value: "all", label: "Semua outlet" },
+      ...outlets.map((item) => ({ value: item.uuid, label: item.name })),
+    ],
+    [outlets],
+  );
+  const filtered_items = useMemo(
+    () =>
+      kunjungan.filter(
+        (item) =>
+          (selected_outlet === "all" ||
+            item.uuid_outlet === selected_outlet) &&
+          (!selected_date || item.date === selected_date),
+      ),
+    [kunjungan, selected_date, selected_outlet],
+  );
   const sorted_items = useMemo(() => {
     return [...filtered_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
@@ -287,7 +304,7 @@ export default function KunjunganPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, setCurrentPage]);
+  }, [selected_date, selected_outlet, setCurrentPage]);
 
   const handle_create = async (new_kunjungan) => {
     const result = await fetch("/api/kunjungan", {
@@ -458,11 +475,22 @@ export default function KunjunganPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <OptionDropdown
+                  value={selected_outlet}
+                  onValueChange={setSelectedOutlet}
+                  options={outlet_filter_options}
+                  searchable
+                  ariaLabel="Filter outlet kunjungan"
+                  searchPlaceholder="Cari outlet..."
+                  emptySearchMessage="Outlet tidak ditemukan."
+                  triggerClassName="w-full sm:w-64"
+                />
                 <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari outlet, dilayani, atau tanggal..."
-                  className="w-full sm:max-w-sm"
+                  type="date"
+                  value={selected_date}
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  aria-label="Filter tanggal kunjungan"
+                  className="w-full sm:w-44"
                 />
                 <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
                   <Button

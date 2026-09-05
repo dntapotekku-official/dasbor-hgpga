@@ -4,16 +4,17 @@ import path from "node:path";
 
 import { NextResponse } from "next/server";
 
-import { requireRole } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 
 export async function import_outlet_report(request, {
   import_handler,
+  menu_key,
   temp_prefix,
 }) {
   let temp_file_path = "";
 
   try {
-    const unauthorized_response = await requireRole(["admin"]);
+    const unauthorized_response = await requireMenuAccess(menu_key, ["admin"]);
 
     if (unauthorized_response) {
       return unauthorized_response;

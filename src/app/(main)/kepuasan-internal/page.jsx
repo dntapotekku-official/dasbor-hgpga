@@ -205,14 +205,14 @@ export default function KepuasanInternalPage() {
           series={filtered_data?.series ?? chart_data?.series ?? []}
           xAxisInterval={0}
           labelFormatter={({ value, payload }) => {
-            const total_karyawan = Number(payload?.total_karyawan) || 0;
+            const total_insanku = Number(payload?.total_insanku) || 0;
             const current_value = Number(value) || 0;
 
-            if (!total_karyawan) {
+            if (!total_insanku) {
               return `${current_value.toLocaleString("id-ID")} (0%)`;
             }
 
-            const percentage = (current_value / total_karyawan) * 100;
+            const percentage = (current_value / total_insanku) * 100;
             const formatted_percentage = percentage.toLocaleString("id-ID", {
               maximumFractionDigits: 1,
             });

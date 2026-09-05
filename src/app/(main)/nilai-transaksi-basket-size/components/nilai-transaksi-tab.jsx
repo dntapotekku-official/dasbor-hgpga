@@ -120,7 +120,7 @@ export default function NilaiTransaksiTab({
               {row.outlet_name}
             </TableCell>
             <TableCell>
-              <CurrencyValue value={row.nt_target} />
+              <CurrencyValue value={row.nt_target} align="split" />
             </TableCell>
             <TableCell className="text-right">
               <CurrencyValue value={row.nt_daily_total_revenue} align="right" />
@@ -141,13 +141,13 @@ export default function NilaiTransaksiTab({
                   : undefined
               }
             >
-              <CurrencyValue value={row.nt_daily} />
+              <CurrencyValue value={row.nt_daily} align="split" />
             </TableCell>
             <TableCell>
-              <CurrencyValue value={row.nt_current_month} />
+              <CurrencyValue value={row.nt_current_month} align="split" />
             </TableCell>
             <TableCell>
-              <CurrencyValue value={row.nt_last_month} />
+              <CurrencyValue value={row.nt_last_month} align="split" />
             </TableCell>
             <TableCell className="text-center">{formatPercentage(row.nt_growth)}</TableCell>
             <TableCell className={`text-center ${gapClassName(row.nt_gap_growth)}`}>
@@ -194,7 +194,7 @@ export default function NilaiTransaksiTab({
             {rows.length} outlet
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            <CurrencyValue value={category_metrics.nt_target} />
+            <CurrencyValue value={category_metrics.nt_target} align="split" />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
             <CurrencyValue
@@ -215,13 +215,13 @@ export default function NilaiTransaksiTab({
             {formatDecimal(category_metrics.nt_current_month_served, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            <CurrencyValue value={category_metrics.nt_daily} />
+            <CurrencyValue value={category_metrics.nt_daily} align="split" />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            <CurrencyValue value={category_metrics.nt_current_month} />
+            <CurrencyValue value={category_metrics.nt_current_month} align="split" />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            <CurrencyValue value={category_metrics.nt_last_month} />
+            <CurrencyValue value={category_metrics.nt_last_month} align="split" />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatPercentage(category_metrics.nt_growth)}

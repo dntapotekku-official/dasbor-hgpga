@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  EyeIcon,
+  EyeOffIcon,
+  GripVerticalIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
-import Pagination from "@/components/pagination";
+import OptionDropdown from "@/components/option-dropdown";
 import PageHeading from "@/components/page-heading";
-import SortableTableHead from "@/components/sortable-table-head";
 import { attribute_types } from "@/lib/atributInsanKu";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,23 +23,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
+import { get_socket } from "@/lib/socket-client";
 import PengaturanRowSheet from "../component/pengaturan-row-sheet";
 
-const PAGE_SIZE = 50;
+function sort_attributes_by_order(items) {
+  return [...items].sort((first, second) => {
+    const first_order = Number(first.order ?? 0);
+    const second_order = Number(second.order ?? 0);
+
+    if (first_order !== second_order) {
+      return first_order - second_order;
+    }
+
+    return String(first.name ?? "").localeCompare(String(second.name ?? ""), "id-ID");
+  });
+}
+
+function get_attribute_type_label(type) {
+  return attribute_types.find((item) => item.value === type)?.label ?? type;
+}
 
 export default function AtributPage() {
   const [attributes, setAttributes] = useState([]);
-  const { search, setSearch, filtered_items } = useSearch(attributes);
+  const { search, setSearch, filtered_items } = useSearch(attributes, ["name"]);
+  const [selected_type, setSelectedType] = useState("all");
   const [selected_attribute, setSelectedAttribute] = useState(null);
   const [pending_attribute_update, setPendingAttributeUpdate] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
@@ -41,42 +55,21 @@ export default function AtributPage() {
   const [attribute_to_delete, setAttributeToDelete] = useState(null);
   const [is_delete_pending, setIsDeletePending] = useState(false);
   const [is_type_change_pending, setIsTypeChangePending] = useState(false);
-  const [sort_key, setSortKey] = useState("name");
-  const [sort_direction, setSortDirection] = useState("asc");
+  const [dragged_attribute_uuid, setDraggedAttributeUuid] = useState(null);
+  const [drag_over_attribute_uuid, setDragOverAttributeUuid] = useState(null);
+  const [is_reorder_pending, setIsReorderPending] = useState(false);
 
-  const sorted_items = useMemo(() => {
-    return [...filtered_items].sort((first, second) => {
-      const direction = sort_direction === "asc" ? 1 : -1;
+  const ordered_filtered_items = useMemo(
+    () =>
+      sort_attributes_by_order(
+        selected_type === "all"
+          ? filtered_items
+          : filtered_items.filter((item) => item.type === selected_type),
+      ),
+    [filtered_items, selected_type],
+  );
 
-      return String(first[sort_key] ?? "").localeCompare(
-        String(second[sort_key] ?? ""),
-        "id-ID",
-      ) * direction;
-    });
-  }, [filtered_items, sort_direction, sort_key]);
-
-  const {
-    current_page,
-    setCurrentPage,
-    total_pages,
-    paginated_rows,
-    previous_page,
-    next_page,
-  } = usePagination(sorted_items, PAGE_SIZE);
-
-  const toggle_sort = (next_sort_key) => {
-    if (sort_key === next_sort_key) {
-      setSortDirection((current_direction) =>
-        current_direction === "asc" ? "desc" : "asc",
-      );
-      return;
-    }
-
-    setSortKey(next_sort_key);
-    setSortDirection("asc");
-  };
-
-  const fetch_attributes = async () => {
+  const fetch_attributes = useCallback(async () => {
     const result = await fetch("/api/atribut");
     const payload = await result.json();
 
@@ -85,7 +78,7 @@ export default function AtributPage() {
     }
 
     return payload.data?.data_atribut ?? [];
-  };
+  }, []);
 
   useEffect(() => {
     let should_ignore = false;
@@ -115,11 +108,31 @@ export default function AtributPage() {
     return () => {
       should_ignore = true;
     };
-  }, []);
+  }, [fetch_attributes]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [search, setCurrentPage]);
+    const socket = get_socket();
+
+    const refresh_attributes = () => {
+      void fetch_attributes()
+        .then((data) => setAttributes(data))
+        .catch((error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Gagal memperbarui data atribut realtime.",
+          );
+        });
+    };
+
+    socket.on("connect", refresh_attributes);
+    socket.on("attribute.master.changed", refresh_attributes);
+
+    return () => {
+      socket.off("connect", refresh_attributes);
+      socket.off("attribute.master.changed", refresh_attributes);
+    };
+  }, [fetch_attributes]);
 
   const handle_create = async (new_attribute) => {
     const result = await fetch("/api/atribut", {
@@ -141,7 +154,7 @@ export default function AtributPage() {
       return;
     }
 
-    setAttributes((current) => [payload.data, ...current]);
+    setAttributes((current) => sort_attributes_by_order([...current, payload.data]));
     toast.success(payload.message || "Atribut berhasil ditambahkan.");
   };
 
@@ -167,9 +180,67 @@ export default function AtributPage() {
     }
 
     setAttributes((current) =>
-      current.map((item) => (item.uuid === payload.data.uuid ? payload.data : item)),
+      sort_attributes_by_order(
+        current.map((item) => (item.uuid === payload.data.uuid ? payload.data : item)),
+      ),
     );
     toast.success(payload.message || "Atribut berhasil diperbarui.");
+  };
+
+  const persist_attribute_order = async (next_attributes) => {
+    const result = await fetch("/api/atribut", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ordered_uuids: next_attributes.map((item) => item.uuid),
+      }),
+    });
+    const payload = await result.json();
+
+    if (!result.ok || !payload.success) {
+      throw new Error(payload.message || "Gagal memperbarui urutan atribut.");
+    }
+  };
+
+  const reorder_attributes = async (source_uuid, target_uuid) => {
+    if (!source_uuid || !target_uuid || source_uuid === target_uuid) {
+      return;
+    }
+
+    const previous_attributes = attributes;
+    const source_index = attributes.findIndex((item) => item.uuid === source_uuid);
+    const target_index = attributes.findIndex((item) => item.uuid === target_uuid);
+
+    if (source_index < 0 || target_index < 0) {
+      return;
+    }
+
+    const next_attributes = [...attributes];
+    const [moved_attribute] = next_attributes.splice(source_index, 1);
+
+    next_attributes.splice(target_index, 0, moved_attribute);
+
+    const reordered_attributes = next_attributes.map((item, index) => ({
+      ...item,
+      order: index + 1,
+    }));
+
+    try {
+      setIsReorderPending(true);
+      setAttributes(reordered_attributes);
+      await persist_attribute_order(reordered_attributes);
+    } catch (error) {
+      setAttributes(previous_attributes);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal memperbarui urutan atribut.",
+      );
+    } finally {
+      setIsReorderPending(false);
+    }
   };
 
   const handle_save = async (next_attribute) => {
@@ -243,7 +314,7 @@ export default function AtributPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola master atribut yang dipakai oleh data karyawan InsanKu."
+          description="Kelola master atribut yang dipakai oleh data InsanKu."
         />
       </div>
       <div className="px-4 lg:px-6">
@@ -260,6 +331,16 @@ export default function AtributPage() {
                   placeholder="Cari atribut..."
                   className="w-full sm:max-w-sm"
                 />
+                <OptionDropdown
+                  value={selected_type}
+                  onValueChange={setSelectedType}
+                  options={[
+                    { value: "all", label: "Semua tipe" },
+                    ...attribute_types,
+                  ]}
+                  ariaLabel="Filter tipe atribut"
+                  triggerClassName="w-full sm:w-48"
+                />
                 <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
                   <Button
                     type="button"
@@ -272,90 +353,137 @@ export default function AtributPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-lg border">
-                <div className="max-h-[560px] overflow-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-card">
-                      <TableRow>
-                        <TableHead className="w-20">#</TableHead>
-                        <TableHead>
-                          <SortableTableHead
-                            label="Nama Atribut"
-                            sortKey="name"
-                            currentSortKey={sort_key}
-                            sortDirection={sort_direction}
-                            onSort={toggle_sort}
-                          />
-                        </TableHead>
-                        <TableHead>
-                          <SortableTableHead
-                            label="Jenis"
-                            sortKey="type"
-                            currentSortKey={sort_key}
-                            sortDirection={sort_direction}
-                            onSort={toggle_sort}
-                          />
-                        </TableHead>
-                        <TableHead className="w-[140px]">Lihat</TableHead>
-                        <TableHead className="w-[140px]">Edit</TableHead>
-                        <TableHead className="w-[180px]">Aksi</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginated_rows.map((row, index) => (
-                        <TableRow key={row.uuid}>
-                          <TableCell>
-                            {(current_page - 1) * PAGE_SIZE + index + 1}
-                          </TableCell>
-                          <TableCell className="font-medium">{row.name}</TableCell>
-                          <TableCell>{attribute_types.find((item) => item.value === row.type)?.label ?? row.type}</TableCell>
-                          <TableCell>{row.is_view ? "Ya" : "Tidak"}</TableCell>
-                          <TableCell>{row.is_edit ? "Ya" : "Tidak"}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedAttribute(row);
-                                  setIsSheetOpen(true);
-                                }}
-                              >
-                                <PencilIcon className="size-4" />
-                                Edit
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="delete"
-                                size="sm"
-                                onClick={() => setAttributeToDelete(row)}
-                              >
-                                <Trash2Icon className="size-4" />
-                                Hapus
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              <div className="rounded-lg border bg-muted/20 p-3">
+                {ordered_filtered_items.length ? (
+                  <div className="max-h-[560px] space-y-3 overflow-auto pr-1">
+                    {ordered_filtered_items.map((row, index) => (
+                      <div
+                        key={row.uuid}
+                        draggable={!is_reorder_pending}
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", row.uuid);
+                          setDraggedAttributeUuid(row.uuid);
+                        }}
+                        onDragEnter={() => setDragOverAttributeUuid(row.uuid)}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                          setDragOverAttributeUuid(row.uuid);
+                        }}
+                        onDragLeave={() => setDragOverAttributeUuid(null)}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const source_uuid =
+                            event.dataTransfer.getData("text/plain") ||
+                            dragged_attribute_uuid;
 
-                {filtered_items.length === 0 ? (
-                  <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
-                    Data tidak tersedia.
+                          setDraggedAttributeUuid(null);
+                          setDragOverAttributeUuid(null);
+                          void reorder_attributes(source_uuid, row.uuid);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedAttributeUuid(null);
+                          setDragOverAttributeUuid(null);
+                        }}
+                        className={`group flex overflow-hidden rounded-xl border bg-card shadow-sm transition ${
+                          drag_over_attribute_uuid === row.uuid
+                            ? "border-primary/70 bg-primary/5"
+                            : "border-border"
+                        } ${
+                          dragged_attribute_uuid === row.uuid
+                            ? "opacity-60"
+                            : "opacity-100"
+                          }`}
+                      >
+                        <div className="flex w-16 shrink-0 items-center justify-center border-r bg-muted/20">
+                          <button
+                            type="button"
+                            className="cursor-grab rounded-md p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                            aria-label={`Geser urutan ${row.name}`}
+                            disabled={is_reorder_pending}
+                          >
+                            <GripVerticalIcon className="size-5" />
+                          </button>
+                        </div>
+
+                        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4 sm:flex-row sm:items-center">
+                          <div className="flex min-w-0 flex-1 flex-col gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                                  #{index + 1}
+                                </span>
+                                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                                  {get_attribute_type_label(row.type)}
+                                </span>
+                              </div>
+                              <h3 className="truncate text-lg font-semibold">
+                                {row.name}
+                              </h3>
+                              <div className="flex flex-wrap gap-2 text-sm">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${
+                                    row.is_view
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {row.is_view ? (
+                                    <EyeIcon className="size-4" />
+                                  ) : (
+                                    <EyeOffIcon className="size-4" />
+                                  )}
+                                  {row.is_view ? "Bisa dilihat" : "Tidak ditampilkan"}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${
+                                    row.is_edit
+                                      ? "bg-blue-50 text-blue-700"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  <span className="relative inline-flex size-4 items-center justify-center">
+                                    <PencilIcon className="size-4" />
+                                    {!row.is_edit ? (
+                                      <span className="absolute h-0.5 w-5 rotate-45 rounded-full bg-current" />
+                                    ) : null}
+                                  </span>
+                                  {row.is_edit ? "Bisa diedit" : "Tidak bisa diedit"}
+                                </span>
+                              </div>
+                            </div>
+
+                          <div className="flex shrink-0 gap-2 sm:justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedAttribute(row);
+                                setIsSheetOpen(true);
+                              }}
+                            >
+                              <PencilIcon className="size-4" />
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="delete"
+                              size="sm"
+                              onClick={() => setAttributeToDelete(row)}
+                            >
+                              <Trash2Icon className="size-4" />
+                              Hapus
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <Pagination
-                    current_page={current_page}
-                    page_size={PAGE_SIZE}
-                    total_items={filtered_items.length}
-                    total_pages={total_pages}
-                    item_label="atribut"
-                    on_previous={previous_page}
-                    on_next={next_page}
-                  />
+                  <div className="rounded-lg bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                    Data tidak tersedia.
+                  </div>
                 )}
               </div>
 
@@ -475,7 +603,7 @@ export default function AtributPage() {
                   }
                 }}
                 title="Ubah jenis atribut"
-                description="Perubahan jenis atribut akan memengaruhi data karyawan yang sudah ada. Sistem akan memeriksa kecocokan data lama terlebih dahulu sebelum menyimpan perubahan."
+                description="Perubahan jenis atribut akan memengaruhi data InsanKu yang sudah ada. Sistem akan memeriksa kecocokan data lama terlebih dahulu sebelum menyimpan perubahan."
                 confirmLabel="Ya, ubah jenis"
                 isPending={is_type_change_pending}
                 onConfirm={handle_confirm_type_change}

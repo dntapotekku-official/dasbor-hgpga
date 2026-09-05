@@ -3,10 +3,12 @@ import {
   formatCurrencyNumber,
 } from "@/lib/nilaiTransaksiBasketSizeTable";
 
-export default function CurrencyValue({ value, className = "", align = "split" }) {
-  if (align === "right") {
+export default function CurrencyValue({ value, className = "", align = "left" }) {
+  if (align === "left" || align === "right") {
     return (
-      <span className={`block w-full text-right tabular-nums ${className}`}>
+      <span
+        className={`block w-full ${align === "right" ? "text-right" : "text-left"} tabular-nums ${className}`}
+      >
         {formatCurrency(value)}
       </span>
     );

@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { requireSession } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import { getAiApiSettings } from "@/services/apiAiService";
 import { getProdukGofitku } from "@/services/produkGofitkuService";
 import { scanNota } from "@/services/aiService";
 
 export const POST = async (request) => {
   try {
-    const unauthorized_response = await requireSession();
+    const unauthorized_response = await requireMenuAccess(
+      "penjualan-gofitku",
+      ["member"],
+    );
 
     if (unauthorized_response) {
       return unauthorized_response;

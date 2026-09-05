@@ -2,26 +2,28 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { dedupeByKey } from "@/lib/utils";
 import {
-  fetchKaryawanPayload,
-  getKaryawanSettingsData,
-  normalizeKaryawanRows,
-} from "@/services/karyawanService";
+  fetchInsanKuPayload,
+  getInsanKuSettingsData,
+  normalizeInsanKuRows,
+} from "@/services/insanKuService";
 import {
   fetchOutletPayload,
   normalizeOutletRows,
 } from "@/services/outletService";
 
-function buildRelationKey({ uuid_outlet, uuid_karyawan }) {
-  return `${uuid_outlet}:${uuid_karyawan}`;
+function buildRelationKey({ uuid_outlet, uuid_insanku }) {
+  return `${uuid_outlet}:${uuid_insanku}`;
 }
 
-export async function fetchOutletKaryawanPayload() {
+async function fetchOutletInsanKuPayload() {
   const url =
+    process.env.OUTLET_INSANKU_SLIP_GAJI_API_URL ??
+    process.env.OUTLET_INSANKU_SLIPGAJI_API_URL ??
     process.env.OUTLET_KARYAWAN_SLIP_GAJI_API_URL ??
     process.env.OUTLET_KARYAWAN_SLIPGAJI_API_URL;
 
   if (!url) {
-    throw new Error("Environment variable OUTLET_KARYAWAN_SLIP_GAJI_API_URL belum diatur.");
+    throw new Error("Environment variable OUTLET_INSANKU_SLIP_GAJI_API_URL belum diatur.");
   }
 
   const result = await fetch(url, {
@@ -32,7 +34,7 @@ export async function fetchOutletKaryawanPayload() {
 
   if (!result.ok) {
     throw new Error(
-      `Gagal menyinkronkan OUTLET_KARYAWAN_SLIP_GAJI_API_URL: ${result.status}`,
+      `Gagal menyinkronkan OUTLET_INSANKU_SLIP_GAJI_API_URL: ${result.status}`,
     );
   }
 
@@ -41,32 +43,32 @@ export async function fetchOutletKaryawanPayload() {
   return response.data ?? response;
 }
 
-export function normalizeOutletKaryawanRows({
-  outlet_karyawan_payload,
+function normalizeOutletInsanKuRows({
+  outlet_insanku_payload,
   valid_outlet_uuid_set,
-  valid_karyawan_uuid_set,
+  valid_insanku_uuid_set,
 }) {
-  const placement_rows = Object.entries(outlet_karyawan_payload).flatMap(
-    ([outlet_key, karyawan_list]) => {
+  const placement_rows = Object.entries(outlet_insanku_payload).flatMap(
+    ([outlet_key, insanku_list]) => {
       const [uuid_outlet] = outlet_key.split("_");
 
-      if (!Array.isArray(karyawan_list)) {
+      if (!Array.isArray(insanku_list)) {
         return [];
       }
 
-      return karyawan_list
+      return insanku_list
         .map((item) => {
-          const uuid_karyawan = String(
+          const uuid_insanku = String(
             item?.id_karyawans ?? item?.id_karyawan ?? item?.uuid ?? item?.id ?? "",
           ).trim();
 
-          if (!uuid_outlet || !uuid_karyawan) {
+          if (!uuid_outlet || !uuid_insanku) {
             return null;
           }
 
           return {
             uuid_outlet,
-            uuid_karyawan,
+            uuid_insanku,
           };
         })
         .filter(Boolean);
@@ -75,7 +77,7 @@ export function normalizeOutletKaryawanRows({
   const valid_rows = placement_rows.filter(
     (item) =>
       valid_outlet_uuid_set.has(item.uuid_outlet) &&
-      valid_karyawan_uuid_set.has(item.uuid_karyawan),
+      valid_insanku_uuid_set.has(item.uuid_insanku),
   );
 
   return {
@@ -83,33 +85,33 @@ export function normalizeOutletKaryawanRows({
     valid_rows,
     unique_rows: dedupeByKey(
       valid_rows,
-      (item) => `${item.uuid_outlet}:${item.uuid_karyawan}`,
+      (item) => `${item.uuid_outlet}:${item.uuid_insanku}`,
     ),
   };
 }
 
-export async function syncOutletKaryawan() {
-  const [outlet_payload, karyawan_payload, outlet_karyawan_payload] =
+export async function syncOutletInsanKu() {
+  const [outlet_payload, insanku_payload, outlet_insanku_payload] =
     await Promise.all([
       fetchOutletPayload(),
-      fetchKaryawanPayload(),
-      fetchOutletKaryawanPayload(),
+      fetchInsanKuPayload(),
+      fetchOutletInsanKuPayload(),
     ]);
   const unique_outlet = normalizeOutletRows(outlet_payload);
-  const unique_karyawan = normalizeKaryawanRows(karyawan_payload);
+  const unique_insanku = normalizeInsanKuRows(insanku_payload);
   const valid_outlet_uuid_set = new Set(
     unique_outlet.map((item) => item.uuid),
   );
-  const valid_karyawan_uuid_set = new Set(
-    unique_karyawan.map((item) => item.uuid),
+  const valid_insanku_uuid_set = new Set(
+    unique_insanku.map((item) => item.uuid),
   );
   const { placement_rows, valid_rows, unique_rows } =
-    normalizeOutletKaryawanRows({
-      outlet_karyawan_payload,
+    normalizeOutletInsanKuRows({
+      outlet_insanku_payload,
       valid_outlet_uuid_set,
-      valid_karyawan_uuid_set,
+      valid_insanku_uuid_set,
     });
-  const existing_karyawan = await prisma.tbl_karyawan.findMany({
+  const existing_insanku = await prisma.tbl_insanku.findMany({
     where: {
       deleted_at: null,
     },
@@ -117,35 +119,35 @@ export async function syncOutletKaryawan() {
       uuid: true,
     },
   });
-  const existing_karyawan_uuid_set = new Set(
-    existing_karyawan.map((item) => item.uuid),
+  const existing_insanku_uuid_set = new Set(
+    existing_insanku.map((item) => item.uuid),
   );
-  const existing_relations = await prisma.tbl_outlet_karyawan.findMany({
+  const existing_relations = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
     },
     select: {
       uuid_outlet: true,
-      uuid_karyawan: true,
+      uuid_insanku: true,
       is_skip_sync: true,
     },
   });
-  const skipped_placement_karyawan_uuid_set = new Set(
+  const skipped_placement_insanku_uuid_set = new Set(
     existing_relations
       .filter((item) => item.is_skip_sync)
-      .map((item) => item.uuid_karyawan),
+      .map((item) => item.uuid_insanku),
   );
-  const syncable_outlet_karyawan = unique_rows
-    .filter((item) => existing_karyawan_uuid_set.has(item.uuid_karyawan))
-    .filter((item) => !skipped_placement_karyawan_uuid_set.has(item.uuid_karyawan));
+  const syncable_outlet_insanku = unique_rows
+    .filter((item) => existing_insanku_uuid_set.has(item.uuid_insanku))
+    .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
 
   await prisma.$transaction(async (tx) => {
-    for (const item of syncable_outlet_karyawan) {
-      await tx.tbl_outlet_karyawan.upsert({
+    for (const item of syncable_outlet_insanku) {
+      await tx.tbl_outlet_insanku.upsert({
         where: {
-          uuid_outlet_uuid_karyawan: {
+          uuid_outlet_uuid_insanku: {
             uuid_outlet: item.uuid_outlet,
-            uuid_karyawan: item.uuid_karyawan,
+            uuid_insanku: item.uuid_insanku,
           },
         },
         update: {
@@ -154,26 +156,26 @@ export async function syncOutletKaryawan() {
         create: {
           uuid: randomUUID(),
           uuid_outlet: item.uuid_outlet,
-          uuid_karyawan: item.uuid_karyawan,
+          uuid_insanku: item.uuid_insanku,
         },
       });
     }
 
-    const current_relations = await tx.tbl_outlet_karyawan.findMany({
+    const current_relations = await tx.tbl_outlet_insanku.findMany({
       where: {
-        uuid_karyawan: {
-          notIn: Array.from(skipped_placement_karyawan_uuid_set),
+        uuid_insanku: {
+          notIn: Array.from(skipped_placement_insanku_uuid_set),
         },
         deleted_at: null,
       },
       select: {
         uuid_outlet: true,
-        uuid_karyawan: true,
+        uuid_insanku: true,
         is_skip_sync: true,
       },
     });
     const incoming_relation_key_set = new Set(
-      syncable_outlet_karyawan.map((item) => buildRelationKey(item)),
+      syncable_outlet_insanku.map((item) => buildRelationKey(item)),
     );
     const removed_relation_keys = current_relations
       .filter((item) => !item.is_skip_sync)
@@ -181,14 +183,14 @@ export async function syncOutletKaryawan() {
       .map((item) => buildRelationKey(item));
 
     if (removed_relation_keys.length > 0) {
-      const removed_relations = await tx.tbl_outlet_karyawan.findMany({
+      const removed_relations = await tx.tbl_outlet_insanku.findMany({
         where: {
           OR: removed_relation_keys.map((relation_key) => {
-            const [uuid_outlet, uuid_karyawan] = relation_key.split(":");
+            const [uuid_outlet, uuid_insanku] = relation_key.split(":");
 
             return {
               uuid_outlet,
-              uuid_karyawan,
+              uuid_insanku,
               deleted_at: null,
               is_skip_sync: false,
             };
@@ -204,7 +206,7 @@ export async function syncOutletKaryawan() {
       if (removed_relation_uuids.length > 0) {
         await tx.tbl_penjualan_gofitku.updateMany({
           where: {
-            uuid_outlet_karyawan: {
+            uuid_outlet_insanku: {
               in: removed_relation_uuids,
             },
             deleted_at: null,
@@ -217,12 +219,12 @@ export async function syncOutletKaryawan() {
 
       await Promise.all(
         removed_relation_keys.map((relation_key) => {
-          const [uuid_outlet, uuid_karyawan] = relation_key.split(":");
+          const [uuid_outlet, uuid_insanku] = relation_key.split(":");
 
-          return tx.tbl_outlet_karyawan.updateMany({
+          return tx.tbl_outlet_insanku.updateMany({
             where: {
               uuid_outlet,
-              uuid_karyawan,
+              uuid_insanku,
               deleted_at: null,
               is_skip_sync: false,
             },
@@ -238,41 +240,41 @@ export async function syncOutletKaryawan() {
   return {
     success: true,
     data: {
-      data_outlet_karyawan: unique_rows,
+      data_outlet_insanku: unique_rows,
     },
     summary: {
-      synced_outlet_karyawan: syncable_outlet_karyawan.length,
-      skipped_outlet_karyawan:
+      synced_outlet_insanku: syncable_outlet_insanku.length,
+      skipped_outlet_insanku:
         placement_rows.length -
         valid_rows.length +
-        skipped_placement_karyawan_uuid_set.size +
-        (unique_rows.length - syncable_outlet_karyawan.length),
+        skipped_placement_insanku_uuid_set.size +
+        (unique_rows.length - syncable_outlet_insanku.length),
     },
   };
 }
 
-export async function getOutletKaryawan() {
-  const data_karyawan = await getKaryawanSettingsData();
+export async function getOutletInsanKu() {
+  const data_insanku = await getInsanKuSettingsData();
 
   return {
-    data_outlet_karyawan: data_karyawan.map((item) => ({
-      uuid_karyawan: item.uuid,
+    data_outlet_insanku: data_insanku.map((item) => ({
+      uuid_insanku: item.uuid,
       name: item.name,
       username: item.username,
       outlet_uuids: item.outlet_uuids,
       outlet_names: item.outlet_names,
-      is_skip_sync_outlet_karyawan: item.is_skip_sync_outlet_karyawan,
+      is_skip_sync_outlet_insanku: item.is_skip_sync_outlet_insanku,
     })),
   };
 }
 
-export async function updateOutletKaryawan({
-  uuid_karyawan,
+export async function updateOutletInsanKu({
+  uuid_insanku,
   outlet_uuids = [],
-  is_skip_sync_outlet_karyawan,
+  is_skip_sync_outlet_insanku,
 }) {
-  if (!uuid_karyawan) {
-    throw new Error("UUID karyawan wajib diisi.");
+  if (!uuid_insanku) {
+    throw new Error("UUID InsanKu wajib diisi.");
   }
 
   const unique_outlet_uuids = Array.from(
@@ -283,20 +285,20 @@ export async function updateOutletKaryawan({
     ),
   );
 
-  if (Boolean(is_skip_sync_outlet_karyawan) && unique_outlet_uuids.length === 0) {
-    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika karyawan punya outlet.");
+  if (Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length === 0) {
+    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika InsanKu punya outlet.");
   }
 
-  const existing_karyawan = await prisma.tbl_karyawan.findUnique({
-    where: { uuid: uuid_karyawan },
+  const existing_insanku = await prisma.tbl_insanku.findUnique({
+    where: { uuid: uuid_insanku },
     select: {
       uuid: true,
       deleted_at: true,
     },
   });
 
-  if (!existing_karyawan || existing_karyawan.deleted_at) {
-    throw new Error("Data karyawan tidak ditemukan.");
+  if (!existing_insanku || existing_insanku.deleted_at) {
+    throw new Error("Data InsanKu tidak ditemukan.");
   }
 
   const valid_outlets = await prisma.tbl_outlet.findMany({
@@ -318,9 +320,9 @@ export async function updateOutletKaryawan({
   }
 
   await prisma.$transaction(async (tx) => {
-    const current_relations = await tx.tbl_outlet_karyawan.findMany({
+    const current_relations = await tx.tbl_outlet_insanku.findMany({
       where: {
-        uuid_karyawan,
+        uuid_insanku,
         deleted_at: null,
       },
       select: {
@@ -332,33 +334,33 @@ export async function updateOutletKaryawan({
     );
 
     for (const uuid_outlet of unique_outlet_uuids) {
-      await tx.tbl_outlet_karyawan.upsert({
+      await tx.tbl_outlet_insanku.upsert({
         where: {
-          uuid_outlet_uuid_karyawan: {
+          uuid_outlet_uuid_insanku: {
             uuid_outlet,
-            uuid_karyawan,
+            uuid_insanku,
           },
         },
         update: {
           deleted_at: null,
-          is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+          is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
         },
         create: {
           uuid: randomUUID(),
           uuid_outlet,
-          uuid_karyawan,
-          is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+          uuid_insanku,
+          is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
         },
       });
     }
 
-    await tx.tbl_outlet_karyawan.updateMany({
+    await tx.tbl_outlet_insanku.updateMany({
       where: {
-        uuid_karyawan,
+        uuid_insanku,
         deleted_at: null,
       },
       data: {
-        is_skip_sync: Boolean(is_skip_sync_outlet_karyawan),
+        is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
       },
     });
 
@@ -367,9 +369,9 @@ export async function updateOutletKaryawan({
     );
 
     if (outlet_uuids_to_remove.length > 0) {
-      await tx.tbl_outlet_karyawan.updateMany({
+      await tx.tbl_outlet_insanku.updateMany({
         where: {
-          uuid_karyawan,
+          uuid_insanku,
           uuid_outlet: {
             in: outlet_uuids_to_remove,
           },
@@ -381,14 +383,14 @@ export async function updateOutletKaryawan({
     }
   });
 
-  const refreshed_data = await getOutletKaryawan();
-  const updated_outlet_karyawan = refreshed_data.data_outlet_karyawan.find(
-    (item) => item.uuid_karyawan === uuid_karyawan,
+  const refreshed_data = await getOutletInsanKu();
+  const updated_outlet_insanku = refreshed_data.data_outlet_insanku.find(
+    (item) => item.uuid_insanku === uuid_insanku,
   );
 
   return {
     success: true,
-    data: updated_outlet_karyawan ?? null,
+    data: updated_outlet_insanku ?? null,
     message: "Data penempatan berhasil diperbarui.",
   };
 }

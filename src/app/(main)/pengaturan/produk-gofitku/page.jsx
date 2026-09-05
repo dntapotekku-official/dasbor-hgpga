@@ -32,7 +32,7 @@ const PAGE_SIZE = 50;
 
 export default function ProdukGofitkuPage() {
   const [produk, setProduk] = useState([]);
-  const { search, setSearch, filtered_items } = useSearch(produk);
+  const { search, setSearch, filtered_items } = useSearch(produk, ["name"]);
   const [selected_produk, setSelectedProduk] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_create_sheet_open, setIsCreateSheetOpen] = useState(false);

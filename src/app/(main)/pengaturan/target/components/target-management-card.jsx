@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import CurrencyValue from "@/components/currency-value";
+import OptionDropdown from "@/components/option-dropdown";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
 import usePagination from "@/hooks/usePagination";
@@ -107,14 +108,14 @@ export default function TargetManagementCard({
   delete_description_template,
   target_placeholder,
   target_helper,
-  search_placeholder,
   target_value_format = "integer",
   delete_payload_key = "uuid_target_metric",
   import_date_mode = "range",
 }) {
   const [target_rows, setTargetRows] = useState([]);
   const [outlet_options, setOutletOptions] = useState([]);
-  const [search, setSearch] = useState("");
+  const [selected_outlet, setSelectedOutlet] = useState("all");
+  const [selected_date, setSelectedDate] = useState("");
   const [selected_target, setSelectedTarget] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_create_sheet_open, setIsCreateSheetOpen] = useState(false);
@@ -128,25 +129,22 @@ export default function TargetManagementCard({
   const [is_delete_pending, setIsDeletePending] = useState(false);
   const [sort_key, setSortKey] = useState("outlet_name");
   const [sort_direction, setSortDirection] = useState("asc");
-  const filtered_items = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-
-    return target_rows.filter((row) => {
-      const formatted_target =
-        target_value_format === "decimal"
-          ? Number(row.target ?? 0).toLocaleString("id-ID", {
-              maximumFractionDigits: 2,
-            })
-          : format_integer_target(row.target);
-      return (
-        !keyword ||
-        String(row.outlet_name ?? "").toLowerCase().includes(keyword) ||
-        String(row.range_label ?? "").toLowerCase().includes(keyword) ||
-        String(row.target ?? "").toLowerCase().includes(keyword) ||
-        formatted_target.toLowerCase().includes(keyword)
-      );
-    });
-  }, [search, target_rows, target_value_format]);
+  const outlet_filter_options = useMemo(
+    () => [{ value: "all", label: "Semua outlet" }, ...outlet_options],
+    [outlet_options],
+  );
+  const filtered_items = useMemo(
+    () =>
+      target_rows.filter(
+        (row) =>
+          (selected_outlet === "all" ||
+            row.uuid_outlet === selected_outlet) &&
+          (!selected_date ||
+            (row.start_date <= selected_date &&
+              (!row.end_date || row.end_date >= selected_date))),
+      ),
+    [selected_date, selected_outlet, target_rows],
+  );
   const sorted_items = useMemo(() => {
     return [...filtered_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
@@ -221,7 +219,7 @@ export default function TargetManagementCard({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, setCurrentPage]);
+  }, [selected_date, selected_outlet, setCurrentPage]);
 
   const handle_create = async (new_target) => {
     const result = await fetch(endpoint, {
@@ -514,7 +512,7 @@ export default function TargetManagementCard({
 
   const format_target_value = (value) => {
     if (target_value_format === "currency") {
-      return <CurrencyValue value={value} />;
+      return <CurrencyValue value={value} align="left" />;
     }
 
     if (target_value_format === "decimal") {
@@ -550,11 +548,22 @@ export default function TargetManagementCard({
       <CardContent>
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <OptionDropdown
+              value={selected_outlet}
+              onValueChange={setSelectedOutlet}
+              options={outlet_filter_options}
+              searchable
+              ariaLabel={`Filter outlet ${target_label}`}
+              searchPlaceholder="Cari outlet..."
+              emptySearchMessage="Outlet tidak ditemukan."
+              triggerClassName="w-full sm:w-64"
+            />
             <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={search_placeholder}
-              className="w-full sm:max-w-sm"
+              type="date"
+              value={selected_date}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              aria-label={`Filter tanggal berlaku ${target_label}`}
+              className="w-full sm:w-44"
             />
             <div className="flex w-full flex-wrap justify-end gap-2 sm:ml-auto sm:w-auto">
               <Button
