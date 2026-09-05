@@ -37,6 +37,15 @@ function PeriodHeader({ label }) {
   );
 }
 
+function period_range_label(label) {
+  const normalized_label = String(label ?? "");
+  const separator_index = normalized_label.indexOf(" (");
+
+  return separator_index < 0
+    ? normalized_label
+    : normalized_label.slice(separator_index + 1);
+}
+
 export default function NilaiTransaksiTab({
   category_metrics,
   highest_daily,
@@ -48,6 +57,7 @@ export default function NilaiTransaksiTab({
 }) {
   const selected_date_label = labels?.selected_date_label || "tanggal terpilih";
   const selected_period_label = labels?.selected_period_label || "bulan ini";
+  const selected_period_range_label = period_range_label(selected_period_label);
   const previous_period_label = labels?.previous_period_label || "bulan lalu";
   const previous_month_label = labels?.previous_month_label || "bulan lalu";
 
@@ -68,9 +78,11 @@ export default function NilaiTransaksiTab({
             ["Target", "min-w-[140px]"],
             ["TPP (Harian)", "min-w-[160px]"],
             ["Dilayani (Harian)", "min-w-[140px]"],
+            [`TPP ${selected_period_range_label}`, "min-w-[160px]"],
+            [`Dilayani ${selected_period_range_label}`, "min-w-[150px]"],
             [`Harian (${selected_date_label})`, "min-w-[140px]"],
-            [previous_period_label, "min-w-[180px]"],
             [selected_period_label, "min-w-[180px]"],
+            [previous_period_label, "min-w-[180px]"],
             [`Growth % (dibanding ${previous_month_label})`, "min-w-[140px] text-center"],
             ["Gap Growth", "min-w-[120px] text-center"],
             ["% Dari Target", "min-w-[120px] text-center"],
@@ -116,6 +128,12 @@ export default function NilaiTransaksiTab({
             <TableCell className="text-right">
               {formatDecimal(row.nt_daily_served, 0)}
             </TableCell>
+            <TableCell className="text-right">
+              <CurrencyValue value={row.nt_current_month_total_revenue} align="right" />
+            </TableCell>
+            <TableCell className="text-right">
+              {formatDecimal(row.nt_current_month_served, 0)}
+            </TableCell>
             <TableCell
               className={
                 Number(row.nt_daily) === highest_daily
@@ -126,10 +144,10 @@ export default function NilaiTransaksiTab({
               <CurrencyValue value={row.nt_daily} />
             </TableCell>
             <TableCell>
-              <CurrencyValue value={row.nt_last_month} />
+              <CurrencyValue value={row.nt_current_month} />
             </TableCell>
             <TableCell>
-              <CurrencyValue value={row.nt_current_month} />
+              <CurrencyValue value={row.nt_last_month} />
             </TableCell>
             <TableCell className="text-center">{formatPercentage(row.nt_growth)}</TableCell>
             <TableCell className={`text-center ${gapClassName(row.nt_gap_growth)}`}>
@@ -187,14 +205,23 @@ export default function NilaiTransaksiTab({
           <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
             {formatDecimal(category_metrics.nt_daily_served, 0)}
           </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+            <CurrencyValue
+              value={category_metrics.nt_current_month_total_revenue}
+              align="right"
+            />
+          </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+            {formatDecimal(category_metrics.nt_current_month_served, 0)}
+          </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
             <CurrencyValue value={category_metrics.nt_daily} />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            <CurrencyValue value={category_metrics.nt_last_month} />
+            <CurrencyValue value={category_metrics.nt_current_month} />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
-            <CurrencyValue value={category_metrics.nt_current_month} />
+            <CurrencyValue value={category_metrics.nt_last_month} />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatPercentage(category_metrics.nt_growth)}

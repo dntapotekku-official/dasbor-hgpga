@@ -109,16 +109,24 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
               value={<CurrencyValue value={metrics.nt_target} />}
             />
             <SummaryValue
+              label="TPP (Bulan berjalan)"
+              value={<CurrencyValue value={metrics.nt_current_month_total_revenue} />}
+            />
+            <SummaryValue
+              label="Dilayani (Bulan berjalan)"
+              value={formatDecimal(metrics.nt_current_month_served, 0)}
+            />
+            <SummaryValue
               label="Harian"
               value={<CurrencyValue value={metrics.nt_daily} />}
             />
             <SummaryValue
-              label="Bulan lalu"
-              value={<CurrencyValue value={metrics.nt_last_month} />}
-            />
-            <SummaryValue
               label="Bulan berjalan"
               value={<CurrencyValue value={metrics.nt_current_month} />}
+            />
+            <SummaryValue
+              label="Bulan lalu"
+              value={<CurrencyValue value={metrics.nt_last_month} />}
             />
             <SummaryValue
               label="Growth"

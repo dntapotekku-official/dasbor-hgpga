@@ -121,7 +121,6 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
     }),
     prisma.tbl_karyawan.findMany({
       where: {
-        deleted_at: null,
         ...(is_member ? { uuid: user_uuid } : {}),
       },
       orderBy: {
@@ -131,6 +130,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         uuid: true,
         name: true,
         username: true,
+        deleted_at: true,
         atribut_karyawan: {
           where: {
             deleted_at: null,
@@ -171,6 +171,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         uuid: employee.uuid,
         name: employee.name,
         username: employee.username,
+        is_active: employee.deleted_at === null,
         attribute_values: Object.fromEntries(
           attributes.map((attribute) => [
             attribute.uuid,

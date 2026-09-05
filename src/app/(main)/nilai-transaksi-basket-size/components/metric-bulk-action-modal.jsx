@@ -41,10 +41,19 @@ export default function MetricBulkActionModal({
   const field_id = useId();
   const is_edit = action === "edit_date";
   const date_options = useMemo(
-    () => dates.map((date) => ({ value: date, label: format_date_label(date) })),
+    () =>
+      [...dates]
+        .sort((first_date, second_date) => second_date.localeCompare(first_date))
+        .map((date) => ({ value: date, label: format_date_label(date) })),
     [dates],
   );
-  const initial_date = dates.includes(default_date) ? default_date : dates[0] ?? "";
+  const sorted_dates = useMemo(
+    () => [...dates].sort((first_date, second_date) => second_date.localeCompare(first_date)),
+    [dates],
+  );
+  const initial_date = sorted_dates.includes(default_date)
+    ? default_date
+    : sorted_dates[0] ?? "";
   const [source_date, setSourceDate] = useState(initial_date);
   const [target_date, setTargetDate] = useState("");
 

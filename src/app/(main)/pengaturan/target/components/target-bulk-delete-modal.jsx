@@ -122,12 +122,6 @@ export default function TargetBulkDeleteModal({
               />
             </div>
 
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {selected_period
-                ? `${selected_period.count} target outlet akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.`
-                : "Belum ada periode target yang dapat dihapus."}
-            </div>
-
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close
                 render={

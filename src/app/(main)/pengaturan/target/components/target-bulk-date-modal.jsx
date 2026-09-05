@@ -44,7 +44,10 @@ export default function TargetBulkDateModal({
       });
     }
 
-    return Array.from(period_map.values());
+    return Array.from(period_map.values()).sort((first_period, second_period) =>
+      second_period.start_date.localeCompare(first_period.start_date) ||
+      second_period.end_date.localeCompare(first_period.end_date),
+    );
   }, [rows]);
   const period_options = useMemo(
     () =>
@@ -196,12 +199,6 @@ export default function TargetBulkDateModal({
                 />
               </div>
             )}
-
-            <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-              {selected_period
-                ? `${selected_period.count} target outlet akan diperbarui. Nilai target tidak berubah.`
-                : "Belum ada periode target yang dapat diperbarui."}
-            </div>
 
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close

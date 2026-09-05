@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -50,6 +51,7 @@ function compare_value(first_value, second_value) {
 export default function AtributInsankuPage() {
   const [attribute_columns, setAttributeColumns] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [active_tab, setActiveTab] = useState("aktif");
   const [can_edit_values, setCanEditValues] = useState(false);
   const [is_member_view, setIsMemberView] = useState(false);
   const [search, setSearch] = useState("");
@@ -158,8 +160,23 @@ export default function AtributInsankuPage() {
     });
   }, [employees, search]);
 
+  const active_employees = useMemo(
+    () => filtered_employees.filter((employee) => employee.is_active),
+    [filtered_employees],
+  );
+
+  const non_active_employees = useMemo(
+    () => filtered_employees.filter((employee) => !employee.is_active),
+    [filtered_employees],
+  );
+
+  const tab_employees = useMemo(
+    () => (active_tab === "aktif" ? active_employees : non_active_employees),
+    [active_employees, active_tab, non_active_employees],
+  );
+
   const sorted_employees = useMemo(() => {
-    return [...filtered_employees].sort((first, second) => {
+    return [...tab_employees].sort((first, second) => {
       const first_value = sort_key.startsWith("attribute:")
         ? first.attribute_values?.[sort_key.replace("attribute:", "")]
         : first[sort_key];
@@ -170,7 +187,7 @@ export default function AtributInsankuPage() {
 
       return sort_direction === "asc" ? result : -result;
     });
-  }, [filtered_employees, sort_direction, sort_key]);
+  }, [sort_direction, sort_key, tab_employees]);
 
   const {
     current_page,
@@ -195,6 +212,11 @@ export default function AtributInsankuPage() {
 
   const handle_search_change = (event) => {
     setSearch(event.target.value);
+    setCurrentPage(1);
+  };
+
+  const handle_tab_change = (next_tab) => {
+    setActiveTab(next_tab);
     setCurrentPage(1);
   };
 
@@ -347,11 +369,23 @@ export default function AtributInsankuPage() {
         />
       </div>
       <div className="px-4 lg:px-6">
-        <Card className="gap-0 border-t-2 border-t-primary/70">
+        <Tabs value={active_tab} onValueChange={handle_tab_change} className="space-y-4">
+          <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
+            <TabsTrigger value="aktif" className="min-w-max px-4 py-2">
+              InsanKu Aktif
+            </TabsTrigger>
+            <TabsTrigger value="non-aktif" className="min-w-max px-4 py-2">
+              InsanKu Non-Aktif
+            </TabsTrigger>
+          </TabsList>
+
+          <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
               <CardTitle className="min-w-0 flex-1">
-                Data Atribut InsanKu
+                {active_tab === "aktif"
+                  ? "Data Atribut InsanKu Aktif"
+                  : "Data Atribut InsanKu Non-Aktif"}
               </CardTitle>
               <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
                 <Button
@@ -470,7 +504,8 @@ export default function AtributInsankuPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </Tabs>
       </div>
     </>
   );

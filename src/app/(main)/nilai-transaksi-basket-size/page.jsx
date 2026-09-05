@@ -662,16 +662,24 @@ export default function NilaiTransaksiPage() {
                       value={formatDecimal(overallMetrics.nt_daily_served, 0)}
                     />
                     <SummaryMetric
+                      label={`TPP (${tableLabels.selected_period_label || "periode berjalan"})`}
+                      value={formatCurrency(overallMetrics.nt_current_month_total_revenue)}
+                    />
+                    <SummaryMetric
+                      label={`Dilayani (${tableLabels.selected_period_label || "periode berjalan"})`}
+                      value={formatDecimal(overallMetrics.nt_current_month_served, 0)}
+                    />
+                    <SummaryMetric
                       label={`Harian (${tableLabels.selected_date_label || "tanggal terpilih"})`}
                       value={formatCurrency(overallMetrics.nt_daily)}
                     />
                     <SummaryMetric
-                      label={tableLabels.previous_period_label || "Periode sebelumnya"}
-                      value={formatCurrency(overallMetrics.nt_last_month)}
-                    />
-                    <SummaryMetric
                       label={tableLabels.selected_period_label || "Periode berjalan"}
                       value={formatCurrency(overallMetrics.nt_current_month)}
+                    />
+                    <SummaryMetric
+                      label={tableLabels.previous_period_label || "Periode sebelumnya"}
+                      value={formatCurrency(overallMetrics.nt_last_month)}
                     />
                     <SummaryMetric
                       label="Growth"

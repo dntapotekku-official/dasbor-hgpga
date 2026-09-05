@@ -44,6 +44,38 @@ function build_active_daily_key(uuid_outlet, date) {
   return `${uuid_outlet}:${date.toISOString().slice(0, 10)}`;
 }
 
+async function clear_daily_visit_active_keys(
+  transaction,
+  {
+    uuid_outlet,
+    date,
+    exclude_uuid,
+  },
+) {
+  await transaction.tbl_dilayani.updateMany({
+    where: {
+      uuid_outlet,
+      ...(exclude_uuid
+        ? {
+            uuid: {
+              not: exclude_uuid,
+            },
+          }
+        : {}),
+      date: {
+        gte: date,
+        lte: end_of_day(date),
+      },
+      active_key: {
+        not: null,
+      },
+    },
+    data: {
+      active_key: null,
+    },
+  });
+}
+
 function parse_visit_value(value) {
   const normalized_value = String(value ?? "").trim();
   const parsed_value = Number(normalized_value);
@@ -246,26 +278,33 @@ export async function createKunjungan({
     throw new Error("Kunjungan untuk outlet dan tanggal ini sudah ada.");
   }
 
-  const created_kunjungan = await prisma.tbl_dilayani.create({
-    data: {
-      uuid: randomUUID(),
+  const created_kunjungan = await prisma.$transaction(async (transaction) => {
+    await clear_daily_visit_active_keys(transaction, {
       uuid_outlet: resolved_uuid_outlet,
-      active_key: build_active_daily_key(resolved_uuid_outlet, parsed_date),
       date: parsed_date,
-      value: parsed_value,
-    },
-    select: {
-      uuid: true,
-      uuid_outlet: true,
-      value: true,
-      date: true,
+    });
+
+    return transaction.tbl_dilayani.create({
+      data: {
+        uuid: randomUUID(),
+        uuid_outlet: resolved_uuid_outlet,
+        active_key: build_active_daily_key(resolved_uuid_outlet, parsed_date),
+        date: parsed_date,
+        value: parsed_value,
+      },
+      select: {
+        uuid: true,
+        uuid_outlet: true,
+        value: true,
+        date: true,
         outlet: {
           select: {
             name: true,
             category: true,
           },
         },
-    },
+      },
+    });
   });
 
   return {
@@ -314,28 +353,36 @@ export async function updateKunjungan({
     throw new Error("Kunjungan untuk outlet dan tanggal ini sudah ada.");
   }
 
-  const updated_kunjungan = await prisma.tbl_dilayani.update({
-    where: {
-      uuid: normalized_uuid_kunjungan,
-    },
-    data: {
+  const updated_kunjungan = await prisma.$transaction(async (transaction) => {
+    await clear_daily_visit_active_keys(transaction, {
       uuid_outlet: resolved_uuid_outlet,
-      active_key: build_active_daily_key(resolved_uuid_outlet, parsed_date),
       date: parsed_date,
-      value: parsed_value,
-    },
-    select: {
-      uuid: true,
-      uuid_outlet: true,
-      value: true,
-      date: true,
-      outlet: {
-        select: {
-          name: true,
-          category: true,
+      exclude_uuid: normalized_uuid_kunjungan,
+    });
+
+    return transaction.tbl_dilayani.update({
+      where: {
+        uuid: normalized_uuid_kunjungan,
+      },
+      data: {
+        uuid_outlet: resolved_uuid_outlet,
+        active_key: build_active_daily_key(resolved_uuid_outlet, parsed_date),
+        date: parsed_date,
+        value: parsed_value,
+      },
+      select: {
+        uuid: true,
+        uuid_outlet: true,
+        value: true,
+        date: true,
+        outlet: {
+          select: {
+            name: true,
+            category: true,
+          },
         },
       },
-    },
+    });
   });
 
   return {
@@ -462,6 +509,13 @@ export async function importKunjungan({
           uuid: true,
         },
       });
+
+      await clear_daily_visit_active_keys(transaction, {
+        uuid_outlet: row.uuid_outlet,
+        date: parsed_date,
+        exclude_uuid: existing_kunjungan?.uuid,
+      });
+
       const saved_kunjungan = existing_kunjungan
         ? await transaction.tbl_dilayani.update({
             where: {

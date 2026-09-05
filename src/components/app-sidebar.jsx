@@ -18,14 +18,21 @@ import {
 } from "@/components/ui/sidebar"
 
 import {
+  BotMessageSquareIcon,
   BadgeDollarSignIcon,
   ChartBarIcon,
   CctvIcon,
   ClipboardCheckIcon,
+  CrosshairIcon,
   IdCardIcon,
   LayoutDashboardIcon,
+  PackageSearchIcon,
   PillBottleIcon,
   Settings2Icon,
+  StoreIcon,
+  UserRoundCogIcon,
+  UserSearchIcon,
+  ShirtIcon,
 } from "lucide-react"
 
 const data = {
@@ -96,36 +103,43 @@ const data = {
         {
           title: "Pengguna",
           url: "/pengaturan/pengguna",
+          icon: <UserRoundCogIcon />,
           roles: ["admin"],
         },
         {
           title: "Outlet",
           url: "/pengaturan/outlet",
+          icon: <StoreIcon />,
           roles: ["admin"],
         },
         {
           title: "Kunjungan",
           url: "/pengaturan/kunjungan",
-          roles: ["admin"],
-        },
-        {
-          title: "Atribut",
-          url: "/pengaturan/atribut",
-          roles: ["admin"],
-        },
-        {
-          title: "API API",
-          url: "/pengaturan/api-ai",
+          icon: <UserSearchIcon />,
           roles: ["admin"],
         },
         {
           title: "Produk Gofitku",
           url: "/pengaturan/produk-gofitku",
+          icon: <PackageSearchIcon />,
           roles: ["admin"],
         },
         {
           title: "Target",
           url: "/pengaturan/target",
+          icon: <CrosshairIcon />,
+          roles: ["admin"],
+        },
+        {
+          title: "Atribut",
+          url: "/pengaturan/atribut",
+          icon: <ShirtIcon />,
+          roles: ["admin"],
+        },
+        {
+          title: "API API",
+          url: "/pengaturan/api-ai",
+          icon: <BotMessageSquareIcon />,
           roles: ["admin"],
         },
       ],

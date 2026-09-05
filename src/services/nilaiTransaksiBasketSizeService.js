@@ -167,6 +167,38 @@ function build_active_daily_key(uuid_outlet, date) {
   return `${uuid_outlet}:${date.toISOString().slice(0, 10)}`;
 }
 
+async function clear_daily_served_active_keys(
+  transaction,
+  {
+    uuid_outlet,
+    date,
+    exclude_uuid,
+  },
+) {
+  await transaction.tbl_dilayani.updateMany({
+    where: {
+      uuid_outlet,
+      ...(exclude_uuid
+        ? {
+            uuid: {
+              not: exclude_uuid,
+            },
+          }
+        : {}),
+      date: {
+        gte: date,
+        lte: end_of_day(date),
+      },
+      active_key: {
+        not: null,
+      },
+    },
+    data: {
+      active_key: null,
+    },
+  });
+}
+
 /** Mengubah daftar record menjadi daftar tanggal unik yang tersedia. */
 function map_available_dates(rows) {
   return Array.from(
@@ -176,7 +208,7 @@ function map_available_dates(rows) {
         .filter(Boolean)
         .map((date) => date.toISOString().slice(0, 10)),
     ),
-  );
+  ).sort((first_date, second_date) => second_date.localeCompare(first_date));
 }
 
 // ============================================================================
@@ -1651,6 +1683,12 @@ async function importOutletReportMetric({
       }
 
       if (!use_existing_served) {
+        await clear_daily_served_active_keys(tx, {
+          uuid_outlet: row.uuid_outlet,
+          date: report_date,
+          exclude_uuid: served_record?.uuid,
+        });
+
         served_record = served_record
           ? await tx.tbl_dilayani.update({
               where: {
