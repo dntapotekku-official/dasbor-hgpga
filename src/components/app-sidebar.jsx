@@ -23,6 +23,7 @@ import {
   ChartBarIcon,
   CctvIcon,
   ClipboardCheckIcon,
+  Columns3Icon,
   CrosshairIcon,
   IdCardIcon,
   LayoutDashboardIcon,
@@ -32,7 +33,6 @@ import {
   StoreIcon,
   UserRoundCogIcon,
   UsersRoundIcon,
-  ShirtIcon,
 } from "lucide-react"
 
 const data = {
@@ -140,9 +140,9 @@ const data = {
           menuKey: "pengaturan-target",
         },
         {
-          title: "Atribut",
+          title: "Kolom Atribut",
           url: "/pengaturan/atribut",
-          icon: <ShirtIcon />,
+          icon: <Columns3Icon />,
           roles: ["admin"],
           menuKey: "pengaturan-atribut",
         },

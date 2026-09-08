@@ -27,7 +27,7 @@ async function get_active_ai_config() {
     },
     select: {
       uuid: true,
-      name: true,
+      key: true,
       prompt: true,
     },
   });
@@ -42,16 +42,18 @@ export async function getAiApiSettings() {
   const { api_ai, prompt_rows } = await get_active_ai_config();
 
   return {
-    api_ai: api_ai ? {
-      uuid: api_ai.uuid,
-      base_url: api_ai.base_url,
-      model: api_ai.model,
-    } : null,
+    api_ai: api_ai
+      ? {
+          uuid: api_ai.uuid,
+          base_url: api_ai.base_url,
+          model: api_ai.model,
+        }
+      : null,
     prompts: prompt_rows.map((item) => ({
       uuid: item.uuid,
-      name: item.name,
+      name: item.key,
       prompt: item.prompt,
-    }))
+    })),
   };
 }
 
@@ -63,7 +65,7 @@ export async function getAiRuntimeConfig(prompt_name) {
   }
 
   const { api_ai, prompt_rows } = await get_active_ai_config();
-  const prompt_row = prompt_rows.find((item) => item.name === trimmed_prompt_name);
+  const prompt_row = prompt_rows.find((item) => item.key === trimmed_prompt_name);
 
   if (!api_ai) {
     throw new Error("Konfigurasi AI API belum tersedia.");
@@ -116,6 +118,12 @@ export async function saveApiAiSettings({
     throw new Error("Minimal satu prompt wajib diisi.");
   }
 
+  const prompt_names = normalized_prompts.map((item) => item.name);
+
+  if (new Set(prompt_names).size !== prompt_names.length) {
+    throw new Error("Nama prompt tidak boleh duplikat.");
+  }
+
   const { api_ai, prompt_rows } = await get_active_ai_config();
   const next_api_key = trimmed_api_key || api_ai?.api_key || "";
 
@@ -148,7 +156,7 @@ export async function saveApiAiSettings({
 
     for (const prompt_item of normalized_prompts) {
       const existing_prompt = prompt_rows.find(
-        (item) => item.name === prompt_item.name,
+        (item) => item.key === prompt_item.name,
       );
 
       if (existing_prompt) {
@@ -167,7 +175,7 @@ export async function saveApiAiSettings({
       await transaction.tbl_prompt.create({
         data: {
           uuid: randomUUID(),
-          name: prompt_item.name,
+          key: prompt_item.name,
           prompt: prompt_item.prompt,
         },
       });

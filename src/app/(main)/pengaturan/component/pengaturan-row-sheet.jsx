@@ -15,32 +15,70 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
+function normalize_placements(value, include_key = false, field_key = "") {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((placement, index) => ({
+      uuid: String(placement?.uuid ?? "").trim(),
+      outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+      ...(include_key
+        ? {
+            key: String(
+              placement?.uuid ?? `${field_key}-${index}`,
+            ),
+          }
+        : {}),
+    }))
+    .filter((placement) => include_key || placement.outlet_uuid);
+}
+
+function get_draft_value(item, field) {
+  const value = item?.[field.key];
+
+  switch (field.type) {
+    case "checkbox":
+      return Boolean(value);
+    case "multiselect":
+      return Array.isArray(value) ? value : [];
+    case "placement-list":
+      return normalize_placements(value, true, field.key);
+    case "select":
+      return String(value ?? field.options?.[0]?.value ?? "").toLowerCase();
+    case "number":
+      return String(value ?? "");
+    default:
+      return Array.isArray(value) ? value.join("\n") : String(value ?? "");
+  }
+}
+
+function get_saved_value(draft, field) {
+  const value = draft[field.key];
+
+  switch (field.type) {
+    case "checkbox":
+      return Boolean(value);
+    case "multiline-list":
+      return String(value ?? "")
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    case "multiselect":
+      return Array.isArray(value) ? value : [];
+    case "placement-list":
+      return normalize_placements(value);
+    case "select":
+      return String(value ?? "").trim();
+    default:
+      return String(value ?? "").trim();
+  }
+}
+
 function build_draft(item, fields) {
   return Object.fromEntries(
-    fields.map((field) => [
-      field.key,
-      field.type === "checkbox"
-        ? Boolean(item?.[field.key])
-        : field.type === "multiselect"
-        ? Array.isArray(item?.[field.key])
-          ? item[field.key]
-          : []
-        : field.type === "placement-list"
-          ? Array.isArray(item?.[field.key])
-            ? item[field.key].map((placement, index) => ({
-                uuid: String(placement?.uuid ?? "").trim(),
-                outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
-                key: String(placement?.uuid ?? `${field.key}-${index}`),
-              }))
-            : []
-        : field.type === "select"
-          ? String(item?.[field.key] ?? field.options?.[0]?.value ?? "").toLowerCase()
-        : field.type === "number"
-          ? String(item?.[field.key] ?? "")
-        : Array.isArray(item?.[field.key])
-          ? item[field.key].join("\n")
-        : String(item?.[field.key] ?? ""),
-    ]),
+    fields.map((field) => [field.key, get_draft_value(item, field)]),
   );
 }
 
@@ -52,6 +90,7 @@ export default function PengaturanRowSheet({
   item,
   fields,
   on_save,
+  on_delete,
 }) {
   const [draft, setDraft] = useState(() => build_draft(item, fields));
   const [open_field_key, setOpenFieldKey] = useState(null);
@@ -82,28 +121,7 @@ export default function PengaturanRowSheet({
     const next_item = {
       ...item,
       ...Object.fromEntries(
-        fields.map((field) => [
-          field.key,
-          field.type === "checkbox"
-            ? Boolean(draft[field.key])
-            : field.type === "multiline-list"
-            ? draft[field.key]
-                .split("\n")
-                .map((value) => value.trim())
-                .filter(Boolean)
-            : field.type === "multiselect"
-              ? draft[field.key]
-              : field.type === "placement-list"
-                ? (Array.isArray(draft[field.key]) ? draft[field.key] : [])
-                    .map((placement) => ({
-                      uuid: String(placement?.uuid ?? "").trim(),
-                      outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
-                    }))
-                    .filter((placement) => placement.outlet_uuid)
-              : field.type === "select"
-                ? String(draft[field.key] ?? "").trim()
-              : draft[field.key].trim(),
-        ]),
+        fields.map((field) => [field.key, get_saved_value(draft, field)]),
       ),
     };
 
@@ -116,6 +134,24 @@ export default function PengaturanRowSheet({
         error instanceof Error
           ? error.message
           : "Gagal menyimpan perubahan.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handle_delete = async () => {
+    setIsSubmitting(true);
+
+    try {
+      await on_delete(item);
+      reset_sheet_state();
+      on_open_change(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal menghapus data.",
       );
     } finally {
       setIsSubmitting(false);
@@ -140,7 +176,7 @@ export default function PengaturanRowSheet({
                 : field.helper;
 
             return (
-            <div key={field.key} className="space-y-2">
+              <div key={field.key} className="space-y-2">
               {field.type !== "checkbox" ? (
                 <Label htmlFor={field.key}>{field.label}</Label>
               ) : null}
@@ -397,11 +433,21 @@ export default function PengaturanRowSheet({
                   id={field.key}
                   value={String(draft[field.key] ?? "")}
                   options={field.options ?? []}
+                  disabled={is_disabled}
                   onValueChange={(next_value) =>
-                    setDraft((current) => ({
-                      ...current,
-                      [field.key]: next_value,
-                    }))
+                    setDraft((current) => {
+                      const next_draft = {
+                        ...current,
+                        [field.key]: next_value,
+                      };
+
+                      return typeof field.on_change === "function"
+                        ? {
+                            ...next_draft,
+                            ...field.on_change(next_draft, next_value),
+                          }
+                        : next_draft;
+                    })
                   }
                   ariaLabel={field.aria_label ?? field.label}
                   searchable={field.searchable}
@@ -428,11 +474,21 @@ export default function PengaturanRowSheet({
               {field_helper ? (
                 <p className="text-xs text-muted-foreground">{field_helper}</p>
               ) : null}
-            </div>
-          );
+              </div>
+            );
           })}
         </div>
-        <div className="border-t p-4">
+        <div className="grid gap-2 border-t p-4">
+          {on_delete && item ? (
+            <Button
+              type="button"
+              variant="delete"
+              onClick={handle_delete}
+              className="w-full"
+            >
+              Hapus Data
+            </Button>
+          ) : null}
           <Button
             type="button"
             onClick={handle_save}

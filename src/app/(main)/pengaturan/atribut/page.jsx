@@ -5,6 +5,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   GripVerticalIcon,
+  ListChecksIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -69,8 +70,25 @@ export default function AtributPage() {
     [filtered_items, selected_type],
   );
 
+  const get_range_options = (current_uuid, current_range_uuid) => [
+    { value: "", label: "Tidak menggunakan rentang" },
+    ...attributes
+      .filter(
+        (item) =>
+          item.type === "date" &&
+          item.uuid !== current_uuid &&
+          (!item.range_with || item.uuid === current_range_uuid),
+      )
+      .map((item) => ({
+        value: item.uuid,
+        label: item.name,
+      })),
+  ];
+
   const fetch_attributes = useCallback(async () => {
-    const result = await fetch("/api/atribut");
+    const result = await fetch("/api/atribut", {
+      cache: "no-store",
+    });
     const payload = await result.json();
 
     if (!result.ok || !payload.success) {
@@ -143,6 +161,8 @@ export default function AtributPage() {
       body: JSON.stringify({
         name: new_attribute.name,
         type: new_attribute.type,
+        is_attribute: new_attribute.is_attribute,
+        range_with: new_attribute.range_with,
         is_view: new_attribute.is_view,
         is_edit: new_attribute.is_edit,
       }),
@@ -168,6 +188,8 @@ export default function AtributPage() {
         uuid_atribut: next_attribute.uuid,
         name: next_attribute.name,
         type: next_attribute.type,
+        is_attribute: next_attribute.is_attribute,
+        range_with: next_attribute.range_with,
         is_view: next_attribute.is_view,
         is_edit: next_attribute.is_edit,
       }),
@@ -314,13 +336,13 @@ export default function AtributPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola master atribut yang dipakai oleh data InsanKu."
+        description="Kelola master kolom atribut yang dipakai oleh data InsanKu."
         />
       </div>
       <div className="px-4 lg:px-6">
         <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
-            <CardTitle>Atribut</CardTitle>
+            <CardTitle>Kolom Atribut</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -328,7 +350,7 @@ export default function AtributPage() {
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari atribut..."
+                  placeholder="Cari kolom atribut..."
                   className="w-full sm:max-w-sm"
                 />
                 <OptionDropdown
@@ -338,7 +360,7 @@ export default function AtributPage() {
                     { value: "all", label: "Semua tipe" },
                     ...attribute_types,
                   ]}
-                  ariaLabel="Filter tipe atribut"
+                  ariaLabel="Filter tipe kolom atribut"
                   triggerClassName="w-full sm:w-48"
                 />
                 <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
@@ -348,7 +370,7 @@ export default function AtributPage() {
                     className="w-full sm:w-auto"
                   >
                     <PlusIcon className="size-4" />
-                    Tambah Atribut
+                    Tambah Kolom Atribut
                   </Button>
                 </div>
               </div>
@@ -423,6 +445,18 @@ export default function AtributPage() {
                               <div className="flex flex-wrap gap-2 text-sm">
                                 <span
                                   className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${
+                                    row.is_attribute
+                                      ? "bg-primary/10 text-primary"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  <ListChecksIcon className="size-4" />
+                                  {row.is_attribute
+                                    ? "Atribut InsanKu"
+                                    : "Kolom biasa"}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${
                                     row.is_view
                                       ? "bg-emerald-50 text-emerald-700"
                                       : "bg-muted text-muted-foreground"
@@ -491,20 +525,42 @@ export default function AtributPage() {
                 key={selected_attribute?.uuid ?? "atribut-sheet"}
                 open={is_sheet_open}
                 on_open_change={setIsSheetOpen}
-                title="Edit Atribut"
+                title="Edit Kolom Atribut"
                 item={selected_attribute}
                 fields={[
                   {
                     key: "name",
-                    label: "Nama Atribut",
-                    placeholder: "Masukkan nama atribut",
+                    label: "Nama Kolom Atribut",
+                    placeholder: "Masukkan nama kolom atribut",
                   },
                   {
                     key: "type",
-                    label: "Jenis Atribut",
+                    label: "Jenis Kolom Atribut",
                     type: "select",
-                    placeholder: "Pilih jenis atribut",
+                    placeholder: "Pilih jenis kolom atribut",
                     options: attribute_types,
+                    on_change: (draft, next_type) =>
+                      next_type === "date" ? {} : { range_with: "" },
+                  },
+                  {
+                    key: "range_with",
+                    label: "Buat rentang dengan",
+                    type: "select",
+                    options: get_range_options(
+                      selected_attribute?.uuid,
+                      selected_attribute?.range_with,
+                    ),
+                    disabled: (draft) => draft.type !== "date",
+                    helper: (draft) =>
+                      draft.type === "date"
+                        ? "Pilih kolom tanggal lain sebagai pasangan rentang."
+                        : "Opsi rentang hanya tersedia untuk kolom bertipe tanggal.",
+                  },
+                  {
+                    key: "is_attribute",
+                    label: "Jadikan Atribut InsanKu",
+                    type: "checkbox",
+                    placeholder: "Gunakan kolom ini sebagai atribut InsanKu",
                   },
                   {
                     key: "is_view",
@@ -535,25 +591,46 @@ export default function AtributPage() {
                 key="atribut-create-sheet"
                 open={is_create_sheet_open}
                 on_open_change={setIsCreateSheetOpen}
-                title="Tambah Atribut"
+                title="Tambah Kolom Atribut"
                 item={{
                   name: "",
                   type: attribute_types[0]?.value ?? "string",
                   is_view: false,
+                  is_attribute: false,
+                  range_with: "",
                   is_edit: false,
                 }}
                 fields={[
                   {
                     key: "name",
-                    label: "Nama Atribut",
-                    placeholder: "Masukkan nama atribut",
+                    label: "Nama Kolom Atribut",
+                    placeholder: "Masukkan nama kolom atribut",
                   },
                   {
                     key: "type",
-                    label: "Jenis Atribut",
+                    label: "Jenis Kolom Atribut",
                     type: "select",
-                    placeholder: "Pilih jenis atribut",
+                    placeholder: "Pilih jenis kolom atribut",
                     options: attribute_types,
+                    on_change: (draft, next_type) =>
+                      next_type === "date" ? {} : { range_with: "" },
+                  },
+                  {
+                    key: "range_with",
+                    label: "Buat rentang dengan",
+                    type: "select",
+                    options: get_range_options(),
+                    disabled: (draft) => draft.type !== "date",
+                    helper: (draft) =>
+                      draft.type === "date"
+                        ? "Pilih kolom tanggal lain sebagai pasangan rentang."
+                        : "Opsi rentang hanya tersedia untuk kolom bertipe tanggal.",
+                  },
+                  {
+                    key: "is_attribute",
+                    label: "Jadikan Atribut InsanKu",
+                    type: "checkbox",
+                    placeholder: "Gunakan kolom ini sebagai atribut InsanKu",
                   },
                   {
                     key: "is_view",
@@ -587,8 +664,8 @@ export default function AtributPage() {
                     setAttributeToDelete(null);
                   }
                 }}
-                title="Hapus atribut"
-                description={`Atribut "${attribute_to_delete?.name ?? "-"}" akan disembunyikan dari daftar aktif.`}
+                title="Hapus kolom atribut"
+                description={`Kolom atribut "${attribute_to_delete?.name ?? "-"}" akan disembunyikan dari daftar aktif.`}
                 confirmLabel="Ya, hapus"
                 confirmVariant="delete"
                 isPending={is_delete_pending}
@@ -602,8 +679,8 @@ export default function AtributPage() {
                     setPendingAttributeUpdate(null);
                   }
                 }}
-                title="Ubah jenis atribut"
-                description="Perubahan jenis atribut akan memengaruhi data InsanKu yang sudah ada. Sistem akan memeriksa kecocokan data lama terlebih dahulu sebelum menyimpan perubahan."
+                title="Ubah jenis kolom atribut"
+                description="Perubahan jenis kolom atribut akan memengaruhi data InsanKu yang sudah ada. Sistem akan memeriksa kecocokan data lama terlebih dahulu sebelum menyimpan perubahan."
                 confirmLabel="Ya, ubah jenis"
                 isPending={is_type_change_pending}
                 onConfirm={handle_confirm_type_change}

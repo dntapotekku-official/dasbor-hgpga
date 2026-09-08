@@ -25,6 +25,7 @@ export default function OptionDropdown({
   emptyMessage = "Data tidak ditemukan.",
   emptySearchMessage,
   triggerClassName,
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -60,6 +61,7 @@ export default function OptionDropdown({
             type="button"
             variant="outline"
             aria-label={ariaLabel}
+            disabled={disabled}
             className={cn("w-full justify-between bg-card", triggerClassName)}
           />
         }

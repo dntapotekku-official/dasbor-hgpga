@@ -150,6 +150,10 @@ export async function syncKepatuhanSopCCTV({
     throw new Error("SOP_CCTV_API_URL belum dikonfigurasi.");
   }
 
+  if (!process.env.APOTEKKU_API_KEY) {
+    throw new Error("APOTEKKU_API_KEY belum dikonfigurasi.");
+  }
+
   const chart_dates = [];
   const chart_start_date = new Date(`${start_date}T00:00:00.000Z`);
   const chart_end_date = new Date(`${end_date}T00:00:00.000Z`);
@@ -186,7 +190,7 @@ export async function syncKepatuhanSopCCTV({
       `${process.env.SOP_CCTV_API_URL}?${search_params.toString()}`,
       {
         headers: {
-          "x-api-key": process.env.SLIPGAJI_AUDIT_API_KEY,
+          "x-api-key": process.env.APOTEKKU_API_KEY,
         },
         cache: "no-store",
       },

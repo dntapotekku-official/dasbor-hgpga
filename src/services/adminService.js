@@ -142,11 +142,34 @@ export async function updateAdmin({
     where: { uuid: uuid_admin },
     select: {
       role: true,
+      deleted_at: true,
     },
   });
 
-  if (!existing_admin || existing_admin.role == null) {
+  if (
+    !existing_admin ||
+    existing_admin.deleted_at ||
+    existing_admin.role == null
+  ) {
     throw new Error("Data admin tidak ditemukan.");
+  }
+
+  const [duplicate_admin, duplicate_insanku] = await Promise.all([
+    prisma.tbl_admin.findFirst({
+      where: {
+        username: trimmed_username,
+        uuid: { not: uuid_admin },
+      },
+      select: { uuid: true },
+    }),
+    prisma.tbl_insanku.findUnique({
+      where: { username: trimmed_username },
+      select: { uuid: true },
+    }),
+  ]);
+
+  if (duplicate_admin || duplicate_insanku) {
+    throw new Error("Username sudah digunakan.");
   }
 
   if (isSuperadmin(existing_admin.role) && !isSuperadmin(trimmed_role)) {
@@ -209,6 +232,10 @@ export async function createAdmin({
 
   if (!trimmed_password) {
     throw new Error("Password admin wajib diisi.");
+  }
+
+  if (trimmed_password.length < 6) {
+    throw new Error("Password admin minimal 6 karakter.");
   }
 
   const existing_admin = await prisma.tbl_admin.findUnique({
@@ -284,10 +311,15 @@ export async function deleteAdmin({
     select: {
       uuid: true,
       role: true,
+      deleted_at: true,
     },
   });
 
-  if (!existing_admin || existing_admin.role == null) {
+  if (
+    !existing_admin ||
+    existing_admin.deleted_at ||
+    existing_admin.role == null
+  ) {
     throw new Error("Data admin tidak ditemukan.");
   }
 
@@ -295,15 +327,19 @@ export async function deleteAdmin({
     throw new Error("Akun superadmin tidak dapat dihapus.");
   }
 
-  await assert_not_last_superadmin(existing_admin.role);
-
-  await prisma.tbl_admin.update({
-    where: {
-      uuid: uuid_admin,
-    },
-    data: {
-      deleted_at: new Date(),
-    },
+  await prisma.$transaction(async (transaction) => {
+    const deleted_at = new Date();
+    await transaction.tbl_admin_menu_access.updateMany({
+      where: {
+        uuid_admin,
+        deleted_at: null,
+      },
+      data: { deleted_at },
+    });
+    await transaction.tbl_admin.update({
+      where: { uuid: uuid_admin },
+      data: { deleted_at },
+    });
   });
 
   return {

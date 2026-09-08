@@ -11,7 +11,8 @@ import InsanKuTab from "./components/insanKu-tab";
 
 const TAB_LABELS = {
   admin: "Admin",
-  insanku: "InsanKu",
+  insanku: "InsanKu (Slip Gaji)",
+  insanku_non_slip_gaji: "InsanKu (Non Slip Gaji)",
 };
 
 export default function PenggunaPage() {
@@ -21,7 +22,10 @@ export default function PenggunaPage() {
   const requested_tab = search_params.get("tab");
   const tab_labels = isSuperadmin(role)
     ? TAB_LABELS
-    : { insanku: TAB_LABELS.insanku };
+    : {
+        insanku: TAB_LABELS.insanku,
+        insanku_non_slip_gaji: TAB_LABELS.insanku_non_slip_gaji,
+      };
   const active_tab = Object.hasOwn(tab_labels, requested_tab)
     ? requested_tab
     : Object.keys(tab_labels)[0];
@@ -58,6 +62,9 @@ export default function PenggunaPage() {
           ) : null}
           <TabsContent value="insanku">
             <InsanKuTab />
+          </TabsContent>
+          <TabsContent value="insanku_non_slip_gaji">
+            <InsanKuTab is_non_slip_gaji />
           </TabsContent>
         </Tabs>
       </div>

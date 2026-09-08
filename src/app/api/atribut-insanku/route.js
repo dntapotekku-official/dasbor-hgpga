@@ -4,6 +4,7 @@ import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
 import {
   getAtributInsanku,
   importAtributInsanKu,
+  transferAtributInsanKu,
   updateAtributInsanKu,
 } from "@/services/atributInsanKuService";
 
@@ -27,6 +28,10 @@ export const GET = async () => {
     return NextResponse.json({
       success: true,
       data,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      },
     });
   } catch (error) {
     return NextResponse.json(
@@ -54,6 +59,16 @@ export const PATCH = async (request) => {
 
     const user_session = await getCurrentUser();
     const body = await request.json().catch(() => ({}));
+    if (body?.operation === "transfer") {
+      const data = await transferAtributInsanKu({
+        source_uuid: body?.source_uuid,
+        target_uuid: body?.target_uuid,
+        actor_role: user_session?.role,
+      });
+
+      return NextResponse.json(data);
+    }
+
     const data = await updateAtributInsanKu({
       uuid_insanku: body?.uuid_insanku,
       uuid_atribut: body?.uuid_atribut,
@@ -92,6 +107,7 @@ export const POST = async (request) => {
     const data = await importAtributInsanKu({
       rows: body?.rows,
       active_tab: body?.active_tab,
+      active_category: body?.active_category,
       actor_uuid: user_session?.uuid,
       actor_role: user_session?.role,
     });

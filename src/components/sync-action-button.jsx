@@ -14,6 +14,7 @@ export default function SyncActionButton({
   idleLabel = "Sinkron",
   pendingLabel = "Menyinkronkan...",
   isPending = false,
+  disabled = false,
   className,
 }) {
   const [open, setOpen] = useState(false);
@@ -25,6 +26,7 @@ export default function SyncActionButton({
       <Button
         type="button"
         onClick={() => setOpen(true)}
+        disabled={disabled}
         className={className}
       >
         {is_pending ? (

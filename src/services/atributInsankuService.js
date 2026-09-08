@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizeRole } from "@/lib/role";
 import { emit_socket_event } from "@/lib/socket";
+import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
 
 function normalize_name(name) {
   return String(name ?? "").trim();
@@ -12,13 +13,66 @@ function normalize_attribute_type(type) {
   return String(type ?? "").trim().toLowerCase();
 }
 
-function normalize_attribute_flags({ is_edit, is_view }) {
+function normalize_attribute_flags({ is_attribute, is_edit, is_view }) {
   const can_view = Boolean(is_view);
 
   return {
+    is_attribute: Boolean(is_attribute),
     is_view: can_view,
     is_edit: can_view ? Boolean(is_edit) : false,
   };
+}
+
+async function resolve_range_with(transaction, { range_with, uuid, type }) {
+  const normalized_range_with = String(range_with ?? "").trim();
+
+  if (!normalized_range_with) {
+    return null;
+  }
+
+  if (normalize_attribute_type(type) !== "date") {
+    throw new Error("Range hanya dapat dibuat untuk kolom bertipe tanggal.");
+  }
+
+  if (normalized_range_with === uuid) {
+    throw new Error("Kolom tanggal tidak dapat dipasangkan dengan dirinya sendiri.");
+  }
+
+  const paired_attribute = await transaction.tbl_kolom_atribut.findUnique({
+    where: {
+      uuid: normalized_range_with,
+    },
+    select: {
+      uuid: true,
+      type: true,
+      deleted_at: true,
+    },
+  });
+
+  if (
+    !paired_attribute ||
+    paired_attribute.deleted_at ||
+    normalize_attribute_type(paired_attribute.type) !== "date"
+  ) {
+    throw new Error("Kolom pasangan rentang harus bertipe tanggal dan masih aktif.");
+  }
+
+  const existing_range = await transaction.tbl_kolom_atribut.findFirst({
+    where: {
+      range_with: normalized_range_with,
+      deleted_at: null,
+      ...(uuid ? { uuid: { not: uuid } } : {}),
+    },
+    select: {
+      uuid: true,
+    },
+  });
+
+  if (existing_range) {
+    throw new Error("Kolom tanggal yang dipilih sudah memiliki pasangan rentang.");
+  }
+
+  return paired_attribute.uuid;
 }
 
 function normalize_attribute_value_by_type(type, value) {
@@ -105,7 +159,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
     normalized_role === "superadmin";
 
   const [attributes, employees] = await Promise.all([
-    prisma.tbl_atribut.findMany({
+    prisma.tbl_kolom_atribut.findMany({
       where: {
         deleted_at: null,
         ...(is_member ? { is_view: true } : {}),
@@ -122,6 +176,8 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         uuid: true,
         name: true,
         type: true,
+        is_attribute: true,
+        range_with: true,
         is_edit: true,
         is_view: true,
         order: true,
@@ -136,6 +192,8 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
       },
       select: {
         uuid: true,
+        is_slip_gaji_account: true,
+        nik: true,
         name: true,
         username: true,
         deleted_at: true,
@@ -163,6 +221,8 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
       key: attribute.uuid,
       label: attribute.name,
       type: attribute.type,
+      is_attribute: attribute.is_attribute,
+      range_with: attribute.range_with,
       is_edit: attribute.is_edit,
       is_view: attribute.is_view,
       order: attribute.order,
@@ -177,9 +237,14 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
 
       return {
         uuid: employee.uuid,
+        is_slip_gaji_account: employee.is_slip_gaji_account,
+        nik: employee.nik,
         name: employee.name,
         username: employee.username,
         is_active: employee.deleted_at === null,
+        filled_attribute_keys: employee.atribut_insanku.map(
+          (item) => item.uuid_atribut,
+        ),
         attribute_values: Object.fromEntries(
           attributes.map((attribute) => [
             attribute.uuid,
@@ -232,13 +297,14 @@ export async function updateAtributInsanKu({
         deleted_at: true,
       },
     }),
-    prisma.tbl_atribut.findUnique({
+    prisma.tbl_kolom_atribut.findUnique({
       where: {
         uuid: uuid_atribut,
       },
       select: {
         uuid: true,
         type: true,
+        is_attribute: true,
         is_edit: true,
         is_view: true,
         deleted_at: true,
@@ -314,9 +380,126 @@ export async function updateAtributInsanKu({
   };
 }
 
+export async function transferAtributInsanKu({
+  source_uuid,
+  target_uuid,
+  actor_role,
+}) {
+  const normalized_role = normalizeRole(actor_role);
+  const is_admin =
+    normalized_role === "admin" || normalized_role === "superadmin";
+
+  if (!is_admin) {
+    throw new Error("Hanya admin yang dapat mengoper atribut.");
+  }
+
+  if (!source_uuid || !target_uuid || source_uuid === target_uuid) {
+    throw new Error("Sumber dan tujuan oper atribut wajib berbeda.");
+  }
+
+  const [source, target, source_attributes] = await Promise.all([
+    prisma.tbl_insanku.findFirst({
+      where: {
+        uuid: source_uuid,
+        is_slip_gaji_account: false,
+        deleted_at: null,
+      },
+      select: {
+        uuid: true,
+        name: true,
+      },
+    }),
+    prisma.tbl_insanku.findFirst({
+      where: {
+        uuid: target_uuid,
+        is_slip_gaji_account: true,
+        deleted_at: null,
+      },
+      select: {
+        uuid: true,
+        name: true,
+      },
+    }),
+    prisma.tbl_atribut_insanku.findMany({
+      where: {
+        uuid_insanku: source_uuid,
+        deleted_at: null,
+        atribut: {
+          deleted_at: null,
+        },
+      },
+      select: {
+        uuid_atribut: true,
+        value: true,
+      },
+    }),
+  ]);
+
+  if (!source) {
+    throw new Error("Data InsanKu Non Slip Gaji tidak ditemukan.");
+  }
+
+  if (!target) {
+    throw new Error("Data InsanKu Slip Gaji tidak ditemukan.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const deleted_at = new Date();
+
+    for (const attribute of source_attributes) {
+      await tx.tbl_atribut_insanku.upsert({
+        where: {
+          uuid_insanku_uuid_atribut: {
+            uuid_insanku: target_uuid,
+            uuid_atribut: attribute.uuid_atribut,
+          },
+        },
+        update: {
+          value: attribute.value,
+          deleted_at: null,
+        },
+        create: {
+          uuid: randomUUID(),
+          uuid_insanku: target_uuid,
+          uuid_atribut: attribute.uuid_atribut,
+          value: attribute.value,
+        },
+      });
+    }
+
+    await softDeleteInsanKuRelations(tx, [source_uuid], deleted_at);
+    await tx.tbl_insanku.update({
+      where: { uuid: source_uuid },
+      data: { deleted_at },
+    });
+  });
+
+  emit_socket_event("attribute.value.changed", {
+    source_uuid,
+    target_uuid,
+    operation: "transfer",
+  });
+
+  return {
+    success: true,
+    data: {
+      source_uuid,
+      target_uuid,
+      transferred_count: source_attributes.length,
+    },
+    message:
+      "Atribut " +
+      source.name +
+      " berhasil dioper ke " +
+      target.name +
+      ". Data Non Slip Gaji sumber sudah dinonaktifkan.",
+  };
+}
+
 export async function importAtributInsanKu({
   rows,
   active_tab,
+  active_category,
   actor_uuid,
   actor_role,
 }) {
@@ -341,6 +524,13 @@ export async function importAtributInsanKu({
     throw new Error("Tab impor tidak valid.");
   }
 
+  if (!["slip-gaji", "non-slip-gaji"].includes(active_category)) {
+    throw new Error("Kategori impor tidak valid.");
+  }
+
+  const category_label =
+    active_category === "slip-gaji" ? "Slip Gaji" : "Non Slip Gaji";
+
   const normalized_rows = rows.map((row) => ({
     username: String(row?.username ?? "").trim(),
     values:
@@ -361,6 +551,7 @@ export async function importAtributInsanKu({
   const employee_where = {
     username: { in: usernames },
     deleted_at: active_tab === "aktif" ? null : { not: null },
+    is_slip_gaji_account: active_category === "slip-gaji",
     ...(is_member ? { uuid: actor_uuid } : {}),
   };
   const attribute_uuids = Array.from(
@@ -374,7 +565,7 @@ export async function importAtributInsanKu({
         username: true,
       },
     }),
-    prisma.tbl_atribut.findMany({
+    prisma.tbl_kolom_atribut.findMany({
       where: {
         uuid: { in: attribute_uuids },
         deleted_at: null,
@@ -382,6 +573,7 @@ export async function importAtributInsanKu({
       select: {
         uuid: true,
         type: true,
+        is_attribute: true,
         is_edit: true,
         is_view: true,
       },
@@ -393,7 +585,7 @@ export async function importAtributInsanKu({
 
   if (unmatched_usernames.length) {
     throw new Error(
-      `${unmatched_usernames.length} Username tidak ditemukan pada tab ${active_tab}.`,
+      `${unmatched_usernames.length} Username tidak ditemukan pada kategori ${category_label} tab ${active_tab}.`,
     );
   }
 
@@ -453,6 +645,7 @@ export async function importAtributInsanKu({
   emit_socket_event("attribute.sync.completed", {
     source: "excel-import",
     active_tab,
+    active_category,
   });
 
   return {
@@ -461,12 +654,12 @@ export async function importAtributInsanKu({
       imported_employees: normalized_rows.length,
       updated_attributes: updates.length,
     },
-    message: `Impor atribut berhasil untuk ${normalized_rows.length} InsanKu pada tab ${active_tab}.`,
+    message: `Impor atribut berhasil untuk ${normalized_rows.length} InsanKu ${category_label} pada tab ${active_tab}.`,
   };
 }
 
 export async function getAtributMaster() {
-  const data_atribut = await prisma.tbl_atribut.findMany({
+  const data_atribut = await prisma.tbl_kolom_atribut.findMany({
     where: {
       deleted_at: null,
     },
@@ -482,6 +675,8 @@ export async function getAtributMaster() {
       uuid: true,
       name: true,
       type: true,
+      is_attribute: true,
+      range_with: true,
       is_edit: true,
       is_view: true,
       order: true,
@@ -493,23 +688,33 @@ export async function getAtributMaster() {
   };
 }
 
-export async function createAtribut({ name, type, is_edit, is_view }) {
+export async function createAtribut({
+  name,
+  type,
+  is_attribute,
+  range_with,
+  is_edit,
+  is_view,
+}) {
   const trimmed_name = normalize_name(name);
   const normalized_type = normalize_attribute_type(type);
-  const normalized_flags = normalize_attribute_flags({ is_edit, is_view });
+  const normalized_flags = normalize_attribute_flags({
+    is_attribute,
+    is_edit,
+    is_view,
+  });
 
   if (!trimmed_name) {
-    throw new Error("Nama atribut wajib diisi.");
+    throw new Error("Nama kolom atribut wajib diisi.");
   }
 
   if (!normalized_type) {
-    throw new Error("Jenis atribut wajib diisi.");
+    throw new Error("Jenis kolom atribut wajib diisi.");
   }
 
-  const existing_attribute = await prisma.tbl_atribut.findFirst({
+  const existing_attribute = await prisma.tbl_kolom_atribut.findFirst({
     where: {
       name: trimmed_name,
-      type: normalized_type,
       deleted_at: null,
     },
     select: {
@@ -518,10 +723,10 @@ export async function createAtribut({ name, type, is_edit, is_view }) {
   });
 
   if (existing_attribute) {
-    throw new Error("Nama atribut sudah digunakan.");
+    throw new Error("Nama kolom atribut sudah digunakan.");
   }
 
-  const last_attribute = await prisma.tbl_atribut.findFirst({
+  const last_attribute = await prisma.tbl_kolom_atribut.findFirst({
     where: {
       deleted_at: null,
     },
@@ -533,23 +738,37 @@ export async function createAtribut({ name, type, is_edit, is_view }) {
     },
   });
 
-  const created_attribute = await prisma.tbl_atribut.create({
-    data: {
-      uuid: randomUUID(),
-      name: trimmed_name,
+  const created_uuid = randomUUID();
+  const created_attribute = await prisma.$transaction(async (transaction) => {
+    const range_with_uuid = await resolve_range_with(transaction, {
+      range_with,
+      uuid: created_uuid,
       type: normalized_type,
-      is_view: normalized_flags.is_view,
-      is_edit: normalized_flags.is_edit,
-      order: (last_attribute?.order ?? 0) + 1,
-    },
-    select: {
-      uuid: true,
-      name: true,
-      type: true,
-      is_edit: true,
-      is_view: true,
-      order: true,
-    },
+    });
+    const created_row = await transaction.tbl_kolom_atribut.create({
+      data: {
+        uuid: created_uuid,
+        name: trimmed_name,
+        type: normalized_type,
+        is_attribute: normalized_flags.is_attribute,
+        range_with: range_with_uuid,
+        is_view: normalized_flags.is_view,
+        is_edit: normalized_flags.is_edit,
+        order: (last_attribute?.order ?? 0) + 1,
+      },
+      select: {
+        uuid: true,
+        name: true,
+        type: true,
+        is_attribute: true,
+        range_with: true,
+        is_edit: true,
+        is_view: true,
+        order: true,
+      },
+    });
+
+    return created_row;
   });
 
   emit_socket_event("attribute.master.changed", {
@@ -560,28 +779,40 @@ export async function createAtribut({ name, type, is_edit, is_view }) {
   return {
     success: true,
     data: created_attribute,
-    message: "Atribut berhasil ditambahkan.",
+    message: "Kolom atribut berhasil ditambahkan.",
   };
 }
 
-export async function updateAtribut({ uuid_atribut, name, type, is_edit, is_view }) {
+export async function updateAtribut({
+  uuid_atribut,
+  name,
+  type,
+  is_attribute,
+  range_with,
+  is_edit,
+  is_view,
+}) {
   if (!uuid_atribut) {
-    throw new Error("UUID atribut wajib diisi.");
+    throw new Error("UUID kolom atribut wajib diisi.");
   }
 
   const trimmed_name = normalize_name(name);
   const normalized_type = normalize_attribute_type(type);
-  const normalized_flags = normalize_attribute_flags({ is_edit, is_view });
+  const normalized_flags = normalize_attribute_flags({
+    is_attribute,
+    is_edit,
+    is_view,
+  });
 
   if (!trimmed_name) {
-    throw new Error("Nama atribut wajib diisi.");
+    throw new Error("Nama kolom atribut wajib diisi.");
   }
 
   if (!normalized_type) {
-    throw new Error("Jenis atribut wajib diisi.");
+    throw new Error("Jenis kolom atribut wajib diisi.");
   }
 
-  const existing_attribute = await prisma.tbl_atribut.findUnique({
+  const existing_attribute = await prisma.tbl_kolom_atribut.findUnique({
     where: {
       uuid: uuid_atribut,
     },
@@ -593,13 +824,12 @@ export async function updateAtribut({ uuid_atribut, name, type, is_edit, is_view
   });
 
   if (!existing_attribute || existing_attribute.deleted_at) {
-    throw new Error("Data atribut tidak ditemukan.");
+    throw new Error("Data kolom atribut tidak ditemukan.");
   }
 
-  const duplicate_attribute = await prisma.tbl_atribut.findFirst({
+  const duplicate_attribute = await prisma.tbl_kolom_atribut.findFirst({
     where: {
       name: trimmed_name,
-      type: normalized_type,
       deleted_at: null,
       uuid: {
         not: uuid_atribut,
@@ -611,7 +841,7 @@ export async function updateAtribut({ uuid_atribut, name, type, is_edit, is_view
   });
 
   if (duplicate_attribute) {
-    throw new Error("Nama atribut sudah digunakan.");
+    throw new Error("Nama kolom atribut sudah digunakan.");
   }
 
   const attribute_value_rows = await prisma.tbl_atribut_insanku.findMany({
@@ -636,13 +866,21 @@ export async function updateAtribut({ uuid_atribut, name, type, is_edit, is_view
   }
 
   const updated_attribute = await prisma.$transaction(async (transaction) => {
-    const updated_row = await transaction.tbl_atribut.update({
+    const range_with_uuid = await resolve_range_with(transaction, {
+      range_with,
+      uuid: uuid_atribut,
+      type: normalized_type,
+    });
+
+    const updated_row = await transaction.tbl_kolom_atribut.update({
       where: {
         uuid: uuid_atribut,
       },
       data: {
         name: trimmed_name,
         type: normalized_type,
+        is_attribute: normalized_flags.is_attribute,
+        range_with: range_with_uuid,
         is_view: normalized_flags.is_view,
         is_edit: normalized_flags.is_edit,
       },
@@ -650,6 +888,8 @@ export async function updateAtribut({ uuid_atribut, name, type, is_edit, is_view
         uuid: true,
         name: true,
         type: true,
+        is_attribute: true,
+        range_with: true,
         is_edit: true,
         is_view: true,
         order: true,
@@ -685,16 +925,16 @@ export async function updateAtribut({ uuid_atribut, name, type, is_edit, is_view
   return {
     success: true,
     data: updated_attribute,
-    message: "Atribut berhasil diperbarui.",
+    message: "Kolom atribut berhasil diperbarui.",
   };
 }
 
 export async function deleteAtribut({ uuid_atribut }) {
   if (!uuid_atribut) {
-    throw new Error("UUID atribut wajib diisi.");
+    throw new Error("UUID kolom atribut wajib diisi.");
   }
 
-  const existing_attribute = await prisma.tbl_atribut.findUnique({
+  const existing_attribute = await prisma.tbl_kolom_atribut.findUnique({
     where: {
       uuid: uuid_atribut,
     },
@@ -705,17 +945,27 @@ export async function deleteAtribut({ uuid_atribut }) {
   });
 
   if (!existing_attribute || existing_attribute.deleted_at) {
-    throw new Error("Data atribut tidak ditemukan.");
+    throw new Error("Data kolom atribut tidak ditemukan.");
   }
 
   await prisma.$transaction(async (transaction) => {
     const deleted_at = new Date();
 
-    await transaction.tbl_atribut.update({
+    await transaction.tbl_kolom_atribut.updateMany({
+      where: {
+        range_with: uuid_atribut,
+      },
+      data: {
+        range_with: null,
+      },
+    });
+
+    await transaction.tbl_kolom_atribut.update({
       where: {
         uuid: uuid_atribut,
       },
       data: {
+        range_with: null,
         deleted_at,
       },
     });
@@ -738,22 +988,22 @@ export async function deleteAtribut({ uuid_atribut }) {
 
   return {
     success: true,
-    message: "Atribut berhasil dihapus.",
+    message: "Kolom atribut berhasil dihapus.",
   };
 }
 
 export async function reorderAtribut({ ordered_uuids }) {
   if (!Array.isArray(ordered_uuids) || ordered_uuids.length === 0) {
-    throw new Error("Urutan atribut wajib diisi.");
+    throw new Error("Urutan kolom atribut wajib diisi.");
   }
 
   const unique_ordered_uuids = [...new Set(ordered_uuids.filter(Boolean))];
 
   if (unique_ordered_uuids.length !== ordered_uuids.length) {
-    throw new Error("Urutan atribut tidak valid.");
+    throw new Error("Urutan kolom atribut tidak valid.");
   }
 
-  const existing_attributes = await prisma.tbl_atribut.findMany({
+  const existing_attributes = await prisma.tbl_kolom_atribut.findMany({
     where: {
       uuid: {
         in: unique_ordered_uuids,
@@ -766,12 +1016,12 @@ export async function reorderAtribut({ ordered_uuids }) {
   });
 
   if (existing_attributes.length !== unique_ordered_uuids.length) {
-    throw new Error("Ada atribut yang tidak ditemukan.");
+    throw new Error("Ada kolom atribut yang tidak ditemukan.");
   }
 
   await prisma.$transaction(
     unique_ordered_uuids.map((uuid_atribut, index) =>
-      prisma.tbl_atribut.update({
+      prisma.tbl_kolom_atribut.update({
         where: {
           uuid: uuid_atribut,
         },
@@ -788,6 +1038,6 @@ export async function reorderAtribut({ ordered_uuids }) {
 
   return {
     success: true,
-    message: "Urutan atribut berhasil diperbarui.",
+    message: "Urutan kolom atribut berhasil diperbarui.",
   };
 }

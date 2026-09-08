@@ -68,6 +68,7 @@ export const PATCH = async (request) => {
     const body = await request.json().catch(() => ({}));
     const data = await updateInsanKu({
       uuid_insanku: body?.uuid_insanku,
+      nik: body?.nik,
       name: body?.name,
       username: body?.username,
       password: body?.password,

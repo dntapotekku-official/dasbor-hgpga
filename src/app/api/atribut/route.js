@@ -22,6 +22,10 @@ export const GET = async () => {
     return NextResponse.json({
       success: true,
       data,
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      },
     });
   } catch (error) {
     return NextResponse.json(
@@ -46,6 +50,8 @@ export const PUT = async (request) => {
     const data = await createAtribut({
       name: body?.name,
       type: body?.type,
+      is_attribute: body?.is_attribute,
+      range_with: body?.range_with,
       is_view: body?.is_view,
       is_edit: body?.is_edit,
     });
@@ -100,6 +106,8 @@ export const PATCH = async (request) => {
       uuid_atribut: body?.uuid_atribut,
       name: body?.name,
       type: body?.type,
+      is_attribute: body?.is_attribute,
+      range_with: body?.range_with,
       is_view: body?.is_view,
       is_edit: body?.is_edit,
     });

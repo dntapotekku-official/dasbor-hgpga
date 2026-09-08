@@ -3,14 +3,19 @@ import { dedupeByUuid } from "@/lib/utils";
 
 export async function fetchOutletPayload() {
   const url = process.env.OUTLET_SLIP_GAJI_API_URL;
+  const api_key = process.env.APOTEKKU_API_KEY;
 
   if (!url) {
     throw new Error("Environment variable OUTLET_SLIP_GAJI_API_URL belum diatur.");
   }
 
+  if (!api_key) {
+    throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
+  }
+
   const result = await fetch(url, {
     headers: {
-      "x-api-key": process.env.SLIPGAJI_AUDIT_API_KEY,
+      "x-api-key": api_key,
     },
   });
 

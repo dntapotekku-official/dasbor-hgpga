@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
+  ArrowRightLeftIcon,
   FileSpreadsheetIcon,
   FilterIcon,
   InfoIcon,
@@ -37,8 +38,17 @@ import {
 } from "@/components/ui/table";
 import usePagination from "@/hooks/usePagination";
 import { get_socket } from "@/lib/socket-client";
+import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 
 const PAGE_SIZE = 50;
+const ATTRIBUTE_CARD_STYLES = [
+  "border-sky-200 bg-sky-50/80 text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-50",
+  "border-violet-200 bg-violet-50/80 text-violet-950 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-50",
+  "border-emerald-200 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-50",
+  "border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-50",
+  "border-rose-200 bg-rose-50/80 text-rose-950 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-50",
+  "border-cyan-200 bg-cyan-50/80 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-50",
+];
 
 function compare_value(first_value, second_value) {
   const first_number = Number(first_value);
@@ -77,9 +87,42 @@ function get_excel_cell_value(cell_value) {
   return cell_value ?? "";
 }
 
+function get_date_range_days(start_value, end_value) {
+  const start_date = String(start_value ?? "").trim();
+  const end_date = String(end_value ?? "").trim();
+
+  if (!start_date || !end_date) {
+    return null;
+  }
+
+  const start_timestamp = Date.parse(`${start_date}T00:00:00`);
+  const end_timestamp = Date.parse(`${end_date}T00:00:00`);
+
+  if (
+    !Number.isFinite(start_timestamp) ||
+    !Number.isFinite(end_timestamp) ||
+    end_timestamp < start_timestamp
+  ) {
+    return null;
+  }
+
+  return Math.floor((end_timestamp - start_timestamp) / 86400000) + 1;
+}
+
+function employee_has_attribute_value(employee, column) {
+  const value = employee.attribute_values?.[column.key];
+
+  if (column.type === "checkbox") {
+    return value === true;
+  }
+
+  return String(value ?? "").trim() !== "";
+}
+
 export default function AtributInsanKuPage() {
   const [attribute_columns, setAttributeColumns] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [active_category, setActiveCategory] = useState("slip-gaji");
   const [active_tab, setActiveTab] = useState("aktif");
   const [can_edit_values, setCanEditValues] = useState(false);
   const [is_member_view, setIsMemberView] = useState(false);
@@ -91,12 +134,18 @@ export default function AtributInsanKuPage() {
   const [sync_status, setSyncStatus] = useState("idle");
   const [is_importing, setIsImporting] = useState(false);
   const [is_filter_modal_open, setIsFilterModalOpen] = useState(false);
+  const [is_export_modal_open, setIsExportModalOpen] = useState(false);
   const [attribute_filters, setAttributeFilters] = useState({});
   const [draft_attribute_filters, setDraftAttributeFilters] = useState({});
+  const [transfer_source, setTransferSource] = useState(null);
+  const [is_transfer_sheet_open, setIsTransferSheetOpen] = useState(false);
   const import_input_ref = useRef(null);
+  const previous_cell_values_ref = useRef({});
 
   const fetch_attributes = useCallback(async () => {
-    const response = await fetch("/api/atribut-insanku");
+    const response = await fetch("/api/atribut-insanku", {
+      cache: "no-store",
+    });
     const payload = await response.json();
 
     if (!response.ok || !payload.success) {
@@ -113,6 +162,11 @@ export default function AtributInsanKuPage() {
     setEmployees(data?.rows ?? []);
     setCanEditValues(Boolean(data?.can_edit_values));
     setIsMemberView(Boolean(data?.is_member_view));
+    if (data?.is_member_view && data?.rows?.[0]) {
+      setActiveCategory(
+        data.rows[0].is_slip_gaji_account ? "slip-gaji" : "non-slip-gaji",
+      );
+    }
   }, [fetch_attributes]);
 
   useEffect(() => {
@@ -132,6 +186,13 @@ export default function AtributInsanKuPage() {
         setEmployees(data?.rows ?? []);
         setCanEditValues(Boolean(data?.can_edit_values));
         setIsMemberView(Boolean(data?.is_member_view));
+        if (data?.is_member_view && data?.rows?.[0]) {
+          setActiveCategory(
+            data.rows[0].is_slip_gaji_account
+              ? "slip-gaji"
+              : "non-slip-gaji",
+          );
+        }
       } catch (error) {
         if (!is_active) {
           return;
@@ -166,18 +227,45 @@ export default function AtributInsanKuPage() {
             ? error.message
             : "Gagal memperbarui data atribut realtime.",
         );
-      });
+        });
+    };
+
+    const apply_attribute_value = ({ uuid_insanku, uuid_atribut, value }) => {
+      if (!uuid_insanku || !uuid_atribut) {
+        return;
+      }
+
+      setEmployees((current) =>
+        current.map((employee) => {
+          if (employee.uuid !== uuid_insanku) {
+            return employee;
+          }
+
+          const filled_attribute_keys = employee.filled_attribute_keys ?? [];
+
+          return {
+            ...employee,
+            filled_attribute_keys: filled_attribute_keys.includes(uuid_atribut)
+              ? filled_attribute_keys
+              : [...filled_attribute_keys, uuid_atribut],
+            attribute_values: {
+              ...employee.attribute_values,
+              [uuid_atribut]: value,
+            },
+          };
+        }),
+      );
     };
 
     socket.on("connect", refresh_attributes);
     socket.on("attribute.master.changed", refresh_attributes);
-    socket.on("attribute.value.changed", refresh_attributes);
+    socket.on("attribute.value.changed", apply_attribute_value);
     socket.on("attribute.sync.completed", refresh_attributes);
 
     return () => {
       socket.off("connect", refresh_attributes);
       socket.off("attribute.master.changed", refresh_attributes);
-      socket.off("attribute.value.changed", refresh_attributes);
+      socket.off("attribute.value.changed", apply_attribute_value);
       socket.off("attribute.sync.completed", refresh_attributes);
     };
   }, [load_attributes]);
@@ -222,11 +310,16 @@ export default function AtributInsanKuPage() {
           : String(value ?? "").trim() !== ""),
     );
 
+    const category_employees = employees.filter(
+      (employee) =>
+        employee.is_slip_gaji_account === (active_category === "slip-gaji"),
+    );
+
     if (!keyword && !active_attribute_filters.length) {
-      return employees;
+      return category_employees;
     }
 
-    return employees.filter((employee) => {
+    return category_employees.filter((employee) => {
       const matches_keyword =
         !keyword ||
         String(employee.name ?? "").toLowerCase().includes(keyword);
@@ -277,6 +370,7 @@ export default function AtributInsanKuPage() {
   }, [
     attribute_columns,
     attribute_filters,
+    active_category,
     employees,
     filterable_attribute_columns,
     search,
@@ -295,10 +389,62 @@ export default function AtributInsanKuPage() {
   const export_employees = useMemo(
     () =>
       employees.filter((employee) =>
-        active_tab === "aktif" ? employee.is_active : !employee.is_active,
+        employee.is_slip_gaji_account === (active_category === "slip-gaji") &&
+        (active_tab === "aktif" ? employee.is_active : !employee.is_active),
       ),
-    [active_tab, employees],
+    [active_category, active_tab, employees],
   );
+
+  const required_attribute_columns = useMemo(
+    () => attribute_columns.filter((column) => column.is_attribute),
+    [attribute_columns],
+  );
+
+  const is_attribute_complete = useCallback(
+    (employee) =>
+      required_attribute_columns.every((column) =>
+        employee_has_attribute_value(employee, column),
+      ),
+    [required_attribute_columns],
+  );
+
+  const complete_export_employees = useMemo(
+    () => export_employees.filter(is_attribute_complete),
+    [export_employees, is_attribute_complete],
+  );
+
+  const incomplete_export_employees = useMemo(
+    () => export_employees.filter((employee) => !is_attribute_complete(employee)),
+    [export_employees, is_attribute_complete],
+  );
+
+  const attribute_summary_cards = useMemo(
+    () =>
+      required_attribute_columns.map((column) => {
+        const filled_count = export_employees.filter((employee) =>
+          employee_has_attribute_value(employee, column),
+        ).length;
+
+        return {
+          key: column.key,
+          label: column.label,
+          filled_count,
+          total_count: export_employees.length,
+        };
+      }),
+    [export_employees, required_attribute_columns],
+  );
+
+  const display_attribute_columns = useMemo(() => {
+    const attribute_by_uuid = new Map(
+      attribute_columns.map((column) => [column.key, column]),
+    );
+    return attribute_columns.map((column) => ({
+      ...column,
+      range_column:
+        column.type === "date" ? attribute_by_uuid.get(column.range_with) : null,
+    }));
+  }, [attribute_columns]);
 
   const tab_employees = useMemo(
     () => (active_tab === "aktif" ? active_employees : non_active_employees),
@@ -328,6 +474,25 @@ export default function AtributInsanKuPage() {
     next_page,
   } = usePagination(sorted_employees, PAGE_SIZE);
 
+  const transfer_target_options = useMemo(
+    () =>
+      employees
+        .filter(
+          (employee) =>
+            employee.is_slip_gaji_account && employee.is_active,
+        )
+        .sort((first, second) => compare_value(first.name, second.name))
+        .map((employee) => ({
+          value: employee.uuid,
+          label: `${employee.nik || "NIK kosong"} - ${employee.name}`,
+        })),
+    [employees],
+  );
+  const table_column_count =
+    display_attribute_columns.length +
+    2 +
+    (active_category === "non-slip-gaji" ? 1 : 0);
+
   const toggle_sort = (next_sort_key) => {
     if (sort_key === next_sort_key) {
       setSortDirection((current_direction) =>
@@ -348,6 +513,34 @@ export default function AtributInsanKuPage() {
   const handle_tab_change = (next_tab) => {
     setActiveTab(next_tab);
     setCurrentPage(1);
+  };
+
+  const handle_category_change = (next_category) => {
+    setActiveCategory(next_category);
+    setActiveTab("aktif");
+    setCurrentPage(1);
+  };
+
+  const handle_transfer_attributes = async (next_transfer) => {
+    const response = await fetch("/api/atribut-insanku", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        operation: "transfer",
+        source_uuid: transfer_source?.uuid,
+        target_uuid: next_transfer.target_uuid,
+      }),
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message || "Gagal mengoper atribut.");
+    }
+
+    toast.success(payload.message || "Atribut berhasil dioper.");
+    await load_attributes();
   };
 
   const handle_import = async (event) => {
@@ -440,6 +633,7 @@ export default function AtributInsanKuPage() {
         },
         body: JSON.stringify({
           active_tab,
+          active_category,
           rows,
         }),
       });
@@ -463,8 +657,13 @@ export default function AtributInsanKuPage() {
     }
   };
 
-  const handle_export = async () => {
-    if (!export_employees.length) {
+  const handle_export = async (export_scope) => {
+    const selected_employees =
+      export_scope === "complete"
+        ? complete_export_employees
+        : incomplete_export_employees;
+
+    if (!selected_employees.length) {
       toast.info("Tidak ada data yang dapat diekspor.");
       return;
     }
@@ -473,11 +672,14 @@ export default function AtributInsanKuPage() {
       const exceljs_module = await import("exceljs");
       const ExcelJS = exceljs_module.default ?? exceljs_module;
       const workbook = new ExcelJS.Workbook();
+      const category_label =
+        active_category === "slip-gaji" ? "Slip Gaji" : "Non Slip Gaji";
       const worksheet = workbook.addWorksheet(
-        active_tab === "aktif" ? "InsanKu Aktif" : "InsanKu Non-Aktif",
+        `${category_label} - ${active_tab === "aktif" ? "Aktif" : "Non-Aktif"}`,
       );
 
       worksheet.columns = [
+        { header: "NIK", key: "nik", width: 18 },
         { header: "Nama", key: "name", width: 28 },
         { header: "Username", key: "username", width: 22 },
         ...attribute_columns.map((column) => ({
@@ -486,8 +688,9 @@ export default function AtributInsanKuPage() {
           width: Math.max(column.label.length + 4, 18),
         })),
       ];
-      export_employees.forEach((employee) => {
+      selected_employees.forEach((employee) => {
         worksheet.addRow({
+          nik: employee.nik,
           name: employee.name,
           username: employee.username,
           ...Object.fromEntries(
@@ -522,11 +725,12 @@ export default function AtributInsanKuPage() {
       const tab_label = active_tab === "aktif" ? "aktif" : "non-aktif";
 
       download_link.href = download_url;
-      download_link.download = `atribut-insanku-${tab_label}.xlsx`;
+      download_link.download = `atribut-insanku-${active_category}-${tab_label}.xlsx`;
       document.body.appendChild(download_link);
       download_link.click();
       download_link.remove();
       URL.revokeObjectURL(download_url);
+      setIsExportModalOpen(false);
       toast.success("Data atribut berhasil diekspor ke Excel.");
     } catch (error) {
       toast.error(
@@ -564,6 +768,11 @@ export default function AtributInsanKuPage() {
   }) => {
     const cell_key = update_cell_key(uuid_insanku, uuid_atribut);
 
+    if (Object.is(next_value, previous_value)) {
+      delete previous_cell_values_ref.current[cell_key];
+      return;
+    }
+
     setSavingCells((current) => ({
       ...current,
       [cell_key]: true,
@@ -600,6 +809,27 @@ export default function AtributInsanKuPage() {
       if (!response.ok || !payload.success) {
         throw new Error(payload.message || "Gagal memperbarui atribut.");
       }
+
+      setEmployees((current) =>
+        current.map((employee) => {
+          if (employee.uuid !== uuid_insanku) {
+            return employee;
+          }
+
+          const filled_attribute_keys = employee.filled_attribute_keys ?? [];
+
+          return {
+            ...employee,
+            filled_attribute_keys: filled_attribute_keys.includes(uuid_atribut)
+              ? filled_attribute_keys
+              : [...filled_attribute_keys, uuid_atribut],
+            attribute_values: {
+              ...employee.attribute_values,
+              [uuid_atribut]: payload.data?.value ?? next_value,
+            },
+          };
+        }),
+      );
     } catch (error) {
       setEmployees((current) =>
         current.map((employee) =>
@@ -621,6 +851,7 @@ export default function AtributInsanKuPage() {
           : "Gagal memperbarui atribut.",
       );
     } finally {
+      delete previous_cell_values_ref.current[cell_key];
       setSavingCells((current) => {
         const next = { ...current };
         delete next[cell_key];
@@ -629,11 +860,11 @@ export default function AtributInsanKuPage() {
     }
   };
 
-  const render_attribute_input = (employee, column) => {
+  const render_attribute_control = (employee, column) => {
     const cell_key = update_cell_key(employee.uuid, column.key);
     const is_saving = Boolean(saving_cells[cell_key]);
     const current_value = employee.attribute_values?.[column.key];
-    const is_disabled =
+    const is_read_only =
       is_saving ||
       !can_edit_values ||
       (is_member_view && !column.is_edit);
@@ -645,7 +876,11 @@ export default function AtributInsanKuPage() {
             <input
               type="checkbox"
               checked={Boolean(current_value)}
-              disabled={is_disabled}
+              onClick={(event) => {
+                if (is_read_only) {
+                  event.preventDefault();
+                }
+              }}
               onChange={(event) =>
                 persist_attribute_value({
                   uuid_insanku: employee.uuid,
@@ -664,7 +899,12 @@ export default function AtributInsanKuPage() {
       <Input
         type={column.type === "number" ? "number" : column.type === "date" ? "date" : "text"}
         value={String(current_value ?? "")}
-        disabled={is_disabled}
+        readOnly={is_read_only}
+        onFocus={() => {
+          previous_cell_values_ref.current[cell_key] = String(
+            current_value ?? "",
+          );
+        }}
         onChange={(event) => {
           const changed_value = event.target.value;
 
@@ -687,10 +927,34 @@ export default function AtributInsanKuPage() {
             uuid_insanku: employee.uuid,
             uuid_atribut: column.key,
             next_value: event.target.value,
-            previous_value: String(current_value ?? ""),
+            previous_value:
+              previous_cell_values_ref.current[cell_key] ??
+              String(current_value ?? ""),
           })}
         className="h-9 min-w-[140px]"
       />
+    );
+  };
+
+  const render_attribute_input = (employee, column) => {
+    if (!column.range_column) {
+      return render_attribute_control(employee, column);
+    }
+
+    const range_days = get_date_range_days(
+      employee.attribute_values?.[column.key],
+      employee.attribute_values?.[column.range_column.key],
+    );
+
+    return (
+      <div className="flex items-center gap-2">
+        {render_attribute_control(employee, column)}
+        {range_days !== null ? (
+          <span className="shrink-0 text-xs font-semibold text-primary">
+            {range_days} hari
+          </span>
+        ) : null}
+      </div>
     );
   };
 
@@ -703,8 +967,14 @@ export default function AtributInsanKuPage() {
         />
       </div>
       <div className="px-4 lg:px-6">
-        <Tabs value={active_tab} onValueChange={handle_tab_change} className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <div
+            className={
+              active_category === "non-slip-gaji"
+                ? "grid gap-3"
+                : "grid gap-3 md:grid-cols-2"
+            }
+          >
             <div className="flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
               <InfoIcon className="mt-0.5 size-4 shrink-0 text-sky-600" />
               <p className="text-sm leading-5">
@@ -712,35 +982,74 @@ export default function AtributInsanKuPage() {
               </p>
             </div>
 
-            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
-              <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
-              <p className="text-sm leading-5">
-                Data InsanKu bersumber dari <strong>SlipGaji</strong>. Jika belum
-                terbaru, {" "}
-                <strong>
-                  sinkronkan melalui menu Pengguna pada tab InsanKu
-                </strong>
-                .
-              </p>
-            </div>
+            {active_category === "slip-gaji" ? (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
+                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <p className="text-sm leading-5">
+                  Data InsanKu bersumber dari <strong>SlipGaji</strong>. Jika belum
+                  terbaru, {" "}
+                  <strong>
+                    sinkronkan melalui menu Pengguna pada tab InsanKu (Slip Gaji)
+                  </strong>
+                  .
+                </p>
+              </div>
+            ) : null}
           </div>
 
-          <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
-            <TabsTrigger value="aktif" className="min-w-max px-4 py-2">
-              InsanKu Aktif
-            </TabsTrigger>
-            <TabsTrigger value="non-aktif" className="min-w-max px-4 py-2">
-              InsanKu Non-Aktif
-            </TabsTrigger>
-          </TabsList>
+          <div className="mt-4 mb-4 grid gap-3 lg:grid-cols-2">
+            <Tabs value={active_category} onValueChange={handle_category_change}>
+              <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
+              <TabsTrigger value="slip-gaji" className="min-w-max flex-1 px-4 py-2">
+                InsanKu (Slip Gaji)
+                </TabsTrigger>
+                <TabsTrigger value="non-slip-gaji" className="min-w-max flex-1 px-4 py-2">
+                  InsanKu (Non Slip Gaji)
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <Tabs value={active_tab} onValueChange={handle_tab_change}>
+              <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
+                <TabsTrigger value="aktif" className="min-w-max flex-1 px-4 py-2">
+                  Aktif
+                </TabsTrigger>
+                <TabsTrigger value="non-aktif" className="min-w-max flex-1 px-4 py-2">
+                  Non-Aktif
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {attribute_summary_cards.length ? (
+            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {attribute_summary_cards.map((summary, index) => (
+                <Card
+                  key={summary.key}
+                  className={`border px-4 py-3 ${ATTRIBUTE_CARD_STYLES[index % ATTRIBUTE_CARD_STYLES.length]}`}
+                >
+                  <p className="truncate text-sm font-medium opacity-75">
+                    {summary.label}
+                  </p>
+                  <p className="mt-1 text-xl font-bold">
+                    {summary.filled_count.toLocaleString("id-ID")} / {summary.total_count.toLocaleString("id-ID")}
+                  </p>
+                  <p className="text-xs opacity-70">
+                    InsanKu sudah memiliki atribut
+                  </p>
+                </Card>
+              ))}
+            </div>
+          ) : null}
 
           <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
               <CardTitle className="min-w-0 flex-1">
-                {active_tab === "aktif"
-                  ? "Data Atribut InsanKu Aktif"
-                  : "Data Atribut InsanKu Non-Aktif"}
+                {active_category === "non-slip-gaji"
+                  ? "Data Atribut InsanKu (Non Slip Gaji)"
+                  : "Data Atribut InsanKu (Slip Gaji)"}{" "}
+                {active_tab === "aktif" ? "Aktif" : "Non-Aktif"}
               </CardTitle>
               <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
                 <Button
@@ -766,7 +1075,7 @@ export default function AtributInsanKuPage() {
                 />
                 <Button
                   type="button"
-                  onClick={handle_export}
+                  onClick={() => setIsExportModalOpen(true)}
                   className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                 >
                   <FileSpreadsheetIcon className="size-4" />
@@ -808,8 +1117,32 @@ export default function AtributInsanKuPage() {
                 <div className="max-h-[560px] overflow-auto">
                   <Table containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-20 bg-card">
-                      <TableRow>
-                        <TableHead className="sticky top-0 left-0 z-30 min-w-[240px] bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
+                    <TableRow>
+                      {active_category === "non-slip-gaji" ? (
+                        <TableHead className="sticky top-0 left-0 z-30 min-w-[150px] bg-card text-center">
+                          Aksi
+                        </TableHead>
+                      ) : null}
+                      <TableHead
+                        className={`sticky top-0 z-30 min-w-[160px] bg-card shadow-[1px_0_0_0_hsl(var(--border))] ${
+                          active_category === "non-slip-gaji" ? "left-[150px]" : "left-0"
+                        }`}
+                      >
+                          <SortableTableHead
+                            label="NIK"
+                            sortKey="nik"
+                            currentSortKey={sort_key}
+                            sortDirection={sort_direction}
+                            onSort={toggle_sort}
+                          />
+                        </TableHead>
+                        <TableHead
+                          className={`sticky top-0 z-30 min-w-[240px] bg-card shadow-[1px_0_0_0_hsl(var(--border))] ${
+                            active_category === "non-slip-gaji"
+                              ? "left-[310px]"
+                              : "left-[160px]"
+                          }`}
+                        >
                           <SortableTableHead
                             label="Nama"
                             sortKey="name"
@@ -818,12 +1151,23 @@ export default function AtributInsanKuPage() {
                             onSort={toggle_sort}
                           />
                         </TableHead>
-                        {attribute_columns.map((column) => (
+                        {display_attribute_columns.map((column) => (
                           <TableHead
                             key={column.key}
-                            className="sticky top-0 z-20 min-w-[160px] bg-card text-center"
+                            className={`sticky top-0 z-20 min-w-[160px] bg-card text-center ${
+                              column.range_column ? "h-auto py-2" : ""
+                            }`}
                           >
-                            {column.label}
+                            {column.range_column ? (
+                              <div className="flex flex-col gap-1 px-1">
+                                <span>{column.label}</span>
+                                <span className="text-xs font-normal leading-4 !text-white/80">
+                                  Rentang dengan: {column.range_column.label}
+                                </span>
+                              </div>
+                            ) : (
+                              column.label
+                            )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -832,7 +1176,7 @@ export default function AtributInsanKuPage() {
                       {is_loading_attributes ? (
                         <TableRow>
                           <TableCell
-                            colSpan={attribute_columns.length + 2}
+                            colSpan={table_column_count}
                             className="h-28 text-center text-muted-foreground"
                           >
                             <span className="inline-flex items-center gap-2">
@@ -844,10 +1188,44 @@ export default function AtributInsanKuPage() {
                       ) : paginated_rows.length ? (
                         paginated_rows.map((employee, index) => (
                           <TableRow key={employee.uuid}>
-                            <TableCell className="sticky left-0 z-10 bg-card font-medium shadow-[1px_0_0_0_hsl(var(--border))]">
+                            {active_category === "non-slip-gaji" ? (
+                              <TableCell className="sticky left-0 z-10 bg-card text-center">
+                                {employee.is_active ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!transfer_target_options.length}
+                                    onClick={() => {
+                                      setTransferSource(employee);
+                                      setIsTransferSheetOpen(true);
+                                    }}
+                                  >
+                                    <ArrowRightLeftIcon className="size-4" />
+                                    Oper
+                                  </Button>
+                                ) : null}
+                              </TableCell>
+                            ) : null}
+                            <TableCell
+                              className={`sticky z-10 bg-card shadow-[1px_0_0_0_hsl(var(--border))] ${
+                                active_category === "non-slip-gaji"
+                                  ? "left-[150px]"
+                                  : "left-0"
+                              }`}
+                            >
+                              {employee.nik || "-"}
+                            </TableCell>
+                            <TableCell
+                              className={`sticky z-10 bg-card font-medium shadow-[1px_0_0_0_hsl(var(--border))] ${
+                                active_category === "non-slip-gaji"
+                                  ? "left-[310px]"
+                                  : "left-[160px]"
+                              }`}
+                            >
                               {employee.name}
                             </TableCell>
-                            {attribute_columns.map((column) => (
+                            {display_attribute_columns.map((column) => (
                               <TableCell key={`${employee.uuid}-${column.key}`}>
                                 {render_attribute_input(employee, column)}
                               </TableCell>
@@ -857,7 +1235,7 @@ export default function AtributInsanKuPage() {
                       ) : (
                         <TableRow>
                           <TableCell
-                            colSpan={attribute_columns.length + 2}
+                            colSpan={table_column_count}
                             className="h-28 text-center text-muted-foreground"
                           >
                             Data tidak tersedia.
@@ -882,8 +1260,96 @@ export default function AtributInsanKuPage() {
             </div>
           </CardContent>
           </Card>
-        </Tabs>
+        </div>
       </div>
+
+      <PengaturanRowSheet
+        key={transfer_source?.uuid ?? "transfer-atribut-sheet"}
+        open={is_transfer_sheet_open}
+        on_open_change={setIsTransferSheetOpen}
+        title="Oper Atribut"
+        description={
+          transfer_source
+            ? `Pilih akun Slip Gaji berdasarkan NIK untuk menerima atribut dari ${transfer_source.name}.`
+            : "Pilih akun Slip Gaji berdasarkan NIK."
+        }
+        item={{ target_uuid: "" }}
+        fields={[
+          {
+            key: "target_uuid",
+            label: "Akun Slip Gaji Tujuan",
+            type: "select",
+            options: transfer_target_options,
+            searchable: true,
+            search_placeholder: "Cari berdasarkan NIK atau nama...",
+            empty_search_message: "Akun Slip Gaji tidak ditemukan.",
+            placeholder: "Pilih akun Slip Gaji",
+          },
+        ]}
+        on_save={handle_transfer_attributes}
+      />
+
+      <DialogPrimitive.Root
+        open={is_export_modal_open}
+        onOpenChange={setIsExportModalOpen}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />
+          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b p-5">
+              <div>
+                <DialogPrimitive.Title className="font-heading text-xl font-semibold">
+                  Ekspor Atribut InsanKu
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                  Pilih daftar InsanKu yang ingin diekspor. Seluruh kolom atribut tetap disertakan.
+                </DialogPrimitive.Description>
+              </div>
+              <DialogPrimitive.Close
+                render={
+                  <Button type="button" variant="ghost" size="icon-sm" />
+                }
+              >
+                <XIcon className="size-4" />
+                <span className="sr-only">Tutup</span>
+              </DialogPrimitive.Close>
+            </div>
+
+            <div className="grid gap-3 p-5">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto justify-between whitespace-normal px-4 py-3 text-left"
+                onClick={() => void handle_export("complete")}
+                disabled={!complete_export_employees.length}
+              >
+                <span>
+                  <span className="block font-semibold">Sudah mendapatkan semua atribut</span>
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    {complete_export_employees.length} InsanKu
+                  </span>
+                </span>
+                <FileSpreadsheetIcon className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto justify-between whitespace-normal px-4 py-3 text-left"
+                onClick={() => void handle_export("incomplete")}
+                disabled={!incomplete_export_employees.length}
+              >
+                <span>
+                  <span className="block font-semibold">Belum mendapatkan semua atribut</span>
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    {incomplete_export_employees.length} InsanKu
+                  </span>
+                </span>
+                <FileSpreadsheetIcon className="size-4" />
+              </Button>
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       <DialogPrimitive.Root
         open={is_filter_modal_open}

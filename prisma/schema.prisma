@@ -47,25 +47,31 @@ model tbl_outlet {
   nilai_transaksi    tbl_nilai_transaksi[]
   basket_size        tbl_basket_size[]
   dilayani           tbl_dilayani[]
+  nilai_magang       tbl_nilai_magang[]
 }
 
 model tbl_insanku {
-  id                 Int       @id @default(autoincrement())
-  uuid               String    @unique @db.Char(36)
-  name               String    @db.VarChar(100)
-  username           String    @unique @db.VarChar(100)
-  password           String?   @db.Text
-  is_username_change Boolean   @default(false)
-  is_password_change Boolean   @default(false)
-  avatar             String?   @db.Text
-  is_skip_sync       Boolean   @default(false)
-  role               Role
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
-  deleted_at         DateTime?
+  id                    Int       @id @default(autoincrement())
+  uuid                  String    @unique @db.Char(36)
+  nik                   String?   @db.VarChar(20)
+  name                  String    @db.VarChar(100)
+  username              String    @unique @db.VarChar(100)
+  password              String?   @db.Text
+  is_username_change    Boolean   @default(false)
+  is_password_change    Boolean   @default(false)
+  avatar                String?   @db.Text
+  is_slip_gaji_account  Boolean   @default(false)
+  is_skip_sync          Boolean   @default(false)
+  role                  Role
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  deleted_at            DateTime?
 
   outlet_insanku  tbl_outlet_insanku[]
   atribut_insanku tbl_atribut_insanku[]
+  nilai_magang    tbl_nilai_magang[]
+
+  @@unique([nik, is_slip_gaji_account])
 }
 
 model tbl_admin {
@@ -280,25 +286,27 @@ model tbl_atribut_insanku {
   updated_at   DateTime  @updatedAt
   deleted_at   DateTime?
 
-  insanku tbl_insanku? @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_atribut_insanku_insanku")
-  atribut tbl_atribut? @relation(fields: [uuid_atribut], references: [uuid], onDelete: SetNull, map: "fk_atribut_insanku_atribut")
+  insanku tbl_insanku?       @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_atribut_insanku_insanku")
+  atribut tbl_kolom_atribut? @relation(fields: [uuid_atribut], references: [uuid], onDelete: SetNull, map: "fk_atribut_insanku_kolom_atribut")
 
   @@unique([uuid_insanku, uuid_atribut])
   @@index([uuid_insanku])
   @@index([uuid_atribut])
 }
 
-model tbl_atribut {
-  id         Int           @id @default(autoincrement())
-  uuid       String        @unique @db.Char(36)
-  name       String        @db.VarChar(100)
-  type       AttributeType
-  is_edit    Boolean       @default(false)
-  is_view    Boolean       @default(false)
-  order      Int           @default(0)
-  created_at DateTime      @default(now())
-  updated_at DateTime      @updatedAt
-  deleted_at DateTime?
+model tbl_kolom_atribut {
+  id           Int           @id @default(autoincrement())
+  uuid         String        @unique @db.Char(36)
+  name         String        @db.VarChar(100)
+  type         AttributeType
+  is_attribute Boolean       @default(false)
+  range_with   String?       @unique @db.Char(36)
+  is_edit      Boolean       @default(false)
+  is_view      Boolean       @default(false)
+  order        Int           @default(0)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  deleted_at   DateTime?
 
   atribut_insanku tbl_atribut_insanku[]
 }
@@ -316,10 +324,10 @@ model tbl_target_global {
 }
 
 model tbl_admin_menu_access {
-  id         Int      @id @default(autoincrement())
-  uuid       String   @unique @db.Char(36)
-  uuid_admin String   @db.Char(36)
-  key        String   @db.VarChar(100)
+  id         Int       @id @default(autoincrement())
+  uuid       String    @unique @db.Char(36)
+  uuid_admin String    @db.Char(36)
+  key        String    @db.VarChar(100)
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -328,4 +336,23 @@ model tbl_admin_menu_access {
 
   @@unique([uuid_admin, key])
   @@index([uuid_admin])
+}
+
+model tbl_nilai_magang {
+  id           Int       @id @default(autoincrement())
+  uuid         String    @unique @db.Char(36)
+  uuid_outlet  String?   @db.Char(36)
+  uuid_insanku String?   @db.Char(36)
+  active_key   String?   @unique @db.VarChar(100)
+  value        Decimal   @default(0) @db.Decimal(10, 2)
+  date         DateTime
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+
+  outlet  tbl_outlet?  @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_nilai_magang_outlet")
+  insanku tbl_insanku? @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_nilai_magang_insanku")
+
+  @@index([uuid_outlet])
+  @@index([date])
 }
