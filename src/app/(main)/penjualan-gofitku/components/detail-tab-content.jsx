@@ -3,7 +3,7 @@
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -31,15 +31,15 @@ export default function DetailTabContent({
     <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-2">
       {outlet_groups.map((group) => (
         <Card key={group.uuid} className="gap-0 bg-orange-50/60 shadow-none">
-          <CardHeader className="border-b">
-            <CardTitle>{group.outlet_name}</CardTitle>
-          </CardHeader>
           <CardContent>
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="font-heading text-lg leading-snug font-semibold tracking-tight">
+                {group.outlet_name}
+              </h3>
               <Button
                 type="button"
                 onClick={() => on_add_sales(group)}
-                className="w-full sm:w-auto"
+                className="shrink-0"
               >
                 <PlusIcon className="size-4" />
                 Tambah Penjualan

@@ -138,7 +138,7 @@ export default function AtributPage() {
           toast.error(
             error instanceof Error
               ? error.message
-              : "Gagal memperbarui data atribut realtime.",
+              : "Gagal memperbarui data atribut otomatis.",
           );
         });
     };
@@ -336,7 +336,7 @@ export default function AtributPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-        description="Kelola master kolom atribut yang dipakai oleh data InsanKu."
+        description="Kelola daftar kolom atribut untuk data InsanKu."
         />
       </div>
       <div className="px-4 lg:px-6">

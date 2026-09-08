@@ -76,17 +76,17 @@ export default function NilaiTransaksiTab({
           </TableHead>
           {[
             ["Target", "min-w-[140px]"],
-            ["TPP (Harian)", "min-w-[160px]"],
+            ["Total Pendapatan Harian", "min-w-[180px]"],
             ["Dilayani (Harian)", "min-w-[140px]"],
-            [`TPP ${selected_period_range_label}`, "min-w-[160px]"],
+            [`Total Pendapatan ${selected_period_range_label}`, "min-w-[180px]"],
             [`Dilayani ${selected_period_range_label}`, "min-w-[150px]"],
             [`Harian (${selected_date_label})`, "min-w-[140px]"],
             [selected_period_label, "min-w-[180px]"],
             [previous_period_label, "min-w-[180px]"],
             [`Growth % (dibanding ${previous_month_label})`, "min-w-[140px] text-center"],
-            ["Gap Growth", "min-w-[120px] text-center"],
-            ["% Dari Target", "min-w-[120px] text-center"],
-            ["Gap Target", "min-w-[120px] text-center"],
+            ["Selisih Pertumbuhan", "min-w-[160px] text-center"],
+            ["Pencapaian Target", "min-w-[150px] text-center"],
+            ["Selisih Target", "min-w-[130px] text-center"],
           ].map(([label, className]) => (
             <TableHead
               key={label}

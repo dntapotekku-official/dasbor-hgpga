@@ -225,7 +225,7 @@ export default function AtributInsanKuPage() {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Gagal memperbarui data atribut realtime.",
+            : "Gagal memperbarui data atribut otomatis.",
         );
         });
     };
@@ -978,7 +978,7 @@ export default function AtributInsanKuPage() {
             <div className="flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
               <InfoIcon className="mt-0.5 size-4 shrink-0 text-sky-600" />
               <p className="text-sm leading-5">
-                Data atribut InsanKu diperbarui secara real-time. Sinkronisasi dapat dilakukan kapan saja jika diperlukan.
+                Data atribut InsanKu diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja.
               </p>
             </div>
 

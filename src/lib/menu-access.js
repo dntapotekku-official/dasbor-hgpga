@@ -108,6 +108,10 @@ export function canAccessMenu(user, menu_key, fallback_roles = []) {
     return true;
   }
 
+  if (menu_key === "dashboard" && (role === "admin" || role === "member")) {
+    return true;
+  }
+
   if (role === "admin") {
     return normalizeMenuAccessKeys(user?.menu_access_keys).includes(menu_key);
   }

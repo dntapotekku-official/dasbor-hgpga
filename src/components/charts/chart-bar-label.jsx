@@ -58,7 +58,7 @@ function render_value_label({ value, x, y, width, height }) {
 
 export function ChartBarLabel({
   title = "Distribusi Respon",
-  description = "Bulan berjalan",
+  description = "Bulan ini",
   filter,
   showLegend = true,
   chartClassName = "min-h-[250px] w-full",

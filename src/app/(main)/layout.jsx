@@ -30,7 +30,7 @@ export default async function DashboardLayout({ children }) {
               </div>
             </div>
           </div>
-          <footer className="mt-auto border-t px-4 py-4 text-center text-xs text-muted-foreground md:px-6">
+          <footer className="mt-auto border-t bg-background/70 px-4 py-4 text-center text-xs text-muted-foreground backdrop-blur-sm md:px-6">
             Dikembangkan oleh <span className="font-semibold"> Tim DnT ApotekKu.</span>
           </footer>
         </SidebarInset>

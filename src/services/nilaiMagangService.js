@@ -143,7 +143,7 @@ function normalize_api_rows(api_rows, selected_outlet) {
 
     if (value < 0 || value > 100) {
       throw new Error(
-        `Nilai raport ${employee_name || uuid_insanku} di luar rentang 0-100.`,
+        `Nilai rapor ${employee_name || uuid_insanku} di luar rentang 0-100.`,
       );
     }
 

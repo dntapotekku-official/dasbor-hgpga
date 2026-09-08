@@ -330,7 +330,7 @@ export default function NilaiMagangPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Nilai Magang"
-          description="Pantau nilai raport mentee berdasarkan periode dan outlet magang."
+          description="Pantau nilai rapor mentee berdasarkan periode dan outlet magang."
         />
       </div>
 
@@ -343,7 +343,7 @@ export default function NilaiMagangPage() {
 
         <Card className="border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
-            <CardTitle>Data Nilai Raport Mentee</CardTitle>
+            <CardTitle>Data Nilai Rapor Mentee</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -387,7 +387,7 @@ export default function NilaiMagangPage() {
                 <SyncActionButton
                   onConfirm={handle_sync}
                   title="Konfirmasi sinkronisasi nilai magang"
-                  description={`Sinkronisasi akan mengambil nilai raport periode ${selected_month_label} ${selected_year_label} untuk ${outlet_options.find((item) => item.value === selected_outlet)?.label ?? "outlet terpilih"}.`}
+                  description={`Sinkronisasi akan mengambil nilai rapor periode ${selected_month_label} ${selected_year_label} untuk ${outlet_options.find((item) => item.value === selected_outlet)?.label ?? "outlet terpilih"}.`}
                   isPending={is_syncing}
                   disabled={!can_sync}
                   className="w-full xl:ml-auto xl:w-auto"
@@ -411,7 +411,7 @@ export default function NilaiMagangPage() {
                       <TableHead>Outlet Magang</TableHead>
                       <TableHead className="w-36 text-center">
                         <SortableTableHead
-                          label="Nilai Raport"
+                          label="Nilai Rapor"
                           sortKey="value"
                           currentSortKey={sort_key}
                           sortDirection={sort_direction}

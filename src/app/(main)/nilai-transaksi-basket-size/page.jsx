@@ -346,6 +346,30 @@ export default function NilaiTransaksiPage() {
       )),
     )
     : null;
+  const highest_daily_nilai_transaksi_by_category = useMemo(
+    () => outlet_category_slug_options.map((category) => {
+      const highest_row = rows
+        .filter((row) => row.category_key === category.value)
+        .reduce((highest, row) => {
+          if (
+            !highest
+            || Number(row.nt_daily ?? 0) > Number(highest.nt_daily ?? 0)
+          ) {
+            return row;
+          }
+
+          return highest;
+        }, null);
+
+      return {
+        category_key: category.value,
+        category_label: category.label,
+        outlet_name: highest_row?.outlet_name ?? "-",
+        value: Number(highest_row?.nt_daily ?? 0),
+      };
+    }),
+    [rows],
+  );
   const displayed_metrics = selectedOutlet !== "all"
     ? summarizeVisibleRows(filtered_outlet_rows)
     : (categoryMetrics[selectedCategory] ?? empty_metrics);
@@ -636,7 +660,7 @@ export default function NilaiTransaksiPage() {
                 <CardContent className="pt-0">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
+                      <p className="text-xs font-medium text-muted-foreground">Selisih Pertumbuhan</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.nt_gap_growth}
@@ -646,7 +670,7 @@ export default function NilaiTransaksiPage() {
                       </p>
                     </div>
                     <div className="min-w-0 space-y-1 border-l pl-4">
-                      <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
+                      <p className="text-xs font-medium text-muted-foreground">Selisih Target</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.nt_gap_target}
@@ -662,7 +686,7 @@ export default function NilaiTransaksiPage() {
                       value={formatCurrency(overallMetrics.nt_target)}
                     />
                     <SummaryMetric
-                      label="TPP (Harian)"
+                      label="Total Pendapatan Harian"
                       value={formatCurrency(overallMetrics.nt_daily_total_revenue)}
                     />
                     <SummaryMetric
@@ -670,7 +694,7 @@ export default function NilaiTransaksiPage() {
                       value={formatDecimal(overallMetrics.nt_daily_served, 0)}
                     />
                     <SummaryMetric
-                      label={`TPP (${tableLabels.selected_period_label || "periode berjalan"})`}
+                      label={`Total Pendapatan (${tableLabels.selected_period_label || "periode ini"})`}
                       value={formatCurrency(overallMetrics.nt_current_month_total_revenue)}
                     />
                     <SummaryMetric
@@ -694,9 +718,34 @@ export default function NilaiTransaksiPage() {
                       value={`${formatDecimal(overallMetrics.nt_growth)}%`}
                     />
                     <SummaryMetric
-                      label="Dari Target"
+                      label="Pencapaian Target"
                       value={`${formatDecimal(overallMetrics.nt_target_compare)}%`}
                     />
+                  </div>
+                  <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                      Nilai Transaksi Harian Tertinggi per Kategori
+                    </p>
+                    <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                      {highest_daily_nilai_transaksi_by_category.map((item) => (
+                        <div
+                          key={item.category_key}
+                          className="min-w-0 rounded-md bg-white/70 px-3 py-2 dark:bg-white/5"
+                        >
+                          <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                            {item.category_label}
+                          </p>
+                          <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
+                            <span className="truncate font-medium text-emerald-950 dark:text-emerald-100">
+                              {item.outlet_name}
+                            </span>
+                            <span className="shrink-0 font-semibold text-emerald-950 dark:text-emerald-100">
+                              {formatCurrency(item.value)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -718,7 +767,7 @@ export default function NilaiTransaksiPage() {
                 <CardContent className="pt-0">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
+                      <p className="text-xs font-medium text-muted-foreground">Selisih Pertumbuhan</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.bs_gap_growth}
@@ -728,7 +777,7 @@ export default function NilaiTransaksiPage() {
                       </p>
                     </div>
                     <div className="min-w-0 space-y-1 border-l pl-4">
-                      <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
+                      <p className="text-xs font-medium text-muted-foreground">Selisih Target</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.bs_gap_target}
@@ -764,7 +813,7 @@ export default function NilaiTransaksiPage() {
                       value={`${formatDecimal(overallMetrics.bs_growth)}%`}
                     />
                     <SummaryMetric
-                      label="Dari Target"
+                      label="Pencapaian Target"
                       value={`${formatDecimal(overallMetrics.bs_target_compare)}%`}
                     />
                   </div>
