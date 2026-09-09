@@ -58,53 +58,41 @@ function build_month_keys_desc({ start_month_key, end_month_key }) {
   return month_keys;
 }
 
-async function get_member_outlet_uuids(username) {
-  const trimmed_username = String(username ?? "").trim();
+async function get_member_outlet_uuids(account_uuid) {
+  const trimmed_account_uuid = String(account_uuid ?? "").trim();
 
-  if (!trimmed_username) {
+  if (!trimmed_account_uuid) {
     return [];
   }
 
-  const member_relations = await prisma.tbl_outlet_insanku.findMany({
+  const outlet = await prisma.tbl_outlet.findFirst({
     where: {
+      uuid: trimmed_account_uuid,
       deleted_at: null,
-      outlet: {
-        deleted_at: null,
-        excep: false,
-      },
-      insanku: {
-        deleted_at: null,
-        username: trimmed_username,
-      },
+      excep: false,
     },
     select: {
-      uuid_outlet: true,
+      uuid: true,
     },
   });
 
-  return Array.from(
-    new Set(
-      member_relations
-        .map((item) => String(item.uuid_outlet ?? "").trim())
-        .filter(Boolean),
-    ),
-  );
+  return outlet ? [outlet.uuid] : [];
 }
 
-async function get_accessible_outlet_uuids({ username, role }) {
+async function get_accessible_outlet_uuids({ account_uuid, role }) {
   const normalized_role = String(role ?? "").trim().toLowerCase();
-  const trimmed_username = String(username ?? "").trim();
+  const trimmed_account_uuid = String(account_uuid ?? "").trim();
 
-  if (normalized_role !== "member" || !trimmed_username) {
+  if (normalized_role !== "member") {
     return null;
   }
 
-  return get_member_outlet_uuids(trimmed_username);
+  return get_member_outlet_uuids(trimmed_account_uuid);
 }
 
-async function assert_outlet_access({ outlet_uuid, username, role }) {
+async function assert_outlet_access({ outlet_uuid, account_uuid, role }) {
   const accessible_outlet_uuids = await get_accessible_outlet_uuids({
-    username,
+    account_uuid,
     role,
   });
 
@@ -183,14 +171,14 @@ function get_top_five_chart_rows(rows) {
 export async function getPenjualanGofitku({
   date,
   outlet_uuid,
-  username,
+  account_uuid,
   role,
 }) {
   const { date: selected_date, day_end, month_start, month_end } =
     get_date_boundaries(date);
   const trimmed_outlet_uuid = String(outlet_uuid ?? "").trim();
   const member_outlet_uuids = await get_accessible_outlet_uuids({
-    username,
+    account_uuid,
     role,
   });
 
@@ -376,9 +364,9 @@ export async function getPenjualanGofitku({
   };
 }
 
-export async function getPenjualanGofitkuExport({ username, role }) {
+export async function getPenjualanGofitkuExport({ account_uuid, role }) {
   const accessible_outlet_uuids = await get_accessible_outlet_uuids({
-    username,
+    account_uuid,
     role,
   });
 
@@ -548,11 +536,11 @@ export async function getPenjualanGofitkuExport({ username, role }) {
 }
 
 export async function getPenjualanGofitkuTopOutletChart({
-  username,
+  account_uuid,
   role,
 }) {
   const accessible_outlet_uuids = await get_accessible_outlet_uuids({
-    username,
+    account_uuid,
     role,
   });
 
@@ -638,11 +626,11 @@ export async function getPenjualanGofitkuTopOutletChart({
 }
 
 export async function getPenjualanGofitkuTopProdukChart({
-  username,
+  account_uuid,
   role,
 }) {
   const accessible_outlet_uuids = await get_accessible_outlet_uuids({
-    username,
+    account_uuid,
     role,
   });
 
@@ -701,7 +689,7 @@ export async function getPenjualanGofitkuTopProdukChart({
 export async function createPenjualanGofitku({
   outlet_uuid,
   entries = [],
-  username,
+  account_uuid,
   role,
 }) {
   const trimmed_outlet_uuid = String(outlet_uuid ?? "").trim();
@@ -712,7 +700,7 @@ export async function createPenjualanGofitku({
 
   await assert_outlet_access({
     outlet_uuid: trimmed_outlet_uuid,
-    username,
+    account_uuid,
     role,
   });
 
@@ -818,7 +806,7 @@ export async function updatePenjualanGofitku({
   product_name,
   date,
   sales_total,
-  username,
+  account_uuid,
   role,
 }) {
   const trimmed_uuid = String(uuid_penjualan_gofitku ?? "").trim();
@@ -842,7 +830,7 @@ export async function updatePenjualanGofitku({
 
   await assert_outlet_access({
     outlet_uuid: trimmed_outlet_uuid,
-    username,
+    account_uuid,
     role,
   });
 
@@ -926,7 +914,7 @@ export async function updatePenjualanGofitku({
 export async function deletePenjualanGofitku({
   uuid_penjualan_gofitku,
   outlet_uuid,
-  username,
+  account_uuid,
   role,
 }) {
   const trimmed_uuid = String(uuid_penjualan_gofitku ?? "").trim();
@@ -939,7 +927,7 @@ export async function deletePenjualanGofitku({
   if (trimmed_outlet_uuid) {
     await assert_outlet_access({
       outlet_uuid: trimmed_outlet_uuid,
-      username,
+      account_uuid,
       role,
     });
   }

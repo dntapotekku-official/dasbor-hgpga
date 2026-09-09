@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
-import { requireMenuAccess } from "@/lib/auth";
+import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteBasketSizeDate,
   bulkUpdateBasketSizeDate,
@@ -22,8 +22,11 @@ export async function GET(request) {
     }
 
     const selected_date = request.nextUrl.searchParams.get("selected_date");
+    const user_session = await getCurrentUser();
     const data = await getNilaiTransaksiBasketSize({
       selected_date,
+      member_outlet_uuid:
+        user_session?.role === "member" ? user_session.uuid : undefined,
     });
 
     return NextResponse.json({
@@ -42,10 +45,17 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const user_session = await getCurrentUser();
+
   return import_outlet_report(request, {
     import_handler: importBasketSize,
     menu_key: "nilai-transaksi-basket-size",
     temp_prefix: "basket-size",
+    fallback_roles: ["member"],
+    handler_payload: {
+      member_outlet_uuid:
+        user_session?.role === "member" ? user_session.uuid : undefined,
+    },
   });
 }
 

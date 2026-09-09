@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CircleOffIcon, PencilIcon, RotateCcwIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  CircleOffIcon,
+  FileSpreadsheetIcon,
+  LoaderCircleIcon,
+  PencilIcon,
+  RotateCcwIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
@@ -29,15 +35,35 @@ import {
 
 const PAGE_SIZE = 50;
 
+function get_excel_cell_value(cell_value) {
+  if (cell_value && typeof cell_value === "object") {
+    if ("result" in cell_value) {
+      return get_excel_cell_value(cell_value.result);
+    }
+
+    if (Array.isArray(cell_value.richText)) {
+      return cell_value.richText.map((item) => item.text ?? "").join("");
+    }
+
+    if ("text" in cell_value) {
+      return cell_value.text;
+    }
+  }
+
+  return cell_value ?? "";
+}
+
 export default function OutletManagementCard() {
   const [sync_status, setSyncStatus] = useState("pending");
   const [outlet, setOutlet] = useState([]);
-  const { search, setSearch, filtered_items } = useSearch(outlet, ["name"]);
+  const { search, setSearch, filtered_items } = useSearch(outlet, ["name", "username"]);
   const [selected_category, setSelectedCategory] = useState("all");
   const [selected_status, setSelectedStatus] = useState("all");
   const [selected_outlet, setSelectedOutlet] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [updating_exception_uuid, setUpdatingExceptionUuid] = useState(null);
+  const [is_importing_credentials, setIsImportingCredentials] = useState(false);
+  const import_credentials_input_ref = useRef(null);
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
   const scoped_items = useMemo(
@@ -146,6 +172,101 @@ export default function OutletManagementCard() {
     }
   };
 
+  const import_credentials = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      setIsImportingCredentials(true);
+
+      if (!file.name.toLowerCase().endsWith(".xlsx")) {
+        throw new Error("File yang didukung hanya format .xlsx.");
+      }
+
+      const exceljs_module = await import("exceljs");
+      const ExcelJS = exceljs_module.default ?? exceljs_module;
+      const workbook = new ExcelJS.Workbook();
+
+      await workbook.xlsx.load(await file.arrayBuffer());
+
+      const worksheet = workbook.worksheets[0];
+
+      if (!worksheet) {
+        throw new Error("File Excel tidak memiliki worksheet.");
+      }
+
+      const header_indexes = new Map();
+
+      worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column_index) => {
+        const header = String(get_excel_cell_value(cell.value)).trim().toLowerCase();
+
+        if (header) {
+          header_indexes.set(header, column_index);
+        }
+      });
+
+      const outlet_column = header_indexes.get("outlet");
+      const username_column = header_indexes.get("username");
+      const password_column = header_indexes.get("password");
+
+      if (!outlet_column || !username_column || !password_column) {
+        throw new Error(
+          "File wajib memiliki kolom Outlet, Username, dan Password.",
+        );
+      }
+
+      const rows = [];
+
+      worksheet.eachRow({ includeEmpty: false }, (row, row_number) => {
+        if (row_number === 1) {
+          return;
+        }
+
+        const outlet_name = String(
+          get_excel_cell_value(row.getCell(outlet_column).value),
+        ).trim();
+
+        if (!outlet_name) {
+          return;
+        }
+
+        rows.push({
+          outlet_name,
+          username: String(
+            get_excel_cell_value(row.getCell(username_column).value),
+          ).trim(),
+          password: String(
+            get_excel_cell_value(row.getCell(password_column).value),
+          ),
+        });
+      });
+
+      const response = await fetch("/api/outlet", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "import_credentials", rows }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message || "Impor akun outlet gagal.");
+      }
+
+      setOutlet(await fetch_outlet());
+      toast.success(payload.message || "Akun outlet berhasil diimpor.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Impor akun outlet gagal.",
+      );
+    } finally {
+      setIsImportingCredentials(false);
+      event.target.value = "";
+    }
+  };
+
   const handle_save = async (next_outlet) => {
     const response = await fetch("/api/outlet", {
       method: "PATCH",
@@ -158,6 +279,8 @@ export default function OutletManagementCard() {
         name: next_outlet.name,
         kategori: next_outlet.kategori,
         is_skip_sync: next_outlet.is_skip_sync,
+        username: next_outlet.username,
+        password: next_outlet.password,
       }),
     });
     const payload = await response.json();
@@ -228,8 +351,31 @@ export default function OutletManagementCard() {
 
   return (
     <Card className="gap-0 border-t-2 border-t-primary/70">
-      <CardHeader className="border-b">
+      <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Outlet</CardTitle>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button
+            type="button"
+            onClick={() => import_credentials_input_ref.current?.click()}
+            disabled={is_importing_credentials}
+            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+          >
+            {is_importing_credentials ? (
+              <LoaderCircleIcon className="size-4 animate-spin" />
+            ) : (
+              <FileSpreadsheetIcon className="size-4" />
+            )}
+            Impor Akun
+          </Button>
+          <Input
+            ref={import_credentials_input_ref}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={import_credentials}
+            className="sr-only"
+            tabIndex={-1}
+          />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -283,6 +429,15 @@ export default function OutletManagementCard() {
                     </TableHead>
                     <TableHead>
                       <SortableTableHead
+                        label="Username"
+                        sortKey="username"
+                        currentSortKey={sort_key}
+                        sortDirection={sort_direction}
+                        onSort={toggle_sort}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <SortableTableHead
                         label="Kategori"
                         sortKey="kategori"
                         currentSortKey={sort_key}
@@ -307,6 +462,7 @@ export default function OutletManagementCard() {
                     <TableRow key={row.uuid}>
                       <TableCell>{(current_page - 1) * PAGE_SIZE + index + 1}</TableCell>
                       <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell>{row.username}</TableCell>
                       <TableCell>{format_kategori_label(row.kategori)}</TableCell>
                       <TableCell>
                         <span
@@ -387,6 +543,20 @@ export default function OutletManagementCard() {
                 key: "name",
                 label: "Nama Outlet",
                 placeholder: "Masukkan nama outlet",
+                required: true,
+              },
+              {
+                key: "username",
+                label: "Username",
+                placeholder: "Masukkan username login outlet",
+                required: true,
+              },
+              {
+                key: "password",
+                label: "Password Baru",
+                type: "password",
+                placeholder: "Kosongkan jika tidak diubah",
+                helper: "Minimal 6 karakter. Kosongkan untuk mempertahankan password saat ini.",
               },
               {
                 key: "kategori",

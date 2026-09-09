@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import {
+  decryptSecret,
+  encryptSecret,
+  isEncryptedSecret,
+} from "@/lib/secretEncryption";
 
 async function get_active_ai_config() {
   const api_ai = await prisma.tbl_api_ai.findFirst({
@@ -31,6 +36,16 @@ async function get_active_ai_config() {
       prompt: true,
     },
   });
+
+  if (api_ai?.api_key && !isEncryptedSecret(api_ai.api_key)) {
+    const encrypted_api_key = encryptSecret(api_ai.api_key);
+
+    await prisma.tbl_api_ai.update({
+      where: { uuid: api_ai.uuid },
+      data: { api_key: encrypted_api_key },
+    });
+    api_ai.api_key = encrypted_api_key;
+  }
 
   return {
     api_ai,
@@ -76,7 +91,10 @@ export async function getAiRuntimeConfig(prompt_name) {
   }
 
   return {
-    api_ai,
+    api_ai: {
+      ...api_ai,
+      api_key: decryptSecret(api_ai.api_key),
+    },
     prompt: prompt_row.prompt,
   };
 }
@@ -125,7 +143,9 @@ export async function saveApiAiSettings({
   }
 
   const { api_ai, prompt_rows } = await get_active_ai_config();
-  const next_api_key = trimmed_api_key || api_ai?.api_key || "";
+  const next_api_key = trimmed_api_key
+    ? encryptSecret(trimmed_api_key)
+    : api_ai?.api_key || "";
 
   if (!next_api_key) {
     throw new Error("API KEY wajib diisi.");

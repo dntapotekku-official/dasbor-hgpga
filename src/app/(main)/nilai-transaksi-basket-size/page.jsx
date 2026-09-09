@@ -251,7 +251,8 @@ export default function NilaiTransaksiPage() {
   const [deletingItem, setDeletingItem] = useState(null);
   const [bulkAction, setBulkAction] = useState(null);
   const [isMutating, setIsMutating] = useState(false);
-  const canImport = hasRoleAccess(role, ["admin"]);
+  const canImport = hasRoleAccess(role, ["member"]);
+  const canManage = hasRoleAccess(role, ["admin"]);
   const activeMetricLabel =
     activeMetric === "nilai-transaksi" ? "Nilai Transaksi" : "Basket Size";
 
@@ -436,7 +437,7 @@ export default function NilaiTransaksiPage() {
   const onImportSubmit = async ({ import_date, file, import_type }) => {
     try {
       if (!canImport) {
-        throw new Error("Hanya admin atau superadmin yang dapat mengimpor file Excel.");
+        throw new Error("Akun tidak memiliki akses untuk mengimpor file Excel.");
       }
 
       if (!import_date || !file || !import_type) {
@@ -913,7 +914,7 @@ export default function NilaiTransaksiPage() {
                       emptySearchMessage="Outlet tidak ditemukan."
                     />
                   </div>
-                  {canImport ? (
+                  {canManage ? (
                     <div className="flex flex-wrap justify-end gap-2">
                       {activeMetric === "nilai-transaksi" ? (
                         <Button
@@ -957,7 +958,7 @@ export default function NilaiTransaksiPage() {
                     highest_daily={highest_category_value}
                     labels={tableLabels}
                     rows={filtered_outlet_rows}
-                    can_manage={canImport}
+                    can_manage={canManage}
                     on_edit={(row) => setEditingRow(row)}
                     on_delete={(row) =>
                       setDeletingItem({ row, metric: "nilai-transaksi" })
@@ -969,7 +970,7 @@ export default function NilaiTransaksiPage() {
                     highest_achievement={highest_category_value}
                     labels={tableLabels}
                     rows={filtered_outlet_rows}
-                    can_manage={canImport}
+                    can_manage={canManage}
                     on_delete={(row) =>
                       setDeletingItem({ row, metric: "basket-size" })
                     }

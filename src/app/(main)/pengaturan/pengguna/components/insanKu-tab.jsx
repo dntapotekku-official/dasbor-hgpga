@@ -181,13 +181,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       const latest_data = await fetch_insanku();
       setOutlet(latest_data.outlet);
       setInsanKu(latest_data.insanku);
-      const transferred_count =
-        Number(insanku_payload.summary?.transferred_non_slip_insanku) || 0;
-      toast.success(
-        transferred_count > 0
-          ? `Sinkronisasi berhasil. ${transferred_count} akun Non Slip Gaji otomatis dioper ke Slip Gaji berdasarkan NIK.`
-          : "Sinkronisasi data InsanKu berhasil.",
-      );
+      toast.success("Sinkronisasi data InsanKu berhasil.");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -214,7 +208,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         nik: next_insanku.nik,
         name: next_insanku.name,
         username: next_insanku.username,
-        password: next_insanku.password,
         outlet_placements: next_insanku.outlet_placements ?? [],
         outlet_uuids: next_insanku.outlet_uuids ?? [],
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
@@ -326,7 +319,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 <SyncActionButton
                   onConfirm={sync_insanku_handler}
                   title="Konfirmasi sinkronisasi InsanKu"
-                  description="Sinkronisasi akan memperbarui data InsanKu. Jika NIK Slip Gaji cocok dengan NIK Non Slip Gaji, seluruh atribut akan otomatis dioper ke akun Slip Gaji dan akun Non Slip Gaji dinonaktifkan. Lanjutkan?"
+                  description="Sinkronisasi akan memperbarui data InsanKu beserta penempatan outlet terbaru dari sumber utama."
                   confirmLabel="Ya, sinkronkan InsanKu"
                   idleLabel="Sinkron"
                   isPending={sync_status === "syncing"}
@@ -476,11 +469,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 key: "username",
                 label: "Username",
                 placeholder: "Masukkan username",
-              },
-              {
-                key: "password",
-                label: "Password Baru",
-                placeholder: "Kosongkan jika tidak diubah",
               },
               {
                 key: "outlet_placements",

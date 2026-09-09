@@ -51,9 +51,9 @@ import NilaiTransaksiBasketSizeDashboardCard from "./components/nilai-transaksi-
 
 const ROLE_META = {
   member: {
-    label: "Member",
+    label: "Outlet",
     description:
-      "Pantau aktivitas, kelengkapan data, dan performa Anda dalam satu tempat.",
+      "Pantau InsanKu, kelengkapan data, dan performa outlet dalam satu tempat.",
     icon: IdCardIcon,
   },
   admin: {
@@ -206,7 +206,9 @@ export default async function Page() {
         )
       : null,
     can_view_ntbs
-      ? safely(() => getNilaiTransaksiBasketSize({}), {
+      ? safely(() => getNilaiTransaksiBasketSize({
+          member_outlet_uuid: role === "member" ? user?.uuid : undefined,
+        }), {
           rows: [],
           overall_metrics: {},
         })
@@ -215,7 +217,7 @@ export default async function Page() {
       ? safely(
           () =>
             getPenjualanGofitkuTopOutletChart({
-              username: user?.username,
+              account_uuid: user?.uuid,
               role,
             }),
           { chart_data: [] },
@@ -225,7 +227,7 @@ export default async function Page() {
       ? safely(
           () =>
             getPenjualanGofitkuTopProdukChart({
-              username: user?.username,
+              account_uuid: user?.uuid,
               role,
             }),
           { chart_data: [] },
@@ -394,31 +396,10 @@ export default async function Page() {
                   </p>
                 </div>
                 <div className="rounded-xl border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">NIK</p>
+                  <p className="text-xs text-muted-foreground">Username</p>
                   <p className="mt-1 font-semibold">
-                    {overview.profile.nik || "Belum tersedia"}
+                    {overview.profile.username || "Belum tersedia"}
                   </p>
-                </div>
-              </div>
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Penempatan Outlet
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {overview.profile.outlet_names.length ? (
-                    overview.profile.outlet_names.map((name) => (
-                      <span
-                        key={name}
-                        className="rounded-full border bg-background px-3 py-1 text-xs font-medium"
-                      >
-                        {name}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      Belum ada penempatan outlet.
-                    </span>
-                  )}
                 </div>
               </div>
               {canAccessMenu(user, "atribut-insanku", ["member"]) ? (
@@ -429,7 +410,7 @@ export default async function Page() {
                     className: "w-full",
                   })}
                 >
-                  Lihat Atribut Saya
+                  Lihat Atribut InsanKu
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               ) : null}

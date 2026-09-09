@@ -41,7 +41,7 @@ export const GET = async (request) => {
     const is_outlet_chart = searchParams.get("outlet_chart") === "true";
     const is_product_chart = searchParams.get("product_chart") === "true";
     const user_context = {
-      username: user_session?.username,
+      account_uuid: user_session?.uuid,
       role: user_session?.role,
     };
     let data;
@@ -85,7 +85,7 @@ export const POST = async (request) => {
     const data = await createPenjualanGofitku({
       outlet_uuid: body?.outlet_uuid,
       entries: body?.entries,
-      username: user_session?.username,
+      account_uuid: user_session?.uuid,
       role: user_session?.role,
     });
 
@@ -116,7 +116,7 @@ export const PATCH = async (request) => {
       product_name: body?.product_name,
       date: body?.date,
       sales_total: body?.sales_total,
-      username: user_session?.username,
+      account_uuid: user_session?.uuid,
       role: user_session?.role,
     });
 
@@ -142,7 +142,7 @@ export const DELETE = async (request) => {
     const data = await deletePenjualanGofitku({
       uuid_penjualan_gofitku: body?.uuid_penjualan_gofitku,
       outlet_uuid: body?.outlet_uuid,
-      username: user_session?.username,
+      account_uuid: user_session?.uuid,
       role: user_session?.role,
     });
 

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   getOutlet,
+  importOutletCredentials,
   syncOutlet,
   updateOutlet,
   updateOutletException,
 } from "@/services/outletService";
-import { requireMenuAccess } from "@/lib/auth";
+import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
 
 export const GET = async (request) => {
   try {
@@ -30,7 +31,12 @@ export const GET = async (request) => {
       return unauthorized_response;
     }
 
-    const data = await getOutlet({ include_excluded });
+    const user_session = await getCurrentUser();
+    const data = await getOutlet({
+      include_excluded,
+      member_outlet_uuid:
+        user_session?.role === "member" ? user_session.uuid : undefined,
+    });
 
     return NextResponse.json({
       success: true,
@@ -84,7 +90,9 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = body?.action === "update_exception"
+    const data = body?.action === "import_credentials"
+      ? await importOutletCredentials({ rows: body?.rows })
+      : body?.action === "update_exception"
       ? await updateOutletException({
           uuid_outlet: body?.uuid_outlet,
           excep: body?.excep,
@@ -94,6 +102,8 @@ export const PATCH = async (request) => {
           name: body?.name,
           kategori: body?.kategori,
           is_skip_sync: body?.is_skip_sync,
+          username: body?.username,
+          password: body?.password,
         });
 
     return NextResponse.json(data);

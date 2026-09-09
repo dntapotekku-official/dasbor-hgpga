@@ -388,10 +388,12 @@ async function get_active_target_map({
   model,
   selected_day_start,
   selected_day_end,
+  outlet_uuid,
 }) {
   const targets = await prisma[model].findMany({
     where: {
       deleted_at: null,
+      ...(outlet_uuid ? { uuid_outlet: outlet_uuid } : {}),
       start_date: {
         lte: selected_day_end,
       },
@@ -600,6 +602,7 @@ function build_basket_size_map(rows, visit_rows = []) {
 /** Mengambil dashboard gabungan NS/BS beserta target, ringkasan kategori, dan tanggal tersedia. */
 export async function getNilaiTransaksiBasketSize({
   selected_date,
+  member_outlet_uuid,
 }) {
   const trimmed_selected_date = String(selected_date ?? "").trim();
   const current_date = trimmed_selected_date
@@ -629,6 +632,9 @@ export async function getNilaiTransaksiBasketSize({
     new Date(Date.UTC(current_date.getUTCFullYear(), current_date.getUTCMonth() - 1, 1)),
   );
   const previous_month_end = end_of_month(previous_month_start);
+  const outlet_scope = member_outlet_uuid
+    ? { uuid_outlet: member_outlet_uuid }
+    : {};
 
   const [
     outlets,
@@ -650,6 +656,7 @@ export async function getNilaiTransaksiBasketSize({
       where: {
         deleted_at: null,
         excep: false,
+        ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
       },
       orderBy: {
         name: "asc",
@@ -663,6 +670,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_nilai_transaksi.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: current_day_start,
           lte: current_day_end,
@@ -676,6 +684,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_nilai_transaksi.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: current_month_start,
           lte: current_month_end,
@@ -689,6 +698,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_nilai_transaksi.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: previous_month_start,
           lte: previous_month_end,
@@ -702,6 +712,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_basket_size.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: current_day_start,
           lte: current_day_end,
@@ -715,6 +726,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_basket_size.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: current_month_start,
           lte: current_month_end,
@@ -728,6 +740,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_basket_size.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: previous_month_start,
           lte: previous_month_end,
@@ -741,6 +754,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_dilayani.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: current_day_start,
           lte: current_day_end,
@@ -754,6 +768,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_dilayani.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: current_month_start,
           lte: current_month_end,
@@ -767,6 +782,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_dilayani.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
         date: {
           gte: previous_month_start,
           lte: previous_month_end,
@@ -781,15 +797,18 @@ export async function getNilaiTransaksiBasketSize({
       model: "tbl_target_nilai_transaksi",
       selected_day_start: current_day_start,
       selected_day_end: current_day_end,
+      outlet_uuid: member_outlet_uuid,
     }),
     get_active_target_map({
       model: "tbl_target_basket_size",
       selected_day_start: current_day_start,
       selected_day_end: current_day_end,
+      outlet_uuid: member_outlet_uuid,
     }),
     prisma.tbl_nilai_transaksi.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
       },
       select: {
         date: true,
@@ -798,6 +817,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_basket_size.findMany({
       where: {
         deleted_at: null,
+        ...outlet_scope,
       },
       select: {
         date: true,
@@ -1062,8 +1082,14 @@ function add_export_total_row(sheet, metrics) {
 }
 
 /** Membuat workbook gabungan NS/BS mengikuti format sheet Share bulanan. */
-export async function exportNilaiTransaksiBasketSizeWorkbook({ selected_date }) {
-  const data = await getNilaiTransaksiBasketSize({ selected_date });
+export async function exportNilaiTransaksiBasketSizeWorkbook({
+  selected_date,
+  member_outlet_uuid,
+}) {
+  const data = await getNilaiTransaksiBasketSize({
+    selected_date,
+    member_outlet_uuid,
+  });
   const workbook = new ExcelJS.Workbook();
   const sheet_name = `Share ${data.selected_month_label}`.slice(0, 31);
   const sheet = workbook.addWorksheet(sheet_name, {
@@ -1550,6 +1576,7 @@ async function importOutletReportMetric({
   validate_row,
   resolve_served,
   use_existing_served = false,
+  member_outlet_uuid,
 }) {
   const normalized_import_date = String(import_date ?? "").trim();
 
@@ -1572,6 +1599,7 @@ async function importOutletReportMetric({
     where: {
       deleted_at: null,
       excep: false,
+      ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
     },
     select: {
       uuid: true,
@@ -1818,10 +1846,12 @@ async function importOutletReportMetric({
 export function importNilaiTransaksi({
   file_path,
   import_date,
+  member_outlet_uuid,
 }) {
   return importOutletReportMetric({
     file_path,
     import_date,
+    member_outlet_uuid,
     model: "tbl_nilai_transaksi",
     metric_label: "nilai transaksi",
     resolve_served: (row) => row.served_nilai_transaksi ?? row.served,
@@ -1836,10 +1866,12 @@ export function importNilaiTransaksi({
 export function importBasketSize({
   file_path,
   import_date,
+  member_outlet_uuid,
 }) {
   return importOutletReportMetric({
     file_path,
     import_date,
+    member_outlet_uuid,
     model: "tbl_basket_size",
     metric_label: "basket size",
     resolve_served: (row) => row.served_basket_size ?? row.served,

@@ -154,7 +154,7 @@ export async function updateAdmin({
     throw new Error("Data admin tidak ditemukan.");
   }
 
-  const [duplicate_admin, duplicate_insanku] = await Promise.all([
+  const [duplicate_admin, duplicate_outlet] = await Promise.all([
     prisma.tbl_admin.findFirst({
       where: {
         username: trimmed_username,
@@ -162,13 +162,13 @@ export async function updateAdmin({
       },
       select: { uuid: true },
     }),
-    prisma.tbl_insanku.findUnique({
+    prisma.tbl_outlet.findUnique({
       where: { username: trimmed_username },
       select: { uuid: true },
     }),
   ]);
 
-  if (duplicate_admin || duplicate_insanku) {
+  if (duplicate_admin || duplicate_outlet) {
     throw new Error("Username sudah digunakan.");
   }
 
@@ -247,13 +247,13 @@ export async function createAdmin({
     throw new Error("Username admin sudah digunakan.");
   }
 
-  const existing_insanku = await prisma.tbl_insanku.findUnique({
+  const existing_outlet = await prisma.tbl_outlet.findUnique({
     where: { username: trimmed_username },
     select: { uuid: true },
   });
 
-  if (existing_insanku) {
-    throw new Error("Username sudah digunakan oleh InsanKu.");
+  if (existing_outlet) {
+    throw new Error("Username sudah digunakan oleh outlet.");
   }
 
   const hashed_password = await hashPassword(trimmed_password);

@@ -16,8 +16,12 @@ export default async function authenticateUser({ username, password }) {
   const is_admin_account = Boolean(user);
 
   if (!user) {
-    user = await prisma.tbl_insanku.findFirst({
-      where: { username: normalized_username, deleted_at: null },
+    user = await prisma.tbl_outlet.findFirst({
+      where: {
+        username: normalized_username,
+        deleted_at: null,
+        excep: false,
+      },
     });
   }
 
@@ -36,7 +40,7 @@ export default async function authenticateUser({ username, password }) {
         data: { password: hashed_password },
       });
     } else {
-      await prisma.tbl_insanku.update({
+      await prisma.tbl_outlet.update({
         where: { uuid: user.uuid },
         data: { password: hashed_password },
       });
@@ -96,7 +100,7 @@ export async function updateOwnPassword({
     throw new Error("Konfirmasi password baru tidak cocok.");
   }
 
-  const user_model = is_member ? prisma.tbl_insanku : prisma.tbl_admin;
+  const user_model = is_member ? prisma.tbl_outlet : prisma.tbl_admin;
   const user = await user_model.findFirst({
     where: {
       uuid: user_uuid,
@@ -133,7 +137,7 @@ export async function updateOwnPassword({
   const hashed_password = await hashPassword(normalized_new_password);
 
   if (is_member) {
-    await prisma.tbl_insanku.update({
+    await prisma.tbl_outlet.update({
       where: {
         uuid: user_uuid,
       },

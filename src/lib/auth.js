@@ -43,16 +43,16 @@ export async function getCurrentUserFromToken(token) {
           },
         },
       })
-    : await prisma.tbl_insanku.findFirst({
+    : await prisma.tbl_outlet.findFirst({
         where: {
           uuid: token_session.uuid,
           deleted_at: null,
+          excep: false,
         },
         select: {
           uuid: true,
           username: true,
           name: true,
-          role: true,
         },
       });
 

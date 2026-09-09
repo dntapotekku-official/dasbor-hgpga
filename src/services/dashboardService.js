@@ -17,7 +17,7 @@ function get_month_boundaries(today = new Date()) {
 }
 
 async function get_member_overview(user, period) {
-  const [required_attribute_count, member] = await Promise.all([
+  const [required_attribute_count, outlet] = await Promise.all([
     prisma.tbl_kolom_atribut.count({
       where: {
         deleted_at: null,
@@ -25,27 +25,51 @@ async function get_member_overview(user, period) {
         is_view: true,
       },
     }),
-    prisma.tbl_insanku.findFirst({
+    prisma.tbl_outlet.findFirst({
       where: {
         uuid: user.uuid,
         deleted_at: null,
+        excep: false,
       },
       select: {
-        nik: true,
-        is_slip_gaji_account: true,
+        name: true,
+        username: true,
         outlet_insanku: {
           where: {
             deleted_at: null,
-            outlet: {
+            insanku: {
               deleted_at: null,
-              excep: false,
             },
           },
           select: {
-            outlet: {
+            insanku: {
               select: {
                 uuid: true,
                 name: true,
+                atribut_insanku: {
+                  where: {
+                    deleted_at: null,
+                    atribut: {
+                      deleted_at: null,
+                      is_attribute: true,
+                      is_view: true,
+                    },
+                  },
+                  select: {
+                    value: true,
+                    atribut: { select: { type: true } },
+                  },
+                },
+                nilai_magang: {
+                  where: {
+                    uuid_outlet: user.uuid,
+                    deleted_at: null,
+                    date: { gte: period.start, lt: period.end },
+                  },
+                  orderBy: { updated_at: "desc" },
+                  take: 1,
+                  select: { value: true },
+                },
               },
             },
             penjualan_gofitku: {
@@ -57,40 +81,24 @@ async function get_member_overview(user, period) {
             },
           },
         },
-        atribut_insanku: {
-          where: {
-            deleted_at: null,
-            atribut: {
-              deleted_at: null,
-              is_attribute: true,
-              is_view: true,
-            },
-          },
-          select: {
-            value: true,
-            atribut: { select: { type: true } },
-          },
-        },
-        nilai_magang: {
-          where: {
-            deleted_at: null,
-            date: { gte: period.start, lt: period.end },
-          },
-          orderBy: { updated_at: "desc" },
-          take: 1,
-          select: { value: true },
-        },
       },
     }),
   ]);
 
-  const filled_attribute_count =
-    member?.atribut_insanku.filter(is_filled_attribute).length ?? 0;
-  const attribute_percentage = required_attribute_count
-    ? Math.round((filled_attribute_count / required_attribute_count) * 100)
+  const employees = (outlet?.outlet_insanku ?? [])
+    .map((item) => item.insanku)
+    .filter(Boolean);
+  const total_required_attributes = employees.length * required_attribute_count;
+  const filled_attribute_count = employees.reduce(
+    (total, employee) =>
+      total + employee.atribut_insanku.filter(is_filled_attribute).length,
+    0,
+  );
+  const attribute_percentage = total_required_attributes
+    ? Math.round((filled_attribute_count / total_required_attributes) * 100)
     : 100;
   const monthly_sales =
-    member?.outlet_insanku.reduce(
+    outlet?.outlet_insanku.reduce(
       (total, relation) =>
         total +
         relation.penjualan_gofitku.reduce(
@@ -99,25 +107,29 @@ async function get_member_overview(user, period) {
         ),
       0,
     ) ?? 0;
-  const outlets = (member?.outlet_insanku ?? [])
-    .map((item) => item.outlet)
-    .filter(Boolean);
-  const internship_score = member?.nilai_magang?.[0]?.value;
+  const internship_scores = employees
+    .map((employee) => employee.nilai_magang?.[0]?.value)
+    .filter((value) => value != null)
+    .map(Number);
+  const internship_score = internship_scores.length
+    ? internship_scores.reduce((total, value) => total + value, 0) /
+      internship_scores.length
+    : null;
   const notices = [];
 
-  if (!outlets.length) {
+  if (!employees.length) {
     notices.push({
       tone: "warning",
-      title: "Penempatan outlet belum tersedia",
-      description: "Hubungi admin agar penempatan outlet Anda dapat dilengkapi.",
+      title: "InsanKu outlet belum tersedia",
+      description: "Hubungi admin agar penempatan InsanKu pada outlet dilengkapi.",
     });
   }
 
   if (attribute_percentage < 100) {
     notices.push({
       tone: "warning",
-      title: `${required_attribute_count - filled_attribute_count} atribut belum lengkap`,
-      description: "Lengkapi data Atribut InsanKu agar profil operasional Anda selalu terbaru.",
+      title: `${total_required_attributes - filled_attribute_count} atribut belum lengkap`,
+      description: "Lengkapi data atribut InsanKu yang berada di outlet Anda.",
     });
   } else {
     notices.push({
@@ -130,17 +142,17 @@ async function get_member_overview(user, period) {
   return {
     stats: [
       {
-        key: "outlets",
-        label: "Outlet",
-        value: outlets.length.toLocaleString("id-ID"),
-        caption: outlets[0]?.name ?? "Belum ada penempatan",
+        key: "employees",
+        label: "InsanKu",
+        value: employees.length.toLocaleString("id-ID"),
+        caption: outlet?.name ?? "Outlet tidak ditemukan",
         tone: "sky",
       },
       {
         key: "attributes",
         label: "Atribut",
         value: `${attribute_percentage}%`,
-        caption: `${filled_attribute_count} dari ${required_attribute_count} atribut`,
+        caption: `${filled_attribute_count} dari ${total_required_attributes} atribut`,
         tone: attribute_percentage === 100 ? "emerald" : "amber",
       },
       {
@@ -152,7 +164,7 @@ async function get_member_overview(user, period) {
             : Number(internship_score).toLocaleString("id-ID", {
                 maximumFractionDigits: 2,
               }),
-        caption: internship_score == null ? "Belum ada nilai" : "Nilai rapor terbaru",
+        caption: internship_score == null ? "Belum ada nilai" : "Rata-rata bulan ini",
         tone: "violet",
       },
       {
@@ -165,11 +177,8 @@ async function get_member_overview(user, period) {
     ],
     notices,
     profile: {
-      nik: member?.nik ?? null,
-      account_type: member?.is_slip_gaji_account
-        ? "InsanKu Slip Gaji"
-        : "InsanKu Non Slip Gaji",
-      outlet_names: outlets.map((outlet) => outlet.name),
+      username: outlet?.username ?? user.username ?? null,
+      account_type: "Akun Outlet",
     },
   };
 }

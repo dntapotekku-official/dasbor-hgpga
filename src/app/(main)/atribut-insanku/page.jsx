@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
-  ArrowRightLeftIcon,
   FileSpreadsheetIcon,
   FilterIcon,
   InfoIcon,
@@ -38,7 +37,6 @@ import {
 } from "@/components/ui/table";
 import usePagination from "@/hooks/usePagination";
 import { get_socket } from "@/lib/socket-client";
-import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 
 const PAGE_SIZE = 50;
 const ATTRIBUTE_CARD_STYLES = [
@@ -137,8 +135,6 @@ export default function AtributInsanKuPage() {
   const [is_export_modal_open, setIsExportModalOpen] = useState(false);
   const [attribute_filters, setAttributeFilters] = useState({});
   const [draft_attribute_filters, setDraftAttributeFilters] = useState({});
-  const [transfer_source, setTransferSource] = useState(null);
-  const [is_transfer_sheet_open, setIsTransferSheetOpen] = useState(false);
   const import_input_ref = useRef(null);
   const previous_cell_values_ref = useRef({});
 
@@ -162,11 +158,6 @@ export default function AtributInsanKuPage() {
     setEmployees(data?.rows ?? []);
     setCanEditValues(Boolean(data?.can_edit_values));
     setIsMemberView(Boolean(data?.is_member_view));
-    if (data?.is_member_view && data?.rows?.[0]) {
-      setActiveCategory(
-        data.rows[0].is_slip_gaji_account ? "slip-gaji" : "non-slip-gaji",
-      );
-    }
   }, [fetch_attributes]);
 
   useEffect(() => {
@@ -186,13 +177,6 @@ export default function AtributInsanKuPage() {
         setEmployees(data?.rows ?? []);
         setCanEditValues(Boolean(data?.can_edit_values));
         setIsMemberView(Boolean(data?.is_member_view));
-        if (data?.is_member_view && data?.rows?.[0]) {
-          setActiveCategory(
-            data.rows[0].is_slip_gaji_account
-              ? "slip-gaji"
-              : "non-slip-gaji",
-          );
-        }
       } catch (error) {
         if (!is_active) {
           return;
@@ -274,8 +258,21 @@ export default function AtributInsanKuPage() {
     try {
       setSyncStatus("syncing");
       setIsLoadingAttributes(true);
+      const response = await fetch("/api/atribut-insanku", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operation: "sync-by-nik" }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          payload.message || "Sinkronisasi data atribut gagal dijalankan.",
+        );
+      }
+
       await load_attributes();
-      toast.success("Data atribut InsanKu berhasil disinkronkan.");
+      toast.success(payload.message || "Data atribut InsanKu berhasil disinkronkan.");
     } catch (error) {
       throw new Error(
         error instanceof Error
@@ -474,24 +471,7 @@ export default function AtributInsanKuPage() {
     next_page,
   } = usePagination(sorted_employees, PAGE_SIZE);
 
-  const transfer_target_options = useMemo(
-    () =>
-      employees
-        .filter(
-          (employee) =>
-            employee.is_slip_gaji_account && employee.is_active,
-        )
-        .sort((first, second) => compare_value(first.name, second.name))
-        .map((employee) => ({
-          value: employee.uuid,
-          label: `${employee.nik || "NIK kosong"} - ${employee.name}`,
-        })),
-    [employees],
-  );
-  const table_column_count =
-    display_attribute_columns.length +
-    2 +
-    (active_category === "non-slip-gaji" ? 1 : 0);
+  const table_column_count = display_attribute_columns.length + 2;
 
   const toggle_sort = (next_sort_key) => {
     if (sort_key === next_sort_key) {
@@ -519,28 +499,6 @@ export default function AtributInsanKuPage() {
     setActiveCategory(next_category);
     setActiveTab("aktif");
     setCurrentPage(1);
-  };
-
-  const handle_transfer_attributes = async (next_transfer) => {
-    const response = await fetch("/api/atribut-insanku", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        operation: "transfer",
-        source_uuid: transfer_source?.uuid,
-        target_uuid: next_transfer.target_uuid,
-      }),
-    });
-    const payload = await response.json();
-
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.message || "Gagal mengoper atribut.");
-    }
-
-    toast.success(payload.message || "Atribut berhasil dioper.");
-    await load_attributes();
   };
 
   const handle_import = async (event) => {
@@ -1105,12 +1063,16 @@ export default function AtributInsanKuPage() {
                   <FilterIcon className="size-4" />
                   Filter Lanjutan
                 </Button>
-                <SyncActionButton
-                  onConfirm={handle_sync_attributes}
-                  description="Sinkronisasi akan memuat ulang data atribut InsanKu terbaru yang tersedia di sistem."
-                  isPending={sync_status === "syncing"}
-                  className="w-full sm:ml-auto sm:w-auto"
-                />
+                {active_category === "slip-gaji" && !is_member_view ? (
+                  <SyncActionButton
+                    onConfirm={handle_sync_attributes}
+                    title="Konfirmasi sinkronisasi atribut InsanKu"
+                    description="Sistem juga akan mencocokkan NIK InsanKu Non Slip Gaji dengan Slip Gaji. Data atribut dengan NIK yang sama akan otomatis dioper ke akun Slip Gaji dan akun Non Slip Gaji dihapus permanen. Lanjutkan?"
+                    confirmLabel="Ya, sinkronkan atribut"
+                    isPending={sync_status === "syncing"}
+                    className="w-full sm:ml-auto sm:w-auto"
+                  />
+                ) : null}
               </div>
 
               <div className="overflow-hidden rounded-lg border">
@@ -1118,16 +1080,7 @@ export default function AtributInsanKuPage() {
                   <Table containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-20 bg-card">
                     <TableRow>
-                      {active_category === "non-slip-gaji" ? (
-                        <TableHead className="sticky top-0 left-0 z-30 min-w-[150px] bg-card text-center">
-                          Aksi
-                        </TableHead>
-                      ) : null}
-                      <TableHead
-                        className={`sticky top-0 z-30 min-w-[160px] bg-card shadow-[1px_0_0_0_hsl(var(--border))] ${
-                          active_category === "non-slip-gaji" ? "left-[150px]" : "left-0"
-                        }`}
-                      >
+                      <TableHead className="sticky top-0 left-0 z-30 min-w-[160px] bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
                           <SortableTableHead
                             label="NIK"
                             sortKey="nik"
@@ -1136,13 +1089,7 @@ export default function AtributInsanKuPage() {
                             onSort={toggle_sort}
                           />
                         </TableHead>
-                        <TableHead
-                          className={`sticky top-0 z-30 min-w-[240px] bg-card shadow-[1px_0_0_0_hsl(var(--border))] ${
-                            active_category === "non-slip-gaji"
-                              ? "left-[310px]"
-                              : "left-[160px]"
-                          }`}
-                        >
+                        <TableHead className="sticky top-0 left-[160px] z-30 min-w-[240px] bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
                           <SortableTableHead
                             label="Nama"
                             sortKey="name"
@@ -1188,41 +1135,10 @@ export default function AtributInsanKuPage() {
                       ) : paginated_rows.length ? (
                         paginated_rows.map((employee, index) => (
                           <TableRow key={employee.uuid}>
-                            {active_category === "non-slip-gaji" ? (
-                              <TableCell className="sticky left-0 z-10 bg-card text-center">
-                                {employee.is_active ? (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!transfer_target_options.length}
-                                    onClick={() => {
-                                      setTransferSource(employee);
-                                      setIsTransferSheetOpen(true);
-                                    }}
-                                  >
-                                    <ArrowRightLeftIcon className="size-4" />
-                                    Oper
-                                  </Button>
-                                ) : null}
-                              </TableCell>
-                            ) : null}
-                            <TableCell
-                              className={`sticky z-10 bg-card shadow-[1px_0_0_0_hsl(var(--border))] ${
-                                active_category === "non-slip-gaji"
-                                  ? "left-[150px]"
-                                  : "left-0"
-                              }`}
-                            >
+                            <TableCell className="sticky left-0 z-10 bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
                               {employee.nik || "-"}
                             </TableCell>
-                            <TableCell
-                              className={`sticky z-10 bg-card font-medium shadow-[1px_0_0_0_hsl(var(--border))] ${
-                                active_category === "non-slip-gaji"
-                                  ? "left-[310px]"
-                                  : "left-[160px]"
-                              }`}
-                            >
+                            <TableCell className="sticky left-[160px] z-10 bg-card font-medium shadow-[1px_0_0_0_hsl(var(--border))]">
                               {employee.name}
                             </TableCell>
                             {display_attribute_columns.map((column) => (
@@ -1262,32 +1178,6 @@ export default function AtributInsanKuPage() {
           </Card>
         </div>
       </div>
-
-      <PengaturanRowSheet
-        key={transfer_source?.uuid ?? "transfer-atribut-sheet"}
-        open={is_transfer_sheet_open}
-        on_open_change={setIsTransferSheetOpen}
-        title="Oper Atribut"
-        description={
-          transfer_source
-            ? `Pilih akun Slip Gaji berdasarkan NIK untuk menerima atribut dari ${transfer_source.name}.`
-            : "Pilih akun Slip Gaji berdasarkan NIK."
-        }
-        item={{ target_uuid: "" }}
-        fields={[
-          {
-            key: "target_uuid",
-            label: "Akun Slip Gaji Tujuan",
-            type: "select",
-            options: transfer_target_options,
-            searchable: true,
-            search_placeholder: "Cari berdasarkan NIK atau nama...",
-            empty_search_message: "Akun Slip Gaji tidak ditemukan.",
-            placeholder: "Pilih akun Slip Gaji",
-          },
-        ]}
-        on_save={handle_transfer_attributes}
-      />
 
       <DialogPrimitive.Root
         open={is_export_modal_open}

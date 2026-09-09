@@ -32,15 +32,19 @@ enum AttributeType {
 }
 
 model tbl_outlet {
-  id           Int       @id @default(autoincrement())
-  uuid         String    @unique @db.Char(36)
-  name         String    @db.VarChar(100)
-  category     Category
-  excep        Boolean   @default(false)
-  is_skip_sync Boolean   @default(false)
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-  deleted_at   DateTime?
+  id                 Int       @id @default(autoincrement())
+  uuid               String    @unique @db.Char(36)
+  name               String    @db.VarChar(100)
+  username           String    @unique @db.VarChar(100)
+  password           String?   @db.Text
+  is_username_change Boolean   @default(false)
+  is_password_change Boolean   @default(false)
+  category           Category
+  excep              Boolean   @default(false)
+  is_skip_sync       Boolean   @default(false)
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
 
   kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
   outlet_insanku     tbl_outlet_insanku[]
@@ -51,21 +55,21 @@ model tbl_outlet {
 }
 
 model tbl_insanku {
-  id                    Int       @id @default(autoincrement())
-  uuid                  String    @unique @db.Char(36)
-  nik                   String?   @db.VarChar(20)
-  name                  String    @db.VarChar(100)
-  username              String    @unique @db.VarChar(100)
-  password              String?   @db.Text
-  is_username_change    Boolean   @default(false)
-  is_password_change    Boolean   @default(false)
-  avatar                String?   @db.Text
-  is_slip_gaji_account  Boolean   @default(false)
-  is_skip_sync          Boolean   @default(false)
-  role                  Role
-  created_at            DateTime  @default(now())
-  updated_at            DateTime  @updatedAt
-  deleted_at            DateTime?
+  id                   Int       @id @default(autoincrement())
+  uuid                 String    @unique @db.Char(36)
+  nik                  String?   @db.VarChar(20)
+  name                 String    @db.VarChar(100)
+  username             String    @unique @db.VarChar(100)
+  password             String?   @db.Text
+  is_username_change   Boolean   @default(false)
+  is_password_change   Boolean   @default(false)
+  avatar               String?   @db.Text
+  is_slip_gaji_account Boolean   @default(false)
+  is_skip_sync         Boolean   @default(false)
+  role                 Role
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  deleted_at           DateTime?
 
   outlet_insanku  tbl_outlet_insanku[]
   atribut_insanku tbl_atribut_insanku[]

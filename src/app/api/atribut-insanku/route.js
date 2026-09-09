@@ -4,7 +4,7 @@ import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
 import {
   getAtributInsanku,
   importAtributInsanKu,
-  transferAtributInsanKu,
+  syncAtributInsanKuByNik,
   updateAtributInsanKu,
 } from "@/services/atributInsanKuService";
 
@@ -59,10 +59,8 @@ export const PATCH = async (request) => {
 
     const user_session = await getCurrentUser();
     const body = await request.json().catch(() => ({}));
-    if (body?.operation === "transfer") {
-      const data = await transferAtributInsanKu({
-        source_uuid: body?.source_uuid,
-        target_uuid: body?.target_uuid,
+    if (body?.operation === "sync-by-nik") {
+      const data = await syncAtributInsanKuByNik({
         actor_role: user_session?.role,
       });
 

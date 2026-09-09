@@ -10,11 +10,13 @@ export async function import_outlet_report(request, {
   import_handler,
   menu_key,
   temp_prefix,
+  fallback_roles = ["admin"],
+  handler_payload = {},
 }) {
   let temp_file_path = "";
 
   try {
-    const unauthorized_response = await requireMenuAccess(menu_key, ["admin"]);
+    const unauthorized_response = await requireMenuAccess(menu_key, fallback_roles);
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -44,6 +46,7 @@ export async function import_outlet_report(request, {
     const result = await import_handler({
       file_path: temp_file_path,
       import_date,
+      ...handler_payload,
     });
 
     return NextResponse.json(result);

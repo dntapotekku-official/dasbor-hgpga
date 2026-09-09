@@ -22,14 +22,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const default_date = new Date().toISOString().split("T")[0];
 export default function PenjualanGoFitKuPage() {
-  const { role, user } = useAuth();
+  const { role } = useAuth();
 
   function get_initial_sales_form(group, default_product) {
     return {
       scanned_entries: [
         {
           id: `${group?.uuid ?? "outlet"}_entry_1`,
-          employee_uuid: role === "member" ? user?.uuid ?? "" : group?.rows?.[0]?.uuid ?? "",
+          employee_uuid: group?.rows?.[0]?.uuid ?? "",
           produk_uuid: default_product?.value ?? "",
           product_name: default_product?.label ?? "",
           date: default_date,
@@ -51,8 +51,7 @@ export default function PenjualanGoFitKuPage() {
   function create_manual_entry(group, selected_date, entry_index, default_product) {
     return {
       id: `${group?.uuid ?? "outlet"}_manual_${entry_index}`,
-      employee_uuid:
-        role === "member" ? user?.uuid ?? "" : group?.rows?.[0]?.uuid ?? "",
+      employee_uuid: group?.rows?.[0]?.uuid ?? "",
       produk_uuid: default_product?.value ?? "",
       product_name: default_product?.label ?? "",
       date: selected_date,
@@ -489,10 +488,7 @@ export default function PenjualanGoFitKuPage() {
 
           return {
             id: `${active_outlet.uuid}_scan_${group_index + 1}_${item_index + 1}`,
-            employee_uuid:
-              role === "member"
-                ? user?.uuid ?? ""
-                : active_outlet.rows?.[0]?.uuid ?? "",
+            employee_uuid: active_outlet.rows?.[0]?.uuid ?? "",
             produk_uuid: matched_product?.value ?? "",
             product_name: matched_product?.label ?? String(item?.produk ?? "").trim(),
             date:

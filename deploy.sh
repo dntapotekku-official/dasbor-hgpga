@@ -17,7 +17,7 @@ GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=
 echo "[2/4] Check for migration changes..."
 if git diff HEAD@{1}..HEAD --name-only | grep -q "prisma/migrations/"; then
   echo "  → Migration detected, running prisma migrate deploy..."
-  DATABASE_URL="mysql://dasbor_user:DasborHgp%402026%21@localhost:3306/dashboardhgpga" \
+  DATABASE_URL="mysql://dasbor_user:DasborHgp%402026%21@localhost:3306/performance_report" \
     npx prisma migrate deploy
 else
   echo "  → No migration changes."

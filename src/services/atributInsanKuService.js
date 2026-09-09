@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizeRole } from "@/lib/role";
 import { emit_socket_event } from "@/lib/socket";
-import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
+import { hardDeleteInsanKuRelations } from "@/services/hardDeleteInsanKuRelations";
 
 function normalize_name(name) {
   return String(name ?? "").trim();
@@ -185,7 +185,17 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
     }),
     prisma.tbl_insanku.findMany({
       where: {
-        ...(is_member ? { uuid: user_uuid } : {}),
+        ...(is_member
+          ? {
+              outlet_insanku: {
+                some: {
+                  uuid_outlet: user_uuid,
+                  deleted_at: null,
+                  outlet: { deleted_at: null, excep: false },
+                },
+              },
+            }
+          : {}),
       },
       orderBy: {
         name: "asc",
@@ -283,14 +293,21 @@ export async function updateAtributInsanKu({
     throw new Error("Tidak memiliki akses untuk mengubah atribut.");
   }
 
-  if (is_member && uuid_insanku !== actor_uuid) {
-    throw new Error("Atribut hanya dapat diubah untuk akun sendiri.");
-  }
-
   const [employee, attribute] = await Promise.all([
-    prisma.tbl_insanku.findUnique({
+    prisma.tbl_insanku.findFirst({
       where: {
         uuid: uuid_insanku,
+        ...(is_member
+          ? {
+              outlet_insanku: {
+                some: {
+                  uuid_outlet: actor_uuid,
+                  deleted_at: null,
+                  outlet: { deleted_at: null, excep: false },
+                },
+              },
+            }
+          : {}),
       },
       select: {
         uuid: true,
@@ -380,119 +397,105 @@ export async function updateAtributInsanKu({
   };
 }
 
-export async function transferAtributInsanKu({
-  source_uuid,
-  target_uuid,
-  actor_role,
-}) {
+export async function syncAtributInsanKuByNik({ actor_role }) {
   const normalized_role = normalizeRole(actor_role);
   const is_admin =
     normalized_role === "admin" || normalized_role === "superadmin";
 
   if (!is_admin) {
-    throw new Error("Hanya admin yang dapat mengoper atribut.");
+    throw new Error("Hanya admin yang dapat menyinkronkan oper atribut berdasarkan NIK.");
   }
 
-  if (!source_uuid || !target_uuid || source_uuid === target_uuid) {
-    throw new Error("Sumber dan tujuan oper atribut wajib berbeda.");
-  }
-
-  const [source, target, source_attributes] = await Promise.all([
-    prisma.tbl_insanku.findFirst({
+  const [non_slip_accounts, slip_accounts] = await Promise.all([
+    prisma.tbl_insanku.findMany({
       where: {
-        uuid: source_uuid,
         is_slip_gaji_account: false,
         deleted_at: null,
+        nik: { not: null },
       },
       select: {
         uuid: true,
-        name: true,
-      },
-    }),
-    prisma.tbl_insanku.findFirst({
-      where: {
-        uuid: target_uuid,
-        is_slip_gaji_account: true,
-        deleted_at: null,
-      },
-      select: {
-        uuid: true,
-        name: true,
-      },
-    }),
-    prisma.tbl_atribut_insanku.findMany({
-      where: {
-        uuid_insanku: source_uuid,
-        deleted_at: null,
-        atribut: {
-          deleted_at: null,
-        },
-      },
-      select: {
-        uuid_atribut: true,
-        value: true,
-      },
-    }),
-  ]);
-
-  if (!source) {
-    throw new Error("Data InsanKu Non Slip Gaji tidak ditemukan.");
-  }
-
-  if (!target) {
-    throw new Error("Data InsanKu Slip Gaji tidak ditemukan.");
-  }
-
-  await prisma.$transaction(async (tx) => {
-    const deleted_at = new Date();
-
-    for (const attribute of source_attributes) {
-      await tx.tbl_atribut_insanku.upsert({
-        where: {
-          uuid_insanku_uuid_atribut: {
-            uuid_insanku: target_uuid,
-            uuid_atribut: attribute.uuid_atribut,
+        nik: true,
+        atribut_insanku: {
+          where: {
+            deleted_at: null,
+            atribut: { deleted_at: null },
+          },
+          select: {
+            uuid_atribut: true,
+            value: true,
           },
         },
-        update: {
-          value: attribute.value,
-          deleted_at: null,
-        },
-        create: {
-          uuid: randomUUID(),
-          uuid_insanku: target_uuid,
-          uuid_atribut: attribute.uuid_atribut,
-          value: attribute.value,
-        },
-      });
-    }
+      },
+    }),
+    prisma.tbl_insanku.findMany({
+      where: {
+        is_slip_gaji_account: true,
+        deleted_at: null,
+        nik: { not: null },
+      },
+      select: { uuid: true, nik: true },
+    }),
+  ]);
+  const slip_account_by_nik = new Map(
+    slip_accounts
+      .filter((account) => String(account.nik ?? "").trim())
+      .map((account) => [String(account.nik).trim(), account]),
+  );
+  const matched_accounts = non_slip_accounts
+    .map((source) => ({
+      source,
+      target: slip_account_by_nik.get(String(source.nik ?? "").trim()),
+    }))
+    .filter(({ target }) => Boolean(target));
+  let transferred_attributes = 0;
 
-    await softDeleteInsanKuRelations(tx, [source_uuid], deleted_at);
-    await tx.tbl_insanku.update({
-      where: { uuid: source_uuid },
-      data: { deleted_at },
-    });
+  await prisma.$transaction(async (tx) => {
+    for (const { source, target } of matched_accounts) {
+      for (const attribute of source.atribut_insanku) {
+        await tx.tbl_atribut_insanku.upsert({
+          where: {
+            uuid_insanku_uuid_atribut: {
+              uuid_insanku: target.uuid,
+              uuid_atribut: attribute.uuid_atribut,
+            },
+          },
+          update: {
+            value: attribute.value,
+            deleted_at: null,
+          },
+          create: {
+            uuid: randomUUID(),
+            uuid_insanku: target.uuid,
+            uuid_atribut: attribute.uuid_atribut,
+            value: attribute.value,
+          },
+        });
+      }
+
+      await hardDeleteInsanKuRelations(tx, [source.uuid]);
+      await tx.tbl_insanku.delete({
+        where: { uuid: source.uuid },
+      });
+      transferred_attributes += source.atribut_insanku.length;
+    }
   });
 
-  emit_socket_event("attribute.value.changed", {
-    source_uuid,
-    target_uuid,
-    operation: "transfer",
+  emit_socket_event("attribute.sync.completed", {
+    operation: "automatic-transfer-by-nik",
+    transferred_non_slip_insanku: matched_accounts.length,
+    transferred_attributes,
   });
 
   return {
     success: true,
     data: {
-      source_uuid,
-      target_uuid,
-      transferred_count: source_attributes.length,
+      transferred_non_slip_insanku: matched_accounts.length,
+      transferred_attributes,
     },
-    message:
-      "Atribut " +
-      source.name +
-      " berhasil dioper ke " +
-      target.name +
-      ". Data Non Slip Gaji sumber sudah dinonaktifkan.",
+    message: matched_accounts.length
+      ? `${matched_accounts.length} akun Non Slip Gaji berhasil dioper otomatis ke Slip Gaji berdasarkan NIK.`
+      : "Sinkronisasi selesai. Tidak ada NIK Non Slip Gaji yang cocok dengan Slip Gaji.",
   };
 }
 
@@ -552,7 +555,17 @@ export async function importAtributInsanKu({
     username: { in: usernames },
     deleted_at: active_tab === "aktif" ? null : { not: null },
     is_slip_gaji_account: active_category === "slip-gaji",
-    ...(is_member ? { uuid: actor_uuid } : {}),
+    ...(is_member
+      ? {
+          outlet_insanku: {
+            some: {
+              uuid_outlet: actor_uuid,
+              deleted_at: null,
+              outlet: { deleted_at: null, excep: false },
+            },
+          },
+        }
+      : {}),
   };
   const attribute_uuids = Array.from(
     new Set(normalized_rows.flatMap((row) => Object.keys(row.values))),
