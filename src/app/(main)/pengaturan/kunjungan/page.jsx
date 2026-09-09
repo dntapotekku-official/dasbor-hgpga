@@ -73,6 +73,14 @@ function KunjunganSheet({
   }));
   const [is_submitting, setIsSubmitting] = useState(false);
 
+  const reset_draft = () => {
+    setDraft({
+      uuid_outlet: item?.uuid_outlet ?? "",
+      date: item?.date ?? new Date().toISOString().slice(0, 10),
+      value: String(item?.value ?? ""),
+    });
+  };
+
   const outlet_options = useMemo(
     () => [
       {
@@ -115,6 +123,10 @@ function KunjunganSheet({
       onOpenChange={(next_open) => {
         if (is_submitting && !next_open) {
           return;
+        }
+
+        if (!next_open) {
+          reset_draft();
         }
 
         on_open_change(next_open);

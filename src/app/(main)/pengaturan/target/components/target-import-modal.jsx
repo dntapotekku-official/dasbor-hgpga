@@ -57,8 +57,20 @@ export default function TargetImportModal({
     setFileError("");
   };
 
+  const reset_form = () => {
+    const today = get_today_value();
+
+    setImportDate(today);
+    setStartDate(today);
+    setEndDate(today);
+    setFile(null);
+    setFileError("");
+    setIsDragging(false);
+  };
+
   const handle_close = (next_open) => {
     if (!next_open && !is_importing) {
+      reset_form();
       on_open_change(false);
     }
   };

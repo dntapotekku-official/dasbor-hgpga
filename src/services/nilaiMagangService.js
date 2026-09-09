@@ -162,85 +162,91 @@ function normalize_api_rows(api_rows, selected_outlet) {
   return [...rows.values()];
 }
 
-async function validate_references(rows) {
-  const employee_uuids = [...new Set(rows.map((row) => row.uuid_insanku))];
-  const outlet_uuids = [...new Set(rows.map((row) => row.uuid_outlet))];
-  const [employees, outlets] = await Promise.all([
-    prisma.tbl_insanku.findMany({
-      where: {
-        uuid: { in: employee_uuids },
-        is_slip_gaji_account: true,
-        deleted_at: null,
-      },
-      select: { uuid: true },
-    }),
-    prisma.tbl_outlet.findMany({
-      where: { uuid: { in: outlet_uuids }, deleted_at: null },
-      select: { uuid: true },
-    }),
-  ]);
-  const employee_set = new Set(employees.map(({ uuid }) => uuid));
-  const outlet_set = new Set(outlets.map(({ uuid }) => uuid));
-  const missing_employee_names = [
-    ...new Set(
-      rows
-        .filter((row) => !employee_set.has(row.uuid_insanku))
-        .map((row) => row.employee_name || row.uuid_insanku),
-    ),
-  ];
-  const missing_outlet_count = outlet_uuids.filter(
-    (uuid) => !outlet_set.has(uuid),
-  ).length;
-
-  if (missing_employee_names.length) {
-    throw new Error(
-      `InsanKu Slip Gaji belum tersedia: ${missing_employee_names.join(", ")}.`,
-    );
-  }
-
-  if (missing_outlet_count) {
-    throw new Error(
-      `${missing_outlet_count} outlet magang dari API belum tersedia di database.`,
-    );
-  }
-}
-
 async function save_rows(rows, period, selected_outlet) {
   const active_keys = rows.map((row) => build_active_key(period.key, row));
-  const archive_stale_rows = prisma.tbl_nilai_magang.updateMany({
-    where: {
-      deleted_at: null,
-      date: { gte: period.start_date, lt: period.end_date },
-      ...(selected_outlet === ALL ? {} : { uuid_outlet: selected_outlet }),
-      ...(active_keys.length
-        ? {
-            OR: [
-              { active_key: null },
-              { active_key: { notIn: active_keys } },
-            ],
-          }
-        : {}),
-    },
-    data: { active_key: null, deleted_at: new Date() },
-  });
-  const upsert_rows = rows.map((row) => {
-    const active_key = build_active_key(period.key, row);
-    const data = {
-      uuid_insanku: row.uuid_insanku,
-      uuid_outlet: row.uuid_outlet,
-      value: row.value,
-      date: period.start_date,
-      deleted_at: null,
-    };
+  const employee_rows = [
+    ...new Map(rows.map((row) => [row.uuid_insanku, row])).values(),
+  ];
+  const employee_uuids = employee_rows.map((row) => row.uuid_insanku);
+  const outlet_uuids = [...new Set(rows.map((row) => row.uuid_outlet))];
 
-    return prisma.tbl_nilai_magang.upsert({
-      where: { active_key },
-      update: data,
-      create: { ...data, uuid: randomUUID(), active_key },
+  return prisma.$transaction(async (transaction) => {
+    const [employees, outlets] = await Promise.all([
+      transaction.tbl_insanku.findMany({
+        where: { uuid: { in: employee_uuids } },
+        select: { uuid: true },
+      }),
+      transaction.tbl_outlet.findMany({
+        where: { uuid: { in: outlet_uuids }, deleted_at: null },
+        select: { uuid: true },
+      }),
+    ]);
+    const employee_set = new Set(employees.map(({ uuid }) => uuid));
+    const outlet_set = new Set(outlets.map(({ uuid }) => uuid));
+    const missing_outlet_count = outlet_uuids.filter(
+      (uuid) => !outlet_set.has(uuid),
+    ).length;
+
+    if (missing_outlet_count) {
+      throw new Error(
+        `${missing_outlet_count} outlet magang dari API belum tersedia di database.`,
+      );
+    }
+
+    const non_slip_employees = employee_rows.filter(
+      (row) => !employee_set.has(row.uuid_insanku),
+    );
+
+    if (non_slip_employees.length) {
+      await transaction.tbl_insanku.createMany({
+        data: non_slip_employees.map((row) => ({
+          uuid: row.uuid_insanku,
+          nik: null,
+          name: row.employee_name || "InsanKu Nilai Rapor",
+          username: `rapor-${randomUUID()}@internal`,
+          password: null,
+          is_slip_gaji_account: false,
+          role: "member",
+        })),
+      });
+    }
+
+    await transaction.tbl_nilai_magang.updateMany({
+      where: {
+        deleted_at: null,
+        date: { gte: period.start_date, lt: period.end_date },
+        ...(selected_outlet === ALL ? {} : { uuid_outlet: selected_outlet }),
+        ...(active_keys.length
+          ? {
+              OR: [
+                { active_key: null },
+                { active_key: { notIn: active_keys } },
+              ],
+            }
+          : {}),
+      },
+      data: { active_key: null, deleted_at: new Date() },
     });
-  });
 
-  await prisma.$transaction([archive_stale_rows, ...upsert_rows]);
+    for (const row of rows) {
+      const active_key = build_active_key(period.key, row);
+      const data = {
+        uuid_insanku: row.uuid_insanku,
+        uuid_outlet: row.uuid_outlet,
+        value: row.value,
+        date: period.start_date,
+        deleted_at: null,
+      };
+
+      await transaction.tbl_nilai_magang.upsert({
+        where: { active_key },
+        update: data,
+        create: { ...data, uuid: randomUUID(), active_key },
+      });
+    }
+
+    return { non_slip_count: non_slip_employees.length };
+  }, { timeout: 30_000 });
 }
 
 export async function getNilaiMagang({ month, year, outlet_uuid } = {}) {
@@ -311,16 +317,15 @@ export async function syncNilaiMagang({ month, year, outlet_uuid } = {}) {
   const selected_outlet = normalize_outlet(outlet_uuid);
   const api_rows = await fetch_slip_gaji_rows(period, selected_outlet);
   const rows = normalize_api_rows(api_rows, selected_outlet);
-
-  await validate_references(rows);
-  await save_rows(rows, period, selected_outlet);
+  const { non_slip_count } = await save_rows(rows, period, selected_outlet);
 
   return {
     success: true,
-    message: `Nilai magang ${period.key} berhasil disinkronkan untuk ${rows.length} mentee.`,
+    message: `Nilai magang ${period.key} berhasil disinkronkan untuk ${rows.length} mentee${non_slip_count ? `; ${non_slip_count} akun baru disimpan sebagai Non Slip Gaji` : ""}.`,
     data: {
       period: period.key,
       synchronized_count: rows.length,
+      non_slip_count,
       selected_outlet_uuid: selected_outlet,
     },
   };

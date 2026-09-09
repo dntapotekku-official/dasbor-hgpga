@@ -61,6 +61,7 @@ export default function TargetBulkDeleteModal({
 
   const handle_close = (next_open) => {
     if (!next_open && !is_deleting) {
+      setSelectedPeriodKey(periods[0]?.key ?? "");
       on_open_change(false);
     }
   };

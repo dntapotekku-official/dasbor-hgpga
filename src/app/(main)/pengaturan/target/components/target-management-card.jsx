@@ -730,14 +730,16 @@ export default function TargetManagementCard({
             onConfirm={handle_delete}
           />
 
-          <TargetImportModal
-            open={is_import_modal_open}
-            date_mode={import_date_mode}
-            is_importing={is_importing}
-            target_label={target_label}
-            on_open_change={setIsImportModalOpen}
-            on_submit={handle_import}
-          />
+          {is_import_modal_open ? (
+            <TargetImportModal
+              open
+              date_mode={import_date_mode}
+              is_importing={is_importing}
+              target_label={target_label}
+              on_open_change={setIsImportModalOpen}
+              on_submit={handle_import}
+            />
+          ) : null}
 
           {is_bulk_date_modal_open ? (
             <TargetBulkDateModal

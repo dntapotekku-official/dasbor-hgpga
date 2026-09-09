@@ -23,6 +23,7 @@ export default function NilaiTransaksiDailyEditModal({
 
   const handle_close = (next_open) => {
     if (!next_open && !is_saving) {
+      setTotalRevenue(String(row?.total_revenue ?? 0));
       on_open_change(false);
     }
   };

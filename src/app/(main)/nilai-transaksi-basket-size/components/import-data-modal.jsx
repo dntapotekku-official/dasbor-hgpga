@@ -42,6 +42,13 @@ export default function ImportDataModal({
     setFileError("");
   };
 
+  const reset_form = () => {
+    setImportDate(default_date);
+    setFile(null);
+    setFileError("");
+    setIsDragging(false);
+  };
+
   const title =
     import_type === "kunjungan"
       ? "Impor Kunjungan"
@@ -77,6 +84,7 @@ export default function ImportDataModal({
       open
       onOpenChange={(next_open) => {
         if (!next_open && !is_importing) {
+          reset_form();
           on_open_change(false);
         }
       }}

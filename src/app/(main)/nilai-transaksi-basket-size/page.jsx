@@ -72,6 +72,20 @@ const default_available_dates = {
   basket_size: [],
 };
 
+function get_current_date_value() {
+  const date_parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Makassar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part_values = Object.fromEntries(
+    date_parts.map((part) => [part.type, part.value]),
+  );
+
+  return `${part_values.year}-${part_values.month}-${part_values.day}`;
+}
+
 function resolveMetricEndpoint(metric) {
   return metric === "basket-size" ? "/api/basket-size" : "/api/nilai-transaksi";
 }
@@ -235,7 +249,7 @@ function summarizeVisibleRows(rows) {
 export default function NilaiTransaksiPage() {
   const { role } = useAuth();
   const [activeMetric, setActiveMetric] = useState("nilai-transaksi");
-  const [selectedDate, setSelectedDate] = useState("2026-08-25");
+  const [selectedDate, setSelectedDate] = useState(get_current_date_value);
   const [selectedOutlet, setSelectedOutlet] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("non-pariwisata");
   const [rows, setRows] = useState([]);

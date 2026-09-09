@@ -59,6 +59,8 @@ export default function MetricBulkActionModal({
 
   const handle_close = (next_open) => {
     if (!next_open && !is_processing) {
+      setSourceDate(initial_date);
+      setTargetDate("");
       on_open_change(false);
     }
   };

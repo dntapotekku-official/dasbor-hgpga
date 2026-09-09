@@ -710,6 +710,14 @@ export default function AtributInsanKuPage() {
     setCurrentPage(1);
   };
 
+  const handle_filter_modal_open_change = (next_open) => {
+    if (!next_open) {
+      setDraftAttributeFilters({});
+    }
+
+    setIsFilterModalOpen(next_open);
+  };
+
   const handle_reset_filters = () => {
     setDraftAttributeFilters({});
     setAttributeFilters({});
@@ -1243,7 +1251,7 @@ export default function AtributInsanKuPage() {
 
       <DialogPrimitive.Root
         open={is_filter_modal_open}
-        onOpenChange={setIsFilterModalOpen}
+        onOpenChange={handle_filter_modal_open_change}
       >
         <DialogPrimitive.Portal>
           <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />

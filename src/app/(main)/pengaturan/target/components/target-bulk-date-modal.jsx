@@ -86,6 +86,13 @@ export default function TargetBulkDateModal({
 
   const handle_close = (next_open) => {
     if (!next_open && !is_updating) {
+      setSelectedPeriodKey(periods[0]?.key ?? "");
+      setStartDate(periods[0]?.start_date ?? "");
+      setEndDate(
+        is_range_mode
+          ? periods[0]?.end_date ?? ""
+          : periods[0]?.start_date ?? "",
+      );
       on_open_change(false);
     }
   };
