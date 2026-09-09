@@ -68,7 +68,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1">
-              <CardTitle className="my-2">Performance Report (Ganteng)</CardTitle>
+              <CardTitle className="my-2">Performance Report ( Kak Gede Ganteng)</CardTitle>
               <CardDescription>
                 Silahkan Masuk
               </CardDescription>
