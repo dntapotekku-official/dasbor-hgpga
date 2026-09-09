@@ -435,7 +435,7 @@ export default async function Page() {
               ) : null}
             </CardContent>
           ) : (
-            <CardContent className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-1">
+            <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
               {quick_actions.length ? (
                 quick_actions.slice(0, 4).map((action) => {
                   const Icon =
@@ -473,7 +473,7 @@ export default async function Page() {
             title="Akses Cepat"
             description="Buka aktivitas utama Anda tanpa mencari menu di sidebar."
           />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {quick_actions.map((action) => {
               const Icon = ACTION_ICONS[action.value] ?? LayoutDashboardIcon;
 

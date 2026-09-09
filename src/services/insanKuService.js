@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { emit_socket_event } from "@/lib/socket";
 import { randomUUID } from "node:crypto";
 import { dedupeByUuid } from "@/lib/utils";
 import { normalizeNik, stripInvisibleCharacters } from "@/lib/nik";
@@ -264,9 +265,55 @@ export async function syncInsanKu() {
       item.is_skip_sync &&
       item.deleted_at === null,
   );
+  const incoming_niks = Array.from(
+    new Set(unique_insanku.map((item) => item.nik).filter(Boolean)),
+  );
+  const incoming_account_by_nik = new Map(
+    unique_insanku
+      .filter((item) => item.nik)
+      .map((item) => [item.nik, item]),
+  );
 
-  const inserted_insanku = await prisma.$transaction(async (tx) => {
+  const sync_result = await prisma.$transaction(async (tx) => {
     let inserted_count = 0;
+    const matching_non_slip_accounts = incoming_niks.length
+      ? await tx.tbl_insanku.findMany({
+          where: {
+            nik: { in: incoming_niks },
+            is_slip_gaji_account: false,
+            deleted_at: null,
+          },
+          select: {
+            uuid: true,
+            nik: true,
+            username: true,
+            atribut_insanku: {
+              where: {
+                deleted_at: null,
+                atribut: { deleted_at: null },
+              },
+              select: {
+                uuid_atribut: true,
+                value: true,
+              },
+            },
+          },
+        })
+      : [];
+
+    for (const source of matching_non_slip_accounts) {
+      const incoming_account = incoming_account_by_nik.get(source.nik);
+
+      if (
+        incoming_account &&
+        source.username.toLowerCase() === incoming_account.username.toLowerCase()
+      ) {
+        await tx.tbl_insanku.update({
+          where: { uuid: source.uuid },
+          data: { username: `non-slip-${source.uuid}@archived.local` },
+        });
+      }
+    }
 
     if (new_insanku.length > 0) {
       const result = await tx.tbl_insanku.createMany({
@@ -311,8 +358,76 @@ export async function syncInsanKu() {
       });
     }
 
-    return inserted_count;
+    let transferred_non_slip_insanku = 0;
+    let transferred_attributes = 0;
+
+    if (incoming_niks.length > 0) {
+      const slip_accounts = await tx.tbl_insanku.findMany({
+        where: {
+          nik: { in: incoming_niks },
+          is_slip_gaji_account: true,
+          deleted_at: null,
+        },
+        select: { uuid: true, nik: true },
+      });
+      const slip_account_by_nik = new Map(
+        slip_accounts.map((item) => [item.nik, item]),
+      );
+
+      for (const source of matching_non_slip_accounts) {
+        const target = slip_account_by_nik.get(source.nik);
+
+        if (!target) {
+          continue;
+        }
+
+        for (const attribute of source.atribut_insanku) {
+          await tx.tbl_atribut_insanku.upsert({
+            where: {
+              uuid_insanku_uuid_atribut: {
+                uuid_insanku: target.uuid,
+                uuid_atribut: attribute.uuid_atribut,
+              },
+            },
+            update: {
+              value: attribute.value,
+              deleted_at: null,
+            },
+            create: {
+              uuid: randomUUID(),
+              uuid_insanku: target.uuid,
+              uuid_atribut: attribute.uuid_atribut,
+              value: attribute.value,
+            },
+          });
+        }
+
+        const deleted_at = new Date();
+        await softDeleteInsanKuRelations(tx, [source.uuid], deleted_at);
+        await tx.tbl_insanku.update({
+          where: { uuid: source.uuid },
+          data: { deleted_at },
+        });
+        transferred_non_slip_insanku += 1;
+        transferred_attributes += source.atribut_insanku.length;
+      }
+    }
+
+    return {
+      inserted_count,
+      transferred_non_slip_insanku,
+      transferred_attributes,
+    };
   });
+
+  if (sync_result.transferred_non_slip_insanku > 0) {
+    emit_socket_event("attribute.sync.completed", {
+      operation: "automatic-transfer-by-nik",
+      transferred_non_slip_insanku:
+        sync_result.transferred_non_slip_insanku,
+      transferred_attributes: sync_result.transferred_attributes,
+    });
+  }
 
   return {
     success: true,
@@ -320,12 +435,16 @@ export async function syncInsanKu() {
       data_insanku: unique_insanku,
     },
     summary: {
-      inserted_insanku,
-      skipped_duplicate_insanku: new_insanku.length - inserted_insanku,
+      inserted_insanku: sync_result.inserted_count,
+      skipped_duplicate_insanku:
+        new_insanku.length - sync_result.inserted_count,
       updated_insanku: update_insanku.length,
       skipped_insanku: skipped_insanku.length,
       deleted_insanku: deleted_insanku.length,
       retained_skipped_insanku: skipped_deleted_insanku.length,
+      transferred_non_slip_insanku:
+        sync_result.transferred_non_slip_insanku,
+      transferred_attributes: sync_result.transferred_attributes,
     },
   };
 }
@@ -366,6 +485,10 @@ export async function updateInsanKu({
 
   if (!trimmed_name) {
     throw new Error("Nama InsanKu wajib diisi.");
+  }
+
+  if (!expected_is_slip_gaji_account && !trimmed_nik) {
+    throw new Error("NIK InsanKu Non Slip Gaji wajib diisi.");
   }
 
   if (!trimmed_username) {
@@ -603,8 +726,8 @@ export async function createInsanKuNonSlipGaji({
     outlet_uuids,
   );
 
-  if (!trimmed_name || !trimmed_username || !trimmed_password) {
-    throw new Error("Nama, username, dan password wajib diisi.");
+  if (!trimmed_nik || !trimmed_name || !trimmed_username || !trimmed_password) {
+    throw new Error("NIK, nama, username, dan password wajib diisi.");
   }
 
   if (trimmed_password.length < 6) {
@@ -618,7 +741,7 @@ export async function createInsanKuNonSlipGaji({
     const insanku = await transaction.tbl_insanku.create({
       data: {
         uuid: randomUUID(),
-        nik: trimmed_nik || null,
+        nik: trimmed_nik,
         name: trimmed_name,
         username: trimmed_username,
         password: hashed_password,

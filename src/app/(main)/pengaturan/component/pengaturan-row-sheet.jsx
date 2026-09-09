@@ -116,7 +116,16 @@ export default function PengaturanRowSheet({
   };
 
   const handle_save = async () => {
-    setIsSubmitting(true);
+    const missing_required_field = fields.find(
+      (field) =>
+        field.required &&
+        !String(get_saved_value(draft, field) ?? "").trim(),
+    );
+
+    if (missing_required_field) {
+      toast.error(`${missing_required_field.label} wajib diisi.`);
+      return;
+    }
 
     const next_item = {
       ...item,
@@ -124,6 +133,8 @@ export default function PengaturanRowSheet({
         fields.map((field) => [field.key, get_saved_value(draft, field)]),
       ),
     };
+
+    setIsSubmitting(true);
 
     try {
       await on_save(next_item);
@@ -178,7 +189,10 @@ export default function PengaturanRowSheet({
             return (
               <div key={field.key} className="space-y-2">
               {field.type !== "checkbox" ? (
-                <Label htmlFor={field.key}>{field.label}</Label>
+                <Label htmlFor={field.key}>
+                  {field.label}
+                  {field.required ? <span className="text-destructive"> *</span> : null}
+                </Label>
               ) : null}
               {field.type === "checkbox" ? (
                 <label
@@ -460,6 +474,8 @@ export default function PengaturanRowSheet({
                   type={field.input_type ?? field.type ?? "text"}
                   value={draft[field.key] ?? ""}
                   disabled={is_disabled}
+                  required={field.required}
+                  aria-required={field.required || undefined}
                   onChange={(event) =>
                     setDraft((current) => ({
                       ...current,
