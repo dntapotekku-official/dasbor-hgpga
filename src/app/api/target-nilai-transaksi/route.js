@@ -110,7 +110,7 @@ export const POST = (request) =>
   import_target_report(request, {
     import_handler: importTargetNilaiTransaksi,
     temp_prefix: "target-nilai-transaksi",
-    field_names: ["import_date"],
+    field_names: ["start_date", "end_date"],
   });
 
 export const DELETE = async (request) => {

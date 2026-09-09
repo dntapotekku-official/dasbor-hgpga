@@ -16,7 +16,7 @@ export default function NilaiTransaksiTab() {
       target_placeholder="Masukkan nilai target, contoh 150000"
       target_helper="Target nilai transaksi menggunakan angka bulat tanpa desimal."
       target_value_format="currency"
-      import_date_mode="single"
+      import_date_mode="range"
     />
   );
 }

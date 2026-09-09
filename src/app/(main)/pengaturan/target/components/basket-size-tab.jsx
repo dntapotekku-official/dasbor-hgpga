@@ -16,7 +16,7 @@ export default function BasketSizeTab() {
       target_placeholder="Masukkan nilai target, contoh 2.08"
       target_helper="Gunakan titik untuk desimal, misalnya 2.08."
       target_value_format="decimal"
-      import_date_mode="single"
+      import_date_mode="range"
     />
   );
 }

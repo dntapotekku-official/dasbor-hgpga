@@ -2502,12 +2502,18 @@ async function delete_target_metric(metric_type, { uuid_target_metric }) {
 /** Mengimpor target outlet untuk satu metrik dan menolak duplikasi atau bentrok periode. */
 async function import_target_metric(metric_type, {
   file_path,
-  import_date,
+  start_date,
+  end_date,
 }) {
   const config = get_metric_config(metric_type);
-  const parsed_import_date = parse_target_date(import_date, {
-    label: "Tanggal impor",
+  const parsed_start_date = parse_target_date(start_date, {
+    label: "Tanggal mulai",
   });
+  const parsed_end_date = parse_target_date(end_date, {
+    label: "Tanggal selesai",
+  });
+
+  assert_valid_range(parsed_start_date, parsed_end_date);
   const rows = await parse_target_report_workbook(file_path);
   const { outlet_by_name, outlet_by_uuid } = await get_target_outlet_maps();
   const imported_rows = [];
@@ -2541,8 +2547,8 @@ async function import_target_metric(metric_type, {
       uuid: randomUUID(),
       uuid_outlet: matched_outlet.uuid,
       value: parse_target_value(row?.target, config),
-      start_date: parsed_import_date,
-      end_date: parsed_import_date,
+      start_date: parsed_start_date,
+      end_date: parsed_end_date,
     });
   }
 
@@ -2565,7 +2571,7 @@ async function import_target_metric(metric_type, {
         in: imported_rows.map((item) => item.uuid_outlet),
       },
       start_date: {
-        lte: parsed_import_date,
+        lte: parsed_end_date,
       },
       OR: [
         {
@@ -2573,7 +2579,7 @@ async function import_target_metric(metric_type, {
         },
         {
           end_date: {
-            gte: parsed_import_date,
+            gte: parsed_start_date,
           },
         },
       ],
@@ -2593,7 +2599,7 @@ async function import_target_metric(metric_type, {
     ).sort((a, b) => a.localeCompare(b, "id-ID"));
 
     throw new Error(
-      `Impor dibatalkan karena target bentrok pada tanggal ini untuk outlet: ${overlapping_outlet_names.join(", ")}.`,
+      `Impor dibatalkan karena range target bentrok untuk outlet: ${overlapping_outlet_names.join(", ")}.`,
     );
   }
 
@@ -2607,7 +2613,8 @@ async function import_target_metric(metric_type, {
     data: {
       imported_count: imported_rows.length,
       unmatched_outlets,
-      import_date: parsed_import_date.toISOString().slice(0, 10),
+      start_date: parsed_start_date.toISOString().slice(0, 10),
+      end_date: parsed_end_date.toISOString().slice(0, 10),
     },
   };
 }

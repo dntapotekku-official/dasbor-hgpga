@@ -1,4 +1,5 @@
 import json
+import posixpath
 import sys
 from pathlib import Path
 from zipfile import ZipFile
@@ -40,8 +41,14 @@ def read_sheet_targets(archive):
         rel_id = sheet.attrib[
             "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
         ]
-        target = rel_map[rel_id]
-        targets.append(f"xl/{target}" if not target.startswith("xl/") else target)
+        target = rel_map[rel_id].replace("\\", "/")
+
+        if target.startswith("/"):
+            resolved_target = target.lstrip("/")
+        else:
+            resolved_target = posixpath.normpath(posixpath.join("xl", target))
+
+        targets.append(resolved_target)
 
     return targets
 
