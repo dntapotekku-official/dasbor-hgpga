@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 const exec_file = promisify(execFile);
 
 const fixed_targets = {
-  nilai_transaksi: 100_000,
+  nilai_transaksi: 105_000,
   basket_size: 2,
 };
 
