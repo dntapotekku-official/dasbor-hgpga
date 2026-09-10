@@ -55,11 +55,12 @@ export default function ImportDataModal({
       : import_type === "basket-size"
         ? "Impor Basket Size"
         : "Impor Nilai Transaksi";
+  const uses_file_dates = import_type === "basket-size";
   const description =
     import_type === "kunjungan"
       ? "Tentukan tanggal data, lalu pilih file Excel berisi kolom Outlet dan Dilayani."
       : import_type === "basket-size"
-      ? "Tentukan tanggal data, lalu pilih file ikhtisar outlet untuk mengimpor basket size."
+      ? "Pilih file rekap penjualan. Tanggal Basket Size akan dibaca otomatis dari setiap baris Excel."
       : "Tentukan tanggal data, lalu pilih file ikhtisar outlet untuk mengimpor nilai transaksi.";
   const date_input_id =
     import_type === "kunjungan"
@@ -76,7 +77,7 @@ export default function ImportDataModal({
   const helper_text = import_type === "kunjungan"
     ? "Pastikan file memiliki kolom Outlet dan Dilayani."
     : import_type === "basket-size"
-      ? "Pastikan file memiliki sheet Rekap Penjualan. Sistem hanya mengambil data sesuai Tanggal Data yang dipilih."
+      ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, dan Jumlah Sku."
       : "Pastikan file memiliki sheet Laporan Penjualan dan Statistik Kunjungan.";
 
   return (
@@ -122,17 +123,19 @@ export default function ImportDataModal({
               on_submit({ import_date: import_date, file, import_type });
             }}
           >
-            <div className="space-y-2">
-              <Label htmlFor={date_input_id}>Tanggal Data</Label>
-              <Input
-                id={date_input_id}
-                type="date"
-                value={import_date}
-                onChange={(event) => setImportDate(event.target.value)}
-                disabled={is_importing}
-                required
-              />
-            </div>
+            {!uses_file_dates ? (
+              <div className="space-y-2">
+                <Label htmlFor={date_input_id}>Tanggal Data</Label>
+                <Input
+                  id={date_input_id}
+                  type="date"
+                  value={import_date}
+                  onChange={(event) => setImportDate(event.target.value)}
+                  disabled={is_importing}
+                  required
+                />
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor={file_input_id}>File Excel</Label>

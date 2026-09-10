@@ -1566,7 +1566,7 @@ export function bulkDeleteBasketSizeDate(payload) {
 // Import data harian NS/BS
 // ============================================================================
 
-/** Mengimpor satu jenis metrik outlet dari laporan dan mengganti data pada tanggal impor. */
+/** Mengimpor satu jenis metrik outlet dan mengganti data pada setiap tanggal laporan. */
 async function importOutletReportMetric({
   file_path,
   import_date,
@@ -1576,25 +1576,17 @@ async function importOutletReportMetric({
   validate_row,
   resolve_served,
   use_existing_served = false,
+  use_file_dates = false,
   member_outlet_uuid,
 }) {
   const normalized_import_date = String(import_date ?? "").trim();
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized_import_date)) {
-    throw new Error("Tanggal impor wajib diisi dengan format yang valid.");
-  }
-
-  const report_date = new Date(`${normalized_import_date}T00:00:00.000Z`);
-
-  if (
-    Number.isNaN(report_date.getTime()) ||
-    report_date.toISOString().slice(0, 10) !== normalized_import_date
-  ) {
-    throw new Error("Tanggal impor tidak valid.");
-  }
-
-  const report_day_end = new Date(report_date.getTime() + 86_400_000 - 1);
-  const payload = await parse_report_workbook(file_path, normalized_import_date);
+  const selected_report_date = use_file_dates
+    ? null
+    : parse_metric_date(normalized_import_date, "Tanggal impor");
+  const payload = await parse_report_workbook(
+    file_path,
+    use_file_dates ? undefined : normalized_import_date,
+  );
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
@@ -1611,7 +1603,7 @@ async function importOutletReportMetric({
     outlets.map((outlet) => [normalize_outlet_name(outlet.name), outlet]),
   );
   const imported_rows = [];
-  const unmatched_outlets = [];
+  const unmatched_outlets = new Set();
 
   payload.rows.forEach((row) => {
     if (should_skip_import_outlet(row.outlet_name)) {
@@ -1621,13 +1613,23 @@ async function importOutletReportMetric({
     const matched_outlet = outlet_map.get(normalize_outlet_name(row.outlet_name));
 
     if (!matched_outlet) {
-      unmatched_outlets.push(row.outlet_name);
+      unmatched_outlets.add(row.outlet_name);
       return;
     }
 
     const total_penerimaan_pendapatan = to_number(row.total_penerimaan_pendapatan);
     const served = use_existing_served ? 0 : to_number(resolve_served(row));
     const sku_qty = to_number(row.sku_qty);
+    const row_date_value = use_file_dates ? row.date : normalized_import_date;
+    let report_date;
+
+    try {
+      report_date = use_file_dates
+        ? parse_metric_date(row_date_value, "Tanggal Penjualan pada file Excel")
+        : selected_report_date;
+    } catch {
+      return;
+    }
 
     if (!use_existing_served && (!Number.isInteger(served) || served <= 0)) {
       return;
@@ -1639,6 +1641,8 @@ async function importOutletReportMetric({
       total_revenue: total_penerimaan_pendapatan,
       served,
       sku_qty,
+      report_date,
+      report_date_key: report_date.toISOString().slice(0, 10),
     };
 
     if (!validate_row(imported_row)) {
@@ -1653,8 +1657,9 @@ async function importOutletReportMetric({
   }
 
   const aggregated_rows = Array.from(
-    imported_rows.reduce((rows_by_outlet, row) => {
-      const current_row = rows_by_outlet.get(row.uuid_outlet) ?? {
+    imported_rows.reduce((rows_by_outlet_and_date, row) => {
+      const aggregate_key = `${row.uuid_outlet}:${row.report_date_key}`;
+      const current_row = rows_by_outlet_and_date.get(aggregate_key) ?? {
         ...row,
         total_revenue: 0,
         served: 0,
@@ -1664,28 +1669,92 @@ async function importOutletReportMetric({
       current_row.total_revenue += row.total_revenue;
       current_row.served += row.served;
       current_row.sku_qty += row.sku_qty;
-      rows_by_outlet.set(row.uuid_outlet, current_row);
+      rows_by_outlet_and_date.set(aggregate_key, current_row);
 
-      return rows_by_outlet;
+      return rows_by_outlet_and_date;
     }, new Map()).values(),
+  );
+  const imported_dates = Array.from(
+    new Set(aggregated_rows.map((row) => row.report_date_key)),
+  ).sort();
+  const imported_outlet_count = new Set(
+    aggregated_rows.map((row) => row.uuid_outlet),
+  ).size;
+  const imported_outlet_uuids = Array.from(
+    new Set(aggregated_rows.map((row) => row.uuid_outlet)),
   );
 
   await prisma.$transaction(async (tx) => {
-    await tx[model].updateMany({
-      where: {
-        deleted_at: null,
-        date: {
-          gte: report_date,
-          lte: report_day_end,
+    if (use_existing_served && use_file_dates) {
+      const first_import_date = parse_metric_date(imported_dates[0]);
+      const last_import_date = parse_metric_date(imported_dates.at(-1));
+      const visit_rows = await tx.tbl_dilayani.findMany({
+        where: {
+          deleted_at: null,
+          uuid_outlet: {
+            in: imported_outlet_uuids,
+          },
+          date: {
+            gte: first_import_date,
+            lte: end_of_day(last_import_date),
+          },
         },
-      },
-      data: {
-        active_key: null,
-        deleted_at: new Date(),
-      },
-    });
+        select: {
+          uuid_outlet: true,
+          date: true,
+        },
+      });
+      const visit_keys = new Set(
+        visit_rows.map((row) => build_active_daily_key(row.uuid_outlet, row.date)),
+      );
+      const missing_visit_row = aggregated_rows.find(
+        (row) => !visit_keys.has(build_active_daily_key(row.uuid_outlet, row.report_date)),
+      );
+
+      if (missing_visit_row) {
+        throw new Error(
+          `Impor dibatalkan karena data kunjungan outlet ${missing_visit_row.outlet_name} pada tanggal ${missing_visit_row.report_date_key} belum tersedia.`,
+        );
+      }
+    }
+
+    for (const imported_date of imported_dates) {
+      const date = parse_metric_date(imported_date);
+
+      await tx[model].updateMany({
+        where: {
+          deleted_at: null,
+          uuid_outlet: {
+            in: imported_outlet_uuids,
+          },
+          date: {
+            gte: date,
+            lte: end_of_day(date),
+          },
+        },
+        data: {
+          active_key: null,
+          deleted_at: new Date(),
+        },
+      });
+    }
+
+    if (use_existing_served && use_file_dates) {
+      await tx[model].createMany({
+        data: aggregated_rows.map((row) => ({
+          uuid: randomUUID(),
+          uuid_outlet: row.uuid_outlet,
+          active_key: build_active_daily_key(row.uuid_outlet, row.report_date),
+          date: row.report_date,
+          ...build_record(row),
+        })),
+      });
+      return;
+    }
 
     for (const row of aggregated_rows) {
+      const report_date = row.report_date;
+      const report_day_end = end_of_day(report_date);
       let served_record = await tx.tbl_dilayani.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
@@ -1706,7 +1775,7 @@ async function importOutletReportMetric({
 
       if (use_existing_served && (!served_record || served_record.deleted_at)) {
         throw new Error(
-          `Impor dibatalkan karena data kunjungan outlet ${row.outlet_name} pada tanggal ${normalized_import_date} belum tersedia.`,
+          `Impor dibatalkan karena data kunjungan outlet ${row.outlet_name} pada tanggal ${row.report_date_key} belum tersedia.`,
         );
       }
 
@@ -1829,15 +1898,22 @@ async function importOutletReportMetric({
         });
       }
     }
+  }, {
+    maxWait: 10_000,
+    timeout: 120_000,
   });
 
   return {
     success: true,
-    message: `Impor ${metric_label} berhasil untuk ${aggregated_rows.length} outlet.`,
+    message: use_file_dates
+      ? `Impor ${metric_label} berhasil untuk ${imported_outlet_count} outlet pada ${imported_dates.length} tanggal.`
+      : `Impor ${metric_label} berhasil untuk ${aggregated_rows.length} outlet.`,
     data: {
       imported_count: aggregated_rows.length,
-      unmatched_outlets,
-      import_date: normalized_import_date,
+      imported_outlet_count,
+      imported_dates,
+      unmatched_outlets: Array.from(unmatched_outlets),
+      import_date: imported_dates.at(-1) ?? normalized_import_date,
     },
   };
 }
@@ -1865,17 +1941,16 @@ export function importNilaiTransaksi({
 /** Mengimpor data Basket Size dari laporan outlet. */
 export function importBasketSize({
   file_path,
-  import_date,
   member_outlet_uuid,
 }) {
   return importOutletReportMetric({
     file_path,
-    import_date,
     member_outlet_uuid,
     model: "tbl_basket_size",
     metric_label: "basket size",
     resolve_served: (row) => row.served_basket_size ?? row.served,
     use_existing_served: true,
+    use_file_dates: true,
     validate_row: (row) => Number.isInteger(row.sku_qty) && row.sku_qty > 0,
     build_record: (row) => ({
       sku_qty: row.sku_qty,

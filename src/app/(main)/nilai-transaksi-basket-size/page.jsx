@@ -454,15 +454,24 @@ export default function NilaiTransaksiPage() {
         throw new Error("Akun tidak memiliki akses untuk mengimpor file Excel.");
       }
 
-      if (!import_date || !file || !import_type) {
-        throw new Error("Tanggal data dan file Excel wajib diisi.");
+      const uses_file_dates = import_type === "basket-size";
+
+      if (!file || !import_type || (!uses_file_dates && !import_date)) {
+        throw new Error(
+          uses_file_dates
+            ? "File Excel wajib dipilih."
+            : "Tanggal data dan file Excel wajib diisi.",
+        );
       }
 
       setIsImporting(true);
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("import_date", import_date);
+
+      if (!uses_file_dates) {
+        formData.append("import_date", import_date);
+      }
 
       const import_endpoint = resolveMetricEndpoint(import_type);
       const response = await fetch(import_endpoint, {
@@ -475,8 +484,10 @@ export default function NilaiTransaksiPage() {
         throw new Error(payload.message || "Gagal mengimpor file Excel.");
       }
 
-      if (selectedDate === import_date) {
-        const metrics = await fetchMetricData(import_date, import_type);
+      const result_date = payload.data?.import_date ?? import_date;
+
+      if (selectedDate === result_date) {
+        const metrics = await fetchMetricData(result_date, import_type);
         setRows(metrics.rows ?? []);
         setCategoryMetrics(metrics.category_metrics ?? {});
         setOverallMetrics(
@@ -492,7 +503,7 @@ export default function NilaiTransaksiPage() {
         });
         setAvailableDates(metrics.available_dates ?? default_available_dates);
       } else {
-        setSelectedDate(import_date);
+        setSelectedDate(result_date);
         setSelectedOutlet("all");
       }
 
@@ -701,7 +712,7 @@ export default function NilaiTransaksiPage() {
                       value={formatCurrency(overallMetrics.nt_target)}
                     />
                     <SummaryMetric
-                      label="Total Pendapatan Harian"
+                      label="Total Pendapatan (Harian)"
                       value={formatCurrency(overallMetrics.nt_daily_total_revenue)}
                     />
                     <SummaryMetric

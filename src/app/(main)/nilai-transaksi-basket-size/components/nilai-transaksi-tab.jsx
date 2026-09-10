@@ -76,7 +76,7 @@ export default function NilaiTransaksiTab({
           </TableHead>
           {[
             ["Target", "min-w-[140px]"],
-            ["Total Pendapatan Harian", "min-w-[180px]"],
+            ["Total Pendapatan (Harian)", "min-w-[180px]"],
             ["Dilayani (Harian)", "min-w-[140px]"],
             [`Total Pendapatan ${selected_period_range_label}`, "min-w-[180px]"],
             [`Dilayani ${selected_period_range_label}`, "min-w-[150px]"],

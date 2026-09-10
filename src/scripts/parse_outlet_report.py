@@ -1,5 +1,6 @@
 import json
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from zipfile import ZipFile
 from xml.etree import ElementTree as ET
@@ -112,7 +113,25 @@ def findColumnIndex(header_row, target_column):
 
 
 def normalizeDate(value):
-    return str(value or "").strip()[:10]
+    normalized_value = str(value or "").strip()
+
+    if not normalized_value:
+        return ""
+
+    # Excel dapat menyimpan tanggal sebagai serial number, bukan teks ISO.
+    try:
+        serial_value = float(normalized_value)
+        if serial_value > 0:
+            return (datetime(1899, 12, 30) + timedelta(days=serial_value)).date().isoformat()
+    except ValueError:
+        pass
+
+    normalized_value = normalized_value[:10]
+
+    try:
+        return datetime.strptime(normalized_value, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return ""
 
 
 def main(file_path, import_date=None):
@@ -209,9 +228,6 @@ def main(file_path, import_date=None):
         sku_qty_col_rekap = findColumnIndex(rekap_header, target_col_6)
         normalized_import_date = normalizeDate(import_date)
 
-        if not normalized_import_date:
-            raise ValueError("Tanggal impor wajib diisi untuk file Rekap Penjualan.")
-
         for row in rekap_penjualan_rows[1:]:
             if not row:
                 continue
@@ -226,19 +242,33 @@ def main(file_path, import_date=None):
             if not outlet_name:
                 continue
 
-            if normalizeDate(row[date_col_rekap]) != normalized_import_date:
+            row_date = normalizeDate(row[date_col_rekap])
+
+            if not row_date:
                 continue
 
+            if normalized_import_date and row_date != normalized_import_date:
+                continue
+
+            output_key = f"{outlet_name}\0{row_date}"
             current_row = output_map.setdefault(
-                outlet_name,
+                output_key,
                 {
                     "outlet_name": outlet_name,
+                    "date": row_date,
                     "sku_qty": 0,
                 },
             )
             current_row["sku_qty"] = current_row.get("sku_qty", 0) + toNumber(row[sku_qty_col_rekap])
 
     elif basket_size_rows:
+        normalized_import_date = normalizeDate(import_date)
+
+        if not normalized_import_date:
+            raise ValueError(
+                "File Basket Size wajib memiliki sheet Rekap Penjualan dengan kolom Tanggal Penjualan."
+            )
+
         basket_header = basket_size_rows[0]
         outlet_col_basket = 0
         sku_qty_col_index = findColumnIndex(basket_header, target_col_3)
@@ -260,6 +290,7 @@ def main(file_path, import_date=None):
 
             output_map.setdefault(outlet_name, {"outlet_name": outlet_name}).update(
                 {
+                    "date": normalized_import_date,
                     "sku_qty": toNumber(row[sku_qty_col_index]),
                     "served_basket_size": toNumber(row[served_col_index]),
                 }

@@ -22,7 +22,7 @@ RUN npm run build
 
 FROM node:22-alpine AS runner
 
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl python3
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -40,6 +40,7 @@ RUN npm ci --omit=dev \
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/src/generated ./src/generated
+COPY --from=builder /app/src/scripts ./src/scripts
 COPY --from=builder /app/server.js ./server.js
 
 USER nextjs
