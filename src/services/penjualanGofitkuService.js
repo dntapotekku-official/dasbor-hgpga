@@ -1496,7 +1496,7 @@ export async function bulkCreateTargetGofitku({
     throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
   }
 
-  const { insanku_rows, insanku_by_uuid } = await get_target_insanku_maps();
+  const { insanku_rows } = await get_target_insanku_maps();
 
   if (!insanku_rows.length) {
     throw new Error("Tidak ada InsanKU aktif yang dapat diberikan target.");
@@ -1510,62 +1510,48 @@ export async function bulkCreateTargetGofitku({
     end_date: parsed_end_date,
   }));
 
-  const created_count = await prisma.$transaction(async (transaction) => {
-    const overlapping_targets = await transaction.tbl_target_gofitku.findMany({
-      where: {
-        deleted_at: null,
-        uuid_insanku: {
-          in: normalized_items.map((item) => item.uuid_insanku),
-        },
-        start_date: {
-          lte: parsed_end_date,
-        },
-        OR: [
-          { end_date: null },
-          {
-            end_date: {
-              gte: parsed_start_date,
-            },
+  const { created_count, replaced_count } = await prisma.$transaction(
+    async (transaction) => {
+      const replaced_targets = await transaction.tbl_target_gofitku.updateMany({
+        where: {
+          deleted_at: null,
+          uuid_insanku: {
+            in: normalized_items.map((item) => item.uuid_insanku),
           },
-        ],
-      },
-      select: {
-        uuid_insanku: true,
-      },
-    });
+          start_date: {
+            lte: parsed_end_date,
+          },
+          OR: [
+            { end_date: null },
+            {
+              end_date: {
+                gte: parsed_start_date,
+              },
+            },
+          ],
+        },
+        data: {
+          deleted_at: new Date(),
+        },
+      });
 
-    if (overlapping_targets.length) {
-      const names = Array.from(
-        new Set(
-          overlapping_targets.map(
-            (item) => insanku_by_uuid.get(item.uuid_insanku)?.name ?? "InsanKU",
-          ),
-        ),
-      ).sort((a, b) => a.localeCompare(b, "id-ID"));
+      const result = await transaction.tbl_target_gofitku.createMany({
+        data: normalized_items,
+      });
 
-      const visible_names = names.slice(0, 10);
-      const remaining_count = names.length - visible_names.length;
-      const remaining_label = remaining_count > 0
-        ? `, dan ${remaining_count} InsanKU lainnya`
-        : "";
-
-      throw new Error(
-        `Tambah massal dibatalkan karena range target bentrok untuk: ${visible_names.join(", ")}${remaining_label}.`,
-      );
-    }
-
-    const result = await transaction.tbl_target_gofitku.createMany({
-      data: normalized_items,
-    });
-
-    return result.count;
-  });
+      return {
+        created_count: result.count,
+        replaced_count: replaced_targets.count,
+      };
+    },
+  );
 
   return {
     success: true,
-    message: `${created_count} target GoFitKu berhasil ditambahkan secara massal.`,
+    message: `${created_count} target GoFitKu berhasil disimpan secara massal${replaced_count ? ` dan ${replaced_count} data lama ditimpa` : ""}.`,
     data: {
       created_count,
+      replaced_count,
     },
   };
 }
@@ -1770,56 +1756,45 @@ export async function importTargetGofitku({
     throw new Error("Tidak ada data target InsanKU yang cocok untuk diimpor.");
   }
 
-  const overlapping_targets = await prisma.tbl_target_gofitku.findMany({
-    where: {
-      deleted_at: null,
-      uuid_insanku: {
-        in: imported_rows.map((item) => item.uuid_insanku),
-      },
-      start_date: {
-        lte: parsed_end_date,
-      },
-      OR: [
-        {
-          end_date: null,
+  const replaced_count = await prisma.$transaction(async (transaction) => {
+    const replaced_targets = await transaction.tbl_target_gofitku.updateMany({
+      where: {
+        deleted_at: null,
+        uuid_insanku: {
+          in: imported_rows.map((item) => item.uuid_insanku),
         },
-        {
-          end_date: {
-            gte: parsed_start_date,
+        start_date: {
+          lte: parsed_end_date,
+        },
+        OR: [
+          {
+            end_date: null,
           },
-        },
-      ],
-    },
-    select: {
-      uuid_insanku: true,
-    },
-  });
+          {
+            end_date: {
+              gte: parsed_start_date,
+            },
+          },
+        ],
+      },
+      data: {
+        deleted_at: new Date(),
+      },
+    });
 
-  if (overlapping_targets.length) {
-    const overlapping_insanku_names = Array.from(
-      new Set(
-        overlapping_targets
-          .map((item) =>
-            insanku_by_uuid.get(String(item.uuid_insanku ?? "").trim())?.name,
-          )
-          .filter(Boolean),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "id-ID"));
+    await transaction.tbl_target_gofitku.createMany({
+      data: imported_rows,
+    });
 
-    throw new Error(
-      `Impor dibatalkan karena range target bentrok untuk InsanKU: ${overlapping_insanku_names.join(", ")}.`,
-    );
-  }
-
-  await prisma.tbl_target_gofitku.createMany({
-    data: imported_rows,
+    return replaced_targets.count;
   });
 
   return {
     success: true,
-    message: `Input massal target GoFitKu berhasil untuk ${imported_rows.length} InsanKU.`,
+    message: `Impor target GoFitKu berhasil untuk ${imported_rows.length} InsanKU${replaced_count ? ` dan ${replaced_count} data lama ditimpa` : ""}.`,
     data: {
       imported_count: imported_rows.length,
+      replaced_count,
       unmatched_insanku,
       start_date: parsed_start_date.toISOString().slice(0, 10),
       end_date: parsed_end_date.toISOString().slice(0, 10),

@@ -35,7 +35,7 @@ Menu **Pengaturan → Target → GoFitKu** menyediakan dua cara pengisian banyak
 - **Impor** menerima berkas `.xlsx` maksimal 10 MB dengan identitas InsanKU, nilai target, tanggal mulai, dan tanggal selesai.
 - **Tambah Massal** meminta satu range tanggal dan satu nilai target, lalu menerapkannya ke seluruh InsanKU aktif tanpa berkas Excel.
 
-Target disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
+Pada Impor maupun Tambah Massal, target aktif dengan periode yang bertabrakan akan diarsipkan dan ditimpa oleh target baru. Target disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
 
 ## Deployment
 
