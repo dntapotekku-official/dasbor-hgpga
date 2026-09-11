@@ -653,7 +653,6 @@ export default function TargetManagementCard({
               {enable_bulk_create ? (
                 <Button
                   type="button"
-                  variant="outline"
                   className="flex-1 sm:flex-none"
                   onClick={() => setIsBulkCreateModalOpen(true)}
                 >
