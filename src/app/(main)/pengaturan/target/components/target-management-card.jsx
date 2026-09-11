@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import {
   CalendarRangeIcon,
   FileSpreadsheetIcon,
+  ListPlusIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -34,6 +35,9 @@ const TargetImportModal = dynamic(() => import("./target-import-modal"));
 const TargetBulkDateModal = dynamic(() => import("./target-bulk-date-modal"));
 const TargetBulkDeleteModal = dynamic(
   () => import("./target-bulk-delete-modal"),
+);
+const TargetBulkCreateModal = dynamic(
+  () => import("./target-bulk-create-modal"),
 );
 
 const PAGE_SIZE = 50;
@@ -120,6 +124,7 @@ export default function TargetManagementCard({
   entity_name_key = "outlet_name",
   entity_label = "Outlet",
   import_button_label = "Impor",
+  enable_bulk_create = false,
 }) {
   const [target_rows, setTargetRows] = useState([]);
   const [entity_options, setEntityOptions] = useState([]);
@@ -134,6 +139,8 @@ export default function TargetManagementCard({
   const [is_bulk_date_updating, setIsBulkDateUpdating] = useState(false);
   const [is_bulk_delete_modal_open, setIsBulkDeleteModalOpen] = useState(false);
   const [is_bulk_deleting, setIsBulkDeleting] = useState(false);
+  const [is_bulk_create_modal_open, setIsBulkCreateModalOpen] = useState(false);
+  const [is_bulk_creating, setIsBulkCreating] = useState(false);
   const [target_to_delete, setTargetToDelete] = useState(null);
   const [is_delete_pending, setIsDeletePending] = useState(false);
   const [sort_key, setSortKey] = useState(entity_name_key);
@@ -490,6 +497,47 @@ export default function TargetManagementCard({
     }
   };
 
+  const handle_bulk_create = async ({ start_date, end_date, items }) => {
+    try {
+      setIsBulkCreating(true);
+
+      const result = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "bulk_create",
+          start_date,
+          end_date,
+          items,
+        }),
+      });
+      const payload = await result.json();
+
+      if (!result.ok || !payload.success) {
+        throw new Error(payload.message || `Gagal menambahkan massal ${target_label}.`);
+      }
+
+      const { rows, options } = await fetch_target_management_data(
+        endpoint,
+        target_label,
+      );
+      setTargetRows(rows);
+      setEntityOptions(options);
+      setIsBulkCreateModalOpen(false);
+      toast.success(payload.message || `${target_label} berhasil ditambahkan massal.`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Gagal menambahkan massal ${target_label}.`,
+      );
+    } finally {
+      setIsBulkCreating(false);
+    }
+  };
+
   const fields = [
     {
       key: entity_key,
@@ -604,6 +652,17 @@ export default function TargetManagementCard({
                 <PlusIcon className="size-4" />
                 Tambah Target
               </Button>
+              {enable_bulk_create ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  onClick={() => setIsBulkCreateModalOpen(true)}
+                >
+                  <ListPlusIcon className="size-4" />
+                  Tambah Massal
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -759,6 +818,17 @@ export default function TargetManagementCard({
               action_label={import_button_label}
               on_open_change={setIsImportModalOpen}
               on_submit={handle_import}
+            />
+          ) : null}
+
+          {enable_bulk_create && is_bulk_create_modal_open ? (
+            <TargetBulkCreateModal
+              open
+              is_submitting={is_bulk_creating}
+              entity_options={entity_options}
+              entity_label={entity_label}
+              on_open_change={setIsBulkCreateModalOpen}
+              on_submit={handle_bulk_create}
             />
           ) : null}
 

@@ -28,9 +28,14 @@ npm audit --omit=dev --audit-level=high
 
 Untuk membuat atau mereset superadmin, isi `ADMIN_USERNAME`, `ADMIN_PASSWORD`, dan opsional `ADMIN_NAME`, lalu jalankan `npm run create-admin`. Password minimal 12 karakter dan tidak akan dicetak ke terminal.
 
-## Input massal target GoFitKu
+## Target GoFitKu per InsanKU
 
-Menu **Pengaturan → Target → GoFitKu** menerima berkas `.xlsx` maksimal 10 MB. Kolom yang digunakan adalah identitas InsanKU, nilai target, tanggal mulai, dan tanggal selesai. Target sekarang disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
+Menu **Pengaturan → Target → GoFitKu** menyediakan dua cara pengisian banyak data:
+
+- **Impor** menerima berkas `.xlsx` maksimal 10 MB dengan identitas InsanKU, nilai target, tanggal mulai, dan tanggal selesai.
+- **Tambah Massal** membuka form untuk menambahkan beberapa InsanKU dan nilai target sekaligus pada periode yang sama, tanpa berkas Excel.
+
+Target disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
 
 ## Deployment
 

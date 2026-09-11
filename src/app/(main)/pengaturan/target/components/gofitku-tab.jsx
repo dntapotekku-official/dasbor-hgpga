@@ -20,7 +20,7 @@ export default function GofitkuTab() {
       entity_key="uuid_insanku"
       entity_name_key="insanku_name"
       entity_label="InsanKU"
-      import_button_label="Input Massal"
+      enable_bulk_create
     />
   );
 }

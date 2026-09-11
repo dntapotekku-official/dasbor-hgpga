@@ -4,6 +4,7 @@ import { import_target_report } from "@/app/api/_helpers/import-target-report";
 import { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteTargetGofitku,
+  bulkCreateTargetGofitku,
   bulkUpdateTargetGofitkuDates,
   createTargetGofitku,
   deleteTargetGofitku,
@@ -46,6 +47,17 @@ export const PUT = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
+
+    if (body?.action === "bulk_create") {
+      const data = await bulkCreateTargetGofitku({
+        start_date: body?.start_date,
+        end_date: body?.end_date,
+        items: body?.items,
+      });
+
+      return NextResponse.json(data);
+    }
+
     const data = await createTargetGofitku({
       uuid_insanku: body?.uuid_insanku,
       start_date: body?.start_date,
