@@ -10,24 +10,30 @@ echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
 
 cd "$APP_DIR"
 
+if [[ ! -f .env ]]; then
+  echo "ERROR: File .env tidak ditemukan di $APP_DIR."
+  exit 1
+fi
+
 echo "[1/4] Pull latest code from GitHub..."
+PREVIOUS_REVISION="$(git rev-parse HEAD)"
 GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
   git pull origin "$BRANCH"
+CURRENT_REVISION="$(git rev-parse HEAD)"
 
 echo "[2/4] Check for migration changes..."
-if git diff HEAD@{1}..HEAD --name-only | grep -q "prisma/migrations/"; then
+if git diff "$PREVIOUS_REVISION" "$CURRENT_REVISION" --name-only -- prisma/migrations/ | grep -q .; then
   echo "  → Migration detected, running prisma migrate deploy..."
-  DATABASE_URL="mysql://dasbor_user:DasborHgp%402026%21@localhost:3306/performance_report" \
-    npx prisma migrate deploy
+  npx prisma migrate deploy
 else
   echo "  → No migration changes."
 fi
 
 echo "[3/4] Rebuild Docker image..."
-docker compose build --no-cache
+docker compose build --pull
 
 echo "[4/4] Restart container..."
-docker compose up -d
+docker compose up -d --remove-orphans
 
 echo ""
 echo "=== Deploy complete ==="

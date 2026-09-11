@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
   FileCheck2Icon,
@@ -23,6 +23,8 @@ export default function TargetImportModal({
   date_mode,
   is_importing,
   target_label,
+  entity_label = "Outlet",
+  action_label = "Impor",
   on_open_change,
   on_submit,
 }) {
@@ -34,12 +36,14 @@ export default function TargetImportModal({
   const [is_dragging, setIsDragging] = useState(false);
 
   const is_range_mode = date_mode === "range";
-  const title = `Impor ${target_label}`;
+  const title = `${action_label} ${target_label}`;
   const description = is_range_mode
-    ? `Pilih tanggal mulai dan tanggal selesai, lalu upload file Excel berisi kolom outlet dan target untuk ${target_label}.`
-    : `Pilih tanggal data, lalu upload file Excel berisi kolom outlet dan target untuk ${target_label}.`;
+    ? `Pilih tanggal mulai dan tanggal selesai, lalu upload file Excel berisi data ${entity_label} dan target untuk ${target_label}.`
+    : `Pilih tanggal data, lalu upload file Excel berisi data ${entity_label} dan target untuk ${target_label}.`;
 
-  const accepted_columns = useMemo(() => "Pastikan file memiliki kolom outlet dan target.", []);
+  const accepted_columns = entity_label === "InsanKU"
+    ? "Gunakan kolom NIK (disarankan) atau InsanKU, serta kolom target."
+    : `Pastikan file memiliki kolom ${entity_label.toLowerCase()} dan target.`;
 
   const select_file = (next_file) => {
     if (!next_file) {
@@ -245,7 +249,7 @@ export default function TargetImportModal({
                 ) : (
                   <>
                     <FileSpreadsheetIcon className="size-4" />
-                    Impor
+                    {action_label}
                   </>
                 )}
               </Button>

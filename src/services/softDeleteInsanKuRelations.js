@@ -33,6 +33,13 @@ export async function softDeleteInsanKuRelations(
     },
     data: { deleted_at },
   });
+  await transaction.tbl_target_gofitku.updateMany({
+    where: {
+      uuid_insanku: { in: insanku_uuids },
+      deleted_at: null,
+    },
+    data: { deleted_at },
+  });
   await transaction.tbl_outlet_insanku.updateMany({
     where: {
       uuid_insanku: { in: insanku_uuids },

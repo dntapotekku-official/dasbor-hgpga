@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Dasbor HGPGA
 
-## Getting Started
+Aplikasi pelaporan performa berbasis Next.js, Prisma, MariaDB, dan Socket.IO.
 
-First, run the development server:
+## Menjalankan secara lokal
+
+Prasyarat: Node.js 22, MariaDB/MySQL, dan Python 3 untuk parser impor Excel.
 
 ```bash
+cp .env.example .env
+npm ci
+npx prisma generate
+npx prisma migrate deploy
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Isi seluruh konfigurasi yang diperlukan di `.env`. Gunakan `JWT_SECRET` acak dengan panjang minimal 32 karakter dan jangan commit file `.env`.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Verifikasi sebelum rilis
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npx prisma validate
+npx prisma migrate status
+npm run build
+npm audit --omit=dev --audit-level=high
+```
 
-## Learn More
+Untuk membuat atau mereset superadmin, isi `ADMIN_USERNAME`, `ADMIN_PASSWORD`, dan opsional `ADMIN_NAME`, lalu jalankan `npm run create-admin`. Password minimal 12 karakter dan tidak akan dicetak ke terminal.
 
-To learn more about Next.js, take a look at the following resources:
+## Input massal target GoFitKu
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Menu **Pengaturan → Target → GoFitKu** menerima berkas `.xlsx` maksimal 10 MB. Kolom yang digunakan adalah identitas InsanKU, nilai target, tanggal mulai, dan tanggal selesai. Target sekarang disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
 
-## Deploy on Vercel
+Server produksi memerlukan `.env` yang lengkap, Docker, dan Docker Compose. Skrip `deploy.sh` menarik branch `main`, menjalankan migrasi bila ada perubahan, membangun image, dan me-restart container.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Sebelum deploy:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Backup database.
+2. Rotasi kredensial yang pernah tersimpan di source control.
+3. Pastikan HTTPS dan reverse proxy sudah aktif.
+4. Jalankan checklist verifikasi di atas.
+5. Siapkan file target GoFitKu per InsanKU untuk diimpor setelah migrasi.
+
+Rollback aplikasi dilakukan dengan deploy commit sebelumnya. Rollback database harus menggunakan backup karena migrasi produksi bersifat maju (`migrate deploy`).

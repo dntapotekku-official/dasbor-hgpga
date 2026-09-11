@@ -11,6 +11,10 @@ function get_jwt_secret() {
     throw new Error("JWT_SECRET belum diatur.");
   }
 
+  if (process.env.NODE_ENV === "production" && secret.length < 32) {
+    throw new Error("JWT_SECRET untuk production minimal 32 karakter.");
+  }
+
   return new TextEncoder().encode(secret);
 }
 

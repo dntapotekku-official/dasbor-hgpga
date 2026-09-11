@@ -45,4 +45,6 @@ COPY --from=builder /app/server.js ./server.js
 
 USER nextjs
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:3000/login || exit 1
 CMD ["npm", "run", "start"]

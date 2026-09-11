@@ -1,56 +1,83 @@
-import { randomBytes, randomUUID, scrypt } from 'node:crypto';
-import { promisify } from 'node:util';
-import { execSync } from 'node:child_process';
+import "dotenv/config";
+
+import { randomBytes, randomUUID, scrypt } from "node:crypto";
+import { promisify } from "node:util";
+
+import mariadb from "mariadb";
 
 const scrypt_async = promisify(scrypt);
 
-async function hashPassword(password) {
+async function hash_password(password) {
   const salt = randomBytes(16).toString("hex");
   const derived_key = await scrypt_async(password, salt, 64);
+
   return `scrypt$${salt}$${Buffer.from(derived_key).toString("hex")}`;
 }
 
-const DB_HOST = 'localhost';
-const DB_PORT = '3306';
-const DB_USER = 'dasbor_user';
-const DB_PASS = 'DasborHgp@2026!';
-const DB_NAME = 'dashboardhgpga';
+function required_environment(name) {
+  const value = String(process.env[name] ?? "").trim();
 
-const username = 'admin';
-const password = 'admin123';
-const name = 'Administrator';
-const role = 'superadmin';
-const uuid = randomUUID();
-const hashedPassword = await hashPassword(password);
-const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-
-// Write SQL to temp file to avoid shell escaping issues
-import { writeFileSync, unlinkSync } from 'node:fs';
-const tmpFile = '/tmp/create-admin.sql';
-writeFileSync(tmpFile, `INSERT INTO tbl_admin (uuid, name, username, password, role, is_username_change, is_password_change, created_at, updated_at, deleted_at) VALUES ('${uuid}', '${name}', '${username}', '${hashedPassword}', '${role}', 0, 0, '${now}', '${now}', NULL);\n`);
-
-try {
-  execSync(`mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p'${DB_PASS}' ${DB_NAME} < ${tmpFile}`, { stdio: 'pipe' });
-  console.log('✓ Admin user created successfully!');
-  console.log('  UUID:', uuid);
-  console.log('  Username:', username);
-  console.log('  Password:', password);
-  console.log('  Role:', role);
-} catch (e) {
-  const stderr = e.stderr?.toString() || '';
-  if (stderr.includes('Duplicate entry')) {
-    console.log('Admin user already exists. Updating password...');
-    writeFileSync(tmpFile, `UPDATE tbl_admin SET password='${hashedPassword}' WHERE username='${username}' AND deleted_at IS NULL;\n`);
-    execSync(`mysql -h ${DB_HOST} -P ${DB_PORT} -u ${DB_USER} -p'${DB_PASS}' ${DB_NAME} < ${tmpFile}`, { stdio: 'pipe' });
-    console.log('✓ Password updated for user:', username);
-  } else {
-    console.error('MySQL error:', stderr);
-    process.exit(1);
+  if (!value) {
+    throw new Error(`${name} wajib diatur.`);
   }
-} finally {
-  try { unlinkSync(tmpFile); } catch {}
+
+  return value;
 }
 
-console.log('\nLogin credentials:');
-console.log('  Username: admin');
-console.log('  Password: admin123');
+async function main() {
+  const database_url = new URL(required_environment("DATABASE_URL"));
+  const username = required_environment("ADMIN_USERNAME");
+  const password = required_environment("ADMIN_PASSWORD");
+  const name = String(process.env.ADMIN_NAME ?? "Administrator").trim();
+
+  if (password.length < 12) {
+    throw new Error("ADMIN_PASSWORD minimal 12 karakter.");
+  }
+
+  const connection = await mariadb.createConnection({
+    host: database_url.hostname,
+    port: Number(database_url.port || 3306),
+    user: decodeURIComponent(database_url.username),
+    password: decodeURIComponent(database_url.password),
+    database: database_url.pathname.slice(1),
+  });
+
+  try {
+    const hashed_password = await hash_password(password);
+    const conflicting_outlet = await connection.query(
+      "SELECT uuid FROM tbl_outlet WHERE username = ? AND deleted_at IS NULL LIMIT 1",
+      [username],
+    );
+
+    if (conflicting_outlet.length) {
+      throw new Error("Username sudah digunakan oleh outlet aktif.");
+    }
+
+    const existing_admin = await connection.query(
+      "SELECT uuid FROM tbl_admin WHERE username = ? LIMIT 1",
+      [username],
+    );
+
+    if (existing_admin.length) {
+      await connection.query(
+        "UPDATE tbl_admin SET name = ?, password = ?, role = 'superadmin', is_username_change = 0, is_password_change = 0, deleted_at = NULL, updated_at = CURRENT_TIMESTAMP(3) WHERE uuid = ?",
+        [name, hashed_password, existing_admin[0].uuid],
+      );
+      console.log(`Admin ${username} berhasil diperbarui.`);
+      return;
+    }
+
+    await connection.query(
+      "INSERT INTO tbl_admin (uuid, name, username, password, role, is_username_change, is_password_change, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, 'superadmin', 0, 0, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3), NULL)",
+      [randomUUID(), name, username, hashed_password],
+    );
+    console.log(`Admin ${username} berhasil dibuat.`);
+  } finally {
+    await connection.end();
+  }
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : "Gagal membuat admin.");
+  process.exitCode = 1;
+});

@@ -1,5 +1,10 @@
 import { getAiRuntimeConfig } from "@/services/apiAiService";
 
+const allowed_image_mime_types = new Set(["image/jpeg", "image/png", "image/webp"]);
+const max_image_count = 5;
+const max_image_base64_length = 11 * 1024 * 1024;
+const max_total_image_base64_length = 28 * 1024 * 1024;
+
 export async function scanNota({
   prompt_name,
   images = [],
@@ -13,12 +18,13 @@ export async function scanNota({
 
   const { api_ai, prompt } = await getAiRuntimeConfig(trimmed_prompt_name);
 
-  const rendered_prompt = Object.entries(prompt_variables).reduce(
+  const rendered_prompt_template = Object.entries(prompt_variables).reduce(
     (result, [key, value]) => {
       return result.replaceAll(`{{${key}}}`, String(value ?? ""));
     },
     prompt,
   );
+  const rendered_prompt = `${rendered_prompt_template}\n\nSetiap objek dalam array items wajib memiliki field \"price\" berupa angka harga satuan produk dari nota, tanpa simbol mata uang dan tanpa pemisah ribuan.`;
 
   const normalized_images = images
     .map((item, index) => ({
@@ -30,6 +36,27 @@ export async function scanNota({
 
   if (!normalized_images.length) {
     throw new Error("Minimal satu gambar wajib diisi.");
+  }
+
+  if (normalized_images.length > max_image_count) {
+    throw new Error(`Maksimal ${max_image_count} gambar dalam satu permintaan.`);
+  }
+
+  if (normalized_images.some((item) => !allowed_image_mime_types.has(item.mime_type))) {
+    throw new Error("Format gambar yang didukung hanya JPEG, PNG, dan WebP.");
+  }
+
+  if (normalized_images.some((item) => item.image.length > max_image_base64_length)) {
+    throw new Error("Ukuran setiap gambar maksimal 8 MB.");
+  }
+
+  const total_image_length = normalized_images.reduce(
+    (total, item) => total + item.image.length,
+    0,
+  );
+
+  if (total_image_length > max_total_image_base64_length) {
+    throw new Error("Total ukuran gambar maksimal 20 MB.");
   }
 
   const result = await fetch(api_ai.base_url, {
@@ -61,9 +88,7 @@ export async function scanNota({
   });
 
   if (!result.ok) {
-    const error_text = await result.text();
-
-    throw new Error(`AI request gagal (${result.status}): ${error_text}`);
+    throw new Error(`AI request gagal (${result.status}).`);
   }
 
   const payload = await result.json();

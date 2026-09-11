@@ -94,7 +94,17 @@ def find_column_index(header_row, target_column):
     raise ValueError(f"Kolom wajib tidak ditemukan: {target_column}")
 
 
-def main(file_path):
+def find_optional_column_index(header_row, target_columns):
+    normalized_targets = {normalize_header(column) for column in target_columns}
+
+    for index, value in enumerate(header_row):
+        if normalize_header(value) in normalized_targets:
+            return index
+
+    return None
+
+
+def main(file_path, subject="outlet"):
     path = Path(file_path)
 
     if not path.exists():
@@ -113,32 +123,56 @@ def main(file_path):
         raise ValueError("Data sheet pada file Excel kosong.")
 
     header_row = rows[0]
-    outlet_col_index = find_column_index(header_row, "outlet")
     target_col_index = find_column_index(header_row, "target")
+    if subject == "insanku":
+        subject_col_index = find_optional_column_index(
+            header_row,
+            ["insanku", "insan ku", "nama insanku", "nama insan ku"],
+        )
+        nik_col_index = find_optional_column_index(header_row, ["nik"])
+
+        if subject_col_index is None and nik_col_index is None:
+            raise ValueError("Kolom wajib tidak ditemukan: InsanKU atau NIK")
+    else:
+        subject_col_index = find_column_index(header_row, "outlet")
+        nik_col_index = None
 
     output_rows = []
     for row in rows[1:]:
         if not row:
             continue
 
-        if len(row) <= max(outlet_col_index, target_col_index):
+        required_indexes = [target_col_index]
+        if subject_col_index is not None:
+            required_indexes.append(subject_col_index)
+        if nik_col_index is not None:
+            required_indexes.append(nik_col_index)
+
+        if len(row) <= max(required_indexes):
             continue
 
-        outlet_name = str(row[outlet_col_index]).strip()
+        subject_name = (
+            str(row[subject_col_index]).strip()
+            if subject_col_index is not None
+            else ""
+        )
+        nik = str(row[nik_col_index]).strip() if nik_col_index is not None else ""
         target_value = str(row[target_col_index]).strip()
 
-        if not outlet_name and not target_value:
+        if not subject_name and not nik and not target_value:
             continue
 
-        output_rows.append(
-            {
-                "outlet_name": outlet_name,
-                "target": target_value,
-            }
-        )
+        output_row = {"target": target_value}
+        if subject == "insanku":
+            output_row["insanku_name"] = subject_name
+            output_row["nik"] = nik
+        else:
+            output_row["outlet_name"] = subject_name
+
+        output_rows.append(output_row)
 
     print(json.dumps({"rows": output_rows}))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "outlet")

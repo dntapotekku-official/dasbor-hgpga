@@ -267,17 +267,6 @@ export async function syncOutlet() {
             deleted_at,
           },
         }),
-        tx.tbl_target_gofitku.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
         tx.tbl_target_nilai_transaksi.updateMany({
           where: {
             uuid_outlet: {

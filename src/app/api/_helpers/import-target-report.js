@@ -6,6 +6,8 @@ import { NextResponse } from "next/server";
 
 import { requireMenuAccess } from "@/lib/auth";
 
+const max_excel_file_size = 10 * 1024 * 1024;
+
 export async function import_target_report(request, {
   import_handler,
   temp_prefix,
@@ -31,6 +33,10 @@ export async function import_target_report(request, {
 
     if (!file_name.toLowerCase().endsWith(".xlsx")) {
       throw new Error("File yang didukung hanya format .xlsx.");
+    }
+
+    if (file.size > max_excel_file_size) {
+      throw new Error("Ukuran file Excel maksimal 10 MB.");
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());

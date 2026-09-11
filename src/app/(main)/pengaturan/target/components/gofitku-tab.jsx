@@ -8,7 +8,7 @@ export default function GofitkuTab() {
       empty_message="Tidak ada target GoFitKu yang cocok dengan filter."
       target_label="Target GoFitKu"
       create_title="Tambah Target GoFitKu"
-      create_description="Tambahkan target baru untuk range tanggal tertentu."
+      create_description="Tambahkan target InsanKU baru untuk range tanggal tertentu."
       edit_title="Edit Target GoFitKu"
       edit_description="Perbarui range tanggal dan nilai target GoFitKu."
       delete_title="Hapus Target GoFitKu"
@@ -17,6 +17,10 @@ export default function GofitkuTab() {
       target_value_format="integer"
       delete_payload_key="uuid_target_gofitku"
       import_date_mode="range"
+      entity_key="uuid_insanku"
+      entity_name_key="insanku_name"
+      entity_label="InsanKU"
+      import_button_label="Input Massal"
     />
   );
 }

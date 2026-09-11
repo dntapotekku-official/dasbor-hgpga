@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -30,16 +31,22 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import BasketSizeTab from "./components/basket-size-tab";
-import ImportDataModal from "./components/import-data-modal";
-import MetricBulkActionModal from "./components/metric-bulk-action-modal";
-import NilaiTransaksiDailyEditModal from "./components/nilai-transaksi-daily-edit-modal";
 import {
   formatCurrency,
   formatDecimal,
+  formatPeriodRangeLabel,
 } from "@/lib/nilaiTransaksiBasketSizeTable";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { hasRoleAccess } from "@/lib/role";
 import NilaiTransaksiTab from "./components/nilai-transaksi-tab";
+
+const ImportDataModal = dynamic(() => import("./components/import-data-modal"));
+const MetricBulkActionModal = dynamic(
+  () => import("./components/metric-bulk-action-modal"),
+);
+const NilaiTransaksiDailyEditModal = dynamic(
+  () => import("./components/nilai-transaksi-daily-edit-modal"),
+);
 
 const empty_metrics = {
   nt_target: 0,
@@ -269,6 +276,9 @@ export default function NilaiTransaksiPage() {
   const canManage = hasRoleAccess(role, ["admin"]);
   const activeMetricLabel =
     activeMetric === "nilai-transaksi" ? "Nilai Transaksi" : "Basket Size";
+  const selectedPeriodRangeLabel = formatPeriodRangeLabel(
+    tableLabels.selected_period_label,
+  );
 
   useEffect(() => {
     let shouldIgnore = false;
@@ -686,7 +696,7 @@ export default function NilaiTransaksiPage() {
                 <CardContent className="pt-0">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Selisih Pertumbuhan</p>
+                      <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.nt_gap_growth}
@@ -696,7 +706,7 @@ export default function NilaiTransaksiPage() {
                       </p>
                     </div>
                     <div className="min-w-0 space-y-1 border-l pl-4">
-                      <p className="text-xs font-medium text-muted-foreground">Selisih Target</p>
+                      <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.nt_gap_target}
@@ -720,11 +730,11 @@ export default function NilaiTransaksiPage() {
                       value={formatDecimal(overallMetrics.nt_daily_served, 0)}
                     />
                     <SummaryMetric
-                      label={`Total Pendapatan (${tableLabels.selected_period_label || "periode ini"})`}
+                      label={`Total Pendapatan ${selectedPeriodRangeLabel || "(periode ini)"}`}
                       value={formatCurrency(overallMetrics.nt_current_month_total_revenue)}
                     />
                     <SummaryMetric
-                      label={`Dilayani (${tableLabels.selected_period_label || "periode berjalan"})`}
+                      label={`Dilayani ${selectedPeriodRangeLabel || "(periode berjalan)"}`}
                       value={formatDecimal(overallMetrics.nt_current_month_served, 0)}
                     />
                     <SummaryMetric
@@ -744,7 +754,7 @@ export default function NilaiTransaksiPage() {
                       value={`${formatDecimal(overallMetrics.nt_growth)}%`}
                     />
                     <SummaryMetric
-                      label="Pencapaian Target"
+                      label="% Dibanding Target"
                       value={`${formatDecimal(overallMetrics.nt_target_compare)}%`}
                     />
                   </div>
@@ -793,7 +803,7 @@ export default function NilaiTransaksiPage() {
                 <CardContent className="pt-0">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="min-w-0 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Selisih Pertumbuhan</p>
+                      <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.bs_gap_growth}
@@ -803,7 +813,7 @@ export default function NilaiTransaksiPage() {
                       </p>
                     </div>
                     <div className="min-w-0 space-y-1 border-l pl-4">
-                      <p className="text-xs font-medium text-muted-foreground">Selisih Target</p>
+                      <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
                       <p className="text-3xl font-semibold tracking-tight">
                         <GapMetricValue
                           value={overallMetrics.bs_gap_target}
@@ -839,7 +849,7 @@ export default function NilaiTransaksiPage() {
                       value={`${formatDecimal(overallMetrics.bs_growth)}%`}
                     />
                     <SummaryMetric
-                      label="Pencapaian Target"
+                      label="% Dibanding Target"
                       value={`${formatDecimal(overallMetrics.bs_target_compare)}%`}
                     />
                   </div>

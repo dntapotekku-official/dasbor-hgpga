@@ -88,9 +88,9 @@ export default function BasketSizeTab({
                 />
               ),
             },
-            { key: "gap-growth", label: "Selisih Pertumbuhan" },
-            { key: "target-percentage", label: "Pencapaian Target" },
-            { key: "gap-target", label: "Selisih Target" },
+            { key: "gap-growth", label: "Gap Growth" },
+            { key: "target-percentage", label: "% Dibanding Target" },
+            { key: "gap-target", label: "Gap Target" },
           ].map((header) => (
             <TableHead
               key={header.key}

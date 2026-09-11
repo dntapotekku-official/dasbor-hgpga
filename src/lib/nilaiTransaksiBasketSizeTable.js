@@ -22,6 +22,15 @@ export function formatPercentage(value, maximumFractionDigits = 2) {
   return `${formatDecimal(value, maximumFractionDigits)}%`;
 }
 
+export function formatPeriodRangeLabel(label) {
+  const normalizedLabel = String(label ?? "");
+  const separatorIndex = normalizedLabel.indexOf(" (");
+
+  return separatorIndex < 0
+    ? normalizedLabel
+    : normalizedLabel.slice(separatorIndex + 1);
+}
+
 export function gapClassName(value) {
   return value > 0
     ? "bg-emerald-100 text-emerald-800"

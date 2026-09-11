@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { LoaderCircleIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import CurrencyInput from "@/components/currency-input";
 import { Label } from "@/components/ui/label";
 
 export default function NilaiTransaksiDailyEditModal({
@@ -69,13 +69,11 @@ export default function NilaiTransaksiDailyEditModal({
               <Label htmlFor={`${field_id}-total-revenue`}>
                 Total Penerimaan Pendapatan
               </Label>
-              <Input
+              <CurrencyInput
                 id={`${field_id}-total-revenue`}
-                type="number"
-                min="0"
-                step="0.01"
+                allowDecimals
                 value={totalRevenue}
-                onChange={(event) => setTotalRevenue(event.target.value)}
+                onValueChange={setTotalRevenue}
                 required
               />
             </div>

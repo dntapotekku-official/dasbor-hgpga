@@ -1,30 +1,26 @@
 import { NextResponse } from "next/server";
 
-import { import_target_report } from "@/app/api/_helpers/import-target-report";
 import { requireMenuAccess } from "@/lib/auth";
 import {
-  bulkDeleteTargetGofitku,
-  bulkUpdateTargetGofitkuDates,
-  createTargetGofitku,
-  deleteTargetGofitku,
-  getTargetGofitku,
-  importTargetGofitku,
-  updateTargetGofitku,
-} from "@/services/penjualanGofitkuService";
+  createTargetGlobal,
+  deleteTargetGlobal,
+  getTargetGlobal,
+  updateTargetGlobal,
+} from "@/services/nilaiTransaksiBasketSizeService";
 
-export const GET = async () => {
+export async function GET(request) {
   try {
     const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
-
-    const data = await getTargetGofitku();
 
     return NextResponse.json({
       success: true,
-      data,
+      data: await getTargetGlobal({
+        key: request.nextUrl.searchParams.get("key"),
+      }),
     });
   } catch (error) {
     return NextResponse.json(
@@ -35,9 +31,9 @@ export const GET = async () => {
       { status: 500 },
     );
   }
-};
+}
 
-export const PUT = async (request) => {
+export async function PUT(request) {
   try {
     const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
@@ -46,26 +42,26 @@ export const PUT = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = await createTargetGofitku({
-      uuid_insanku: body?.uuid_insanku,
+    const result = await createTargetGlobal({
+      key: body?.key,
+      target: body?.target,
       start_date: body?.start_date,
       end_date: body?.end_date,
-      target: body?.target,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
         message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
-};
+}
 
-export const PATCH = async (request) => {
+export async function PATCH(request) {
   try {
     const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
@@ -74,46 +70,27 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
-
-    if (body?.action === "bulk_update_dates") {
-      const data = await bulkUpdateTargetGofitkuDates({
-        source_start_date: body?.source_start_date,
-        source_end_date: body?.source_end_date,
-        start_date: body?.start_date,
-        end_date: body?.end_date,
-      });
-
-      return NextResponse.json(data);
-    }
-
-    const data = await updateTargetGofitku({
-      uuid_target_gofitku: body?.uuid_target_gofitku,
-      uuid_insanku: body?.uuid_insanku,
+    const result = await updateTargetGlobal({
+      uuid_target_global: body?.uuid_target_global,
+      key: body?.key,
+      target: body?.target,
       start_date: body?.start_date,
       end_date: body?.end_date,
-      target: body?.target,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
         message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
-};
+}
 
-export const POST = (request) =>
-  import_target_report(request, {
-    import_handler: importTargetGofitku,
-    temp_prefix: "target-gofitku",
-    field_names: ["start_date", "end_date"],
-  });
-
-export const DELETE = async (request) => {
+export async function DELETE(request) {
   try {
     const unauthorized_response = await requireMenuAccess("pengaturan-target");
 
@@ -122,28 +99,18 @@ export const DELETE = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
-
-    if (body?.action === "bulk_delete_period") {
-      const data = await bulkDeleteTargetGofitku({
-        source_start_date: body?.source_start_date,
-        source_end_date: body?.source_end_date,
-      });
-
-      return NextResponse.json(data);
-    }
-
-    const data = await deleteTargetGofitku({
-      uuid_target_gofitku: body?.uuid_target_gofitku,
+    const result = await deleteTargetGlobal({
+      uuid_target_global: body?.uuid_target_global,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
         message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
       },
-      { status: 500 },
+      { status: 400 },
     );
   }
-};
+}

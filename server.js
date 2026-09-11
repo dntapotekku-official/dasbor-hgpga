@@ -9,9 +9,20 @@ const port = Number(process.env.PORT || 3000);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
+async function start_server() {
+  await app.prepare();
+
   const http_server = createServer(async (req, res) => {
-    await handle(req, res);
+    try {
+      await handle(req, res);
+    } catch (error) {
+      console.error("Request gagal diproses:", error);
+
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.end("Internal Server Error");
+      }
+    }
   });
 
   const io = new Server(http_server);
@@ -19,14 +30,41 @@ app.prepare().then(() => {
   globalThis.io = io;
 
   io.on("connection", (socket) => {
-    console.log("Socket connected:", socket.id);
+    if (dev) console.log("Socket connected:", socket.id);
 
     socket.on("disconnect", () => {
-      console.log("Socket disconnected:", socket.id);
+      if (dev) console.log("Socket disconnected:", socket.id);
     });
   });
 
-  http_server.listen(port, () => {
+  let is_shutting_down = false;
+  const shutdown = (signal) => {
+    if (is_shutting_down) return;
+    is_shutting_down = true;
+    console.log(`${signal} diterima, menghentikan server...`);
+
+    http_server.close(() => {
+      io.close();
+      process.exit(0);
+    });
+
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
+
+  http_server.on("error", (error) => {
+    console.error("Server HTTP gagal:", error);
+    process.exit(1);
+  });
+
+  http_server.listen(port, hostname, () => {
     console.log(`Ready on http://${hostname}:${port}`);
   });
+}
+
+start_server().catch((error) => {
+  console.error("Server gagal dijalankan:", error);
+  process.exit(1);
 });

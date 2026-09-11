@@ -74,6 +74,7 @@ model tbl_insanku {
   outlet_insanku  tbl_outlet_insanku[]
   atribut_insanku tbl_atribut_insanku[]
   nilai_magang    tbl_nilai_magang[]
+  target_gofitku  tbl_target_gofitku[]
 
   @@unique([nik, is_slip_gaji_account])
 }
@@ -149,6 +150,7 @@ model tbl_penjualan_gofitku {
   name                String    @db.VarChar(30)
   date                DateTime
   qty                 Int       @default(0)
+  price               Decimal   @default(0) @db.Decimal(18, 2)
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
   deleted_at          DateTime?
@@ -159,6 +161,7 @@ model tbl_penjualan_gofitku {
   @@index([uuid_outlet_insanku])
   @@index([uuid_produk_gofitku])
   @@index([date])
+  @@index([uuid_outlet_insanku, date, deleted_at])
 }
 
 model tbl_produk_gofitku {
@@ -186,7 +189,7 @@ model tbl_api_ai {
 model tbl_prompt {
   id         Int       @id @default(autoincrement())
   uuid       String    @unique @db.Char(36)
-  key        String    @db.VarChar(100)
+  key        String    @db.VarChar(20)
   prompt     String    @db.Text
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
@@ -194,15 +197,20 @@ model tbl_prompt {
 }
 
 model tbl_target_gofitku {
-  id          Int       @id @default(autoincrement())
-  uuid        String    @unique @db.Char(36)
-  uuid_outlet String?   @db.Char(36)
-  value       Int       @default(0)
-  start_date  DateTime
-  end_date    DateTime?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  deleted_at  DateTime?
+  id           Int       @id @default(autoincrement())
+  uuid         String    @unique @db.Char(36)
+  uuid_insanku String?   @db.Char(36)
+  value        Int       @default(0)
+  start_date   DateTime
+  end_date     DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+
+  insanku tbl_insanku? @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_target_gofitku_insanku")
+
+  @@index([uuid_insanku])
+  @@index([uuid_insanku, start_date, end_date, deleted_at], map: "idx_target_gofitku_insanku_period")
 }
 
 model tbl_target_nilai_transaksi {
@@ -318,13 +326,15 @@ model tbl_kolom_atribut {
 model tbl_target_global {
   id         Int       @id @default(autoincrement())
   uuid       String    @unique @db.Char(36)
-  name       String    @db.VarChar(100)
+  key        String    @db.VarChar(100)
   value      Decimal   @default(0) @db.Decimal(10, 2)
   start_date DateTime
   end_date   DateTime?
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
+
+  @@index([key])
 }
 
 model tbl_admin_menu_access {

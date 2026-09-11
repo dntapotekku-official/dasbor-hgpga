@@ -1,5 +1,6 @@
 "use client";
 
+import CurrencyValue from "@/components/currency-value";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -56,12 +57,18 @@ export default function RingkasanTabContent({
         const totals = group.rows.reduce(
           (current_totals, row) => ({
             today_input: current_totals.today_input + Number(row.today_input || 0),
+            today_revenue:
+              current_totals.today_revenue + Number(row.today_revenue || 0),
             monthly_total: current_totals.monthly_total + Number(row.monthly_total || 0),
+            monthly_revenue:
+              current_totals.monthly_revenue + Number(row.monthly_revenue || 0),
             target: current_totals.target + Number(row.target || 0),
           }),
           {
             today_input: 0,
+            today_revenue: 0,
             monthly_total: 0,
+            monthly_revenue: 0,
             target: 0,
           },
         );
@@ -73,12 +80,14 @@ export default function RingkasanTabContent({
             </CardHeader>
             <CardContent className="pt-0">
               <div className="overflow-hidden rounded-lg border bg-card">
-                <Table className="min-w-[760px]">
+                <Table className="min-w-[1120px]">
                   <TableHeader className="bg-primary [&_th]:text-primary-foreground">
                     <TableRow>
                       <TableHead className="w-[32%]">Nama</TableHead>
                       <TableHead>Total Hari Ini</TableHead>
+                      <TableHead>Total Penjualan Hari Ini</TableHead>
                       <TableHead>Total Bulan Ini</TableHead>
+                      <TableHead>Total Penjualan Bulan Ini</TableHead>
                       <TableHead>Target</TableHead>
                       <TableHead>Persentase</TableHead>
                       <TableHead className="w-[18%]">Status</TableHead>
@@ -101,7 +110,13 @@ export default function RingkasanTabContent({
                             {row.today_input}
                           </TableCell>
                           <TableCell className="font-medium">
+                            <CurrencyValue value={row.today_revenue} />
+                          </TableCell>
+                          <TableCell className="font-medium">
                             {row.monthly_total}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <CurrencyValue value={row.monthly_revenue} />
                           </TableCell>
                           <TableCell>{row.target}</TableCell>
                           <TableCell>
@@ -120,7 +135,13 @@ export default function RingkasanTabContent({
                     <TableRow className="font-semibold hover:bg-transparent">
                       <TableCell className="whitespace-normal border-t bg-muted">TOTAL</TableCell>
                       <TableCell className="border-t bg-muted">{totals.today_input}</TableCell>
+                      <TableCell className="border-t bg-muted">
+                        <CurrencyValue value={totals.today_revenue} />
+                      </TableCell>
                       <TableCell className="border-t bg-muted">{totals.monthly_total}</TableCell>
+                      <TableCell className="border-t bg-muted">
+                        <CurrencyValue value={totals.monthly_revenue} />
+                      </TableCell>
                       <TableCell className="border-t bg-muted">{totals.target}</TableCell>
                       <TableCell className="border-t bg-muted">
                         {format_percentage(totals.monthly_total, totals.target)}

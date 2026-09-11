@@ -5,6 +5,7 @@ import { CheckIcon, ChevronDownIcon, PlusIcon, SearchIcon, Trash2Icon } from "lu
 import { toast } from "sonner";
 
 import OptionDropdown from "@/components/option-dropdown";
+import CurrencyInput from "@/components/currency-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -467,6 +468,21 @@ export default function PengaturanRowSheet({
                   searchable={field.searchable}
                   searchPlaceholder={field.search_placeholder}
                   emptyMessage={field.empty_search_message}
+                />
+              ) : field.type === "currency" ? (
+                <CurrencyInput
+                  id={field.key}
+                  value={draft[field.key] ?? ""}
+                  disabled={is_disabled}
+                  required={field.required}
+                  aria-required={field.required || undefined}
+                  onValueChange={(value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      [field.key]: value,
+                    }))
+                  }
+                  placeholder={field.placeholder}
                 />
               ) : (
                 <Input

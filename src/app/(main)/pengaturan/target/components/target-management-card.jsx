@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   CalendarRangeIcon,
   FileSpreadsheetIcon,
@@ -28,28 +29,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import TargetImportModal from "./target-import-modal";
-import TargetBulkDateModal from "./target-bulk-date-modal";
-import TargetBulkDeleteModal from "./target-bulk-delete-modal";
+
+const TargetImportModal = dynamic(() => import("./target-import-modal"));
+const TargetBulkDateModal = dynamic(() => import("./target-bulk-date-modal"));
+const TargetBulkDeleteModal = dynamic(
+  () => import("./target-bulk-delete-modal"),
+);
 
 const PAGE_SIZE = 50;
 
 async function fetch_target_management_data(endpoint, target_label) {
-  const [target_result, outlet_result] = await Promise.all([
-    fetch(endpoint),
-    fetch("/api/outlet"),
-  ]);
-  const [target_payload, outlet_payload] = await Promise.all([
-    target_result.json(),
-    outlet_result.json(),
-  ]);
+  const target_result = await fetch(endpoint);
+  const target_payload = await target_result.json();
 
   if (!target_result.ok || !target_payload.success) {
     throw new Error(target_payload.message || `Gagal mengambil data ${target_label}.`);
-  }
-
-  if (!outlet_result.ok || !outlet_payload.success) {
-    throw new Error(outlet_payload.message || "Gagal mengambil data outlet.");
   }
 
   const items = target_payload.data?.items ?? target_payload.data?.data_target_gofitku ?? [];
@@ -57,10 +51,21 @@ async function fetch_target_management_data(endpoint, target_label) {
     ...item,
     range_label: format_target_range(item.start_date, item.end_date),
   }));
-  const options = (outlet_payload.data?.data_outlet ?? []).map((item) => ({
-    value: item.uuid,
-    label: item.name,
-  }));
+  let options = target_payload.data?.options;
+
+  if (!Array.isArray(options)) {
+    const outlet_result = await fetch("/api/outlet");
+    const outlet_payload = await outlet_result.json();
+
+    if (!outlet_result.ok || !outlet_payload.success) {
+      throw new Error(outlet_payload.message || "Gagal mengambil data outlet.");
+    }
+
+    options = (outlet_payload.data?.data_outlet ?? []).map((item) => ({
+      value: item.uuid,
+      label: item.name,
+    }));
+  }
 
   return {
     rows,
@@ -111,10 +116,14 @@ export default function TargetManagementCard({
   target_value_format = "integer",
   delete_payload_key = "uuid_target_metric",
   import_date_mode = "range",
+  entity_key = "uuid_outlet",
+  entity_name_key = "outlet_name",
+  entity_label = "Outlet",
+  import_button_label = "Impor",
 }) {
   const [target_rows, setTargetRows] = useState([]);
-  const [outlet_options, setOutletOptions] = useState([]);
-  const [selected_outlet, setSelectedOutlet] = useState("all");
+  const [entity_options, setEntityOptions] = useState([]);
+  const [selected_entity, setSelectedEntity] = useState("all");
   const [selected_date, setSelectedDate] = useState("");
   const [selected_target, setSelectedTarget] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
@@ -127,23 +136,23 @@ export default function TargetManagementCard({
   const [is_bulk_deleting, setIsBulkDeleting] = useState(false);
   const [target_to_delete, setTargetToDelete] = useState(null);
   const [is_delete_pending, setIsDeletePending] = useState(false);
-  const [sort_key, setSortKey] = useState("outlet_name");
+  const [sort_key, setSortKey] = useState(entity_name_key);
   const [sort_direction, setSortDirection] = useState("asc");
-  const outlet_filter_options = useMemo(
-    () => [{ value: "all", label: "Semua outlet" }, ...outlet_options],
-    [outlet_options],
+  const entity_filter_options = useMemo(
+    () => [{ value: "all", label: `Semua ${entity_label}` }, ...entity_options],
+    [entity_label, entity_options],
   );
   const filtered_items = useMemo(
     () =>
       target_rows.filter(
         (row) =>
-          (selected_outlet === "all" ||
-            row.uuid_outlet === selected_outlet) &&
+          (selected_entity === "all" ||
+            row[entity_key] === selected_entity) &&
           (!selected_date ||
             (row.start_date <= selected_date &&
               (!row.end_date || row.end_date >= selected_date))),
       ),
-    [selected_date, selected_outlet, target_rows],
+    [entity_key, selected_date, selected_entity, target_rows],
   );
   const sorted_items = useMemo(() => {
     return [...filtered_items].sort((a, b) => {
@@ -159,12 +168,12 @@ export default function TargetManagementCard({
         ) * direction;
       }
 
-      return String(a.outlet_name ?? "").localeCompare(
-        String(b.outlet_name ?? ""),
+      return String(a[entity_name_key] ?? "").localeCompare(
+        String(b[entity_name_key] ?? ""),
         "id-ID",
       ) * direction;
     });
-  }, [filtered_items, sort_direction, sort_key]);
+  }, [entity_name_key, filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -183,7 +192,7 @@ export default function TargetManagementCard({
     }
 
     setSortKey(next_sort_key);
-    setSortDirection(next_sort_key === "outlet_name" ? "asc" : "desc");
+    setSortDirection(next_sort_key === entity_name_key ? "asc" : "desc");
   };
 
   useEffect(() => {
@@ -198,7 +207,7 @@ export default function TargetManagementCard({
         }
 
         setTargetRows(rows);
-        setOutletOptions(options);
+        setEntityOptions(options);
       } catch (error) {
         if (!should_ignore) {
           toast.error(
@@ -219,7 +228,7 @@ export default function TargetManagementCard({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selected_date, selected_outlet, setCurrentPage]);
+  }, [selected_date, selected_entity, setCurrentPage]);
 
   const handle_create = async (new_target) => {
     const result = await fetch(endpoint, {
@@ -228,7 +237,7 @@ export default function TargetManagementCard({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        uuid_outlet: new_target.uuid_outlet,
+        [entity_key]: new_target[entity_key],
         start_date: new_target.start_date,
         end_date: new_target.end_date,
         target: new_target.target,
@@ -256,7 +265,7 @@ export default function TargetManagementCard({
 
   const handle_save = async (next_target) => {
     const update_payload = {
-      uuid_outlet: next_target.uuid_outlet,
+      [entity_key]: next_target[entity_key],
       start_date: next_target.start_date,
       end_date: next_target.end_date,
       target: next_target.target,
@@ -366,13 +375,16 @@ export default function TargetManagementCard({
 
       const { rows, options } = await fetch_target_management_data(endpoint, target_label);
       setTargetRows(rows);
-      setOutletOptions(options);
+      setEntityOptions(options);
       setIsImportModalOpen(false);
       toast.success(payload.message || `${target_label} berhasil diimpor.`);
 
-      if (Array.isArray(payload.data?.unmatched_outlets) && payload.data.unmatched_outlets.length) {
+      const unmatched_entities =
+        payload.data?.unmatched_insanku ?? payload.data?.unmatched_outlets;
+
+      if (Array.isArray(unmatched_entities) && unmatched_entities.length) {
         toast.warning(
-          `${payload.data.unmatched_outlets.length} outlet tidak cocok dengan master outlet.`,
+          `${unmatched_entities.length} ${entity_label} tidak cocok dengan master data.`,
         );
       }
     } catch (error) {
@@ -419,7 +431,7 @@ export default function TargetManagementCard({
         target_label,
       );
       setTargetRows(rows);
-      setOutletOptions(options);
+      setEntityOptions(options);
       setIsBulkDateModalOpen(false);
       toast.success(payload.message || `Tanggal ${target_label} berhasil diperbarui.`);
     } catch (error) {
@@ -464,7 +476,7 @@ export default function TargetManagementCard({
         target_label,
       );
       setTargetRows(rows);
-      setOutletOptions(options);
+      setEntityOptions(options);
       setIsBulkDeleteModalOpen(false);
       toast.success(payload.message || `${target_label} berhasil dihapus massal.`);
     } catch (error) {
@@ -480,15 +492,15 @@ export default function TargetManagementCard({
 
   const fields = [
     {
-      key: "uuid_outlet",
-      label: "Outlet",
+      key: entity_key,
+      label: entity_label,
       type: "select",
-      options: outlet_options,
-      placeholder: "Pilih outlet",
-      aria_label: `Pilih outlet ${target_label}`,
+      options: entity_options,
+      placeholder: `Pilih ${entity_label}`,
+      aria_label: `Pilih ${entity_label} ${target_label}`,
       searchable: true,
-      search_placeholder: "Cari outlet...",
-      empty_search_message: "Outlet tidak ditemukan.",
+      search_placeholder: `Cari ${entity_label}...`,
+      empty_search_message: `${entity_label} tidak ditemukan.`,
     },
     {
       key: "start_date",
@@ -503,7 +515,7 @@ export default function TargetManagementCard({
     {
       key: "target",
       label: "Target",
-      type: "number",
+      type: target_value_format === "currency" ? "currency" : "number",
       placeholder: target_placeholder,
       input_type: "number",
       helper: target_helper,
@@ -541,7 +553,7 @@ export default function TargetManagementCard({
             onClick={() => setIsImportModalOpen(true)}
           >
             <FileSpreadsheetIcon className="size-4" />
-            Impor
+            {import_button_label}
           </Button>
         </div>
       </CardHeader>
@@ -549,13 +561,13 @@ export default function TargetManagementCard({
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <OptionDropdown
-              value={selected_outlet}
-              onValueChange={setSelectedOutlet}
-              options={outlet_filter_options}
+              value={selected_entity}
+              onValueChange={setSelectedEntity}
+              options={entity_filter_options}
               searchable
-              ariaLabel={`Filter outlet ${target_label}`}
-              searchPlaceholder="Cari outlet..."
-              emptySearchMessage="Outlet tidak ditemukan."
+              ariaLabel={`Filter ${entity_label} ${target_label}`}
+              searchPlaceholder={`Cari ${entity_label}...`}
+              emptySearchMessage={`${entity_label} tidak ditemukan.`}
               triggerClassName="w-full sm:w-64"
             />
             <Input
@@ -603,8 +615,8 @@ export default function TargetManagementCard({
                     <TableHead className="w-20">#</TableHead>
                     <TableHead>
                       <SortableTableHead
-                        label="Outlet"
-                        sortKey="outlet_name"
+                        label={entity_label}
+                        sortKey={entity_name_key}
                         currentSortKey={sort_key}
                         sortDirection={sort_direction}
                         onSort={toggle_sort}
@@ -637,7 +649,14 @@ export default function TargetManagementCard({
                       <TableCell>
                         {(current_page - 1) * PAGE_SIZE + index + 1}
                       </TableCell>
-                      <TableCell className="font-medium">{row.outlet_name}</TableCell>
+                      <TableCell className="font-medium">
+                        {row[entity_name_key]}
+                        {row.nik ? (
+                          <span className="block text-xs font-normal text-muted-foreground">
+                            NIK {row.nik}
+                          </span>
+                        ) : null}
+                      </TableCell>
                       <TableCell className="font-medium">{row.range_label}</TableCell>
                       <TableCell>{format_target_value(row.target)}</TableCell>
                       <TableCell>
@@ -706,7 +725,7 @@ export default function TargetManagementCard({
             title={create_title}
             description={create_description}
             item={{
-              uuid_outlet: outlet_options[0]?.value ?? "",
+              [entity_key]: entity_options[0]?.value ?? "",
               start_date: "",
               end_date: "",
               target: "",
@@ -736,6 +755,8 @@ export default function TargetManagementCard({
               date_mode={import_date_mode}
               is_importing={is_importing}
               target_label={target_label}
+              entity_label={entity_label}
+              action_label={import_button_label}
               on_open_change={setIsImportModalOpen}
               on_submit={handle_import}
             />
@@ -747,6 +768,7 @@ export default function TargetManagementCard({
               date_mode="range"
               is_updating={is_bulk_date_updating}
               target_label={target_label}
+              entity_label={entity_label}
               rows={target_rows}
               on_open_change={setIsBulkDateModalOpen}
               on_submit={handle_bulk_date_update}
@@ -758,6 +780,7 @@ export default function TargetManagementCard({
               open
               is_deleting={is_bulk_deleting}
               target_label={target_label}
+              entity_label={entity_label}
               rows={target_rows}
               on_open_change={setIsBulkDeleteModalOpen}
               on_submit={handle_bulk_delete}

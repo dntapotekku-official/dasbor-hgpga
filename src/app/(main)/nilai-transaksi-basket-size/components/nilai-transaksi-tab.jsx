@@ -1,5 +1,6 @@
 import {
   formatDecimal,
+  formatPeriodRangeLabel,
   formatPercentage,
   gapClassName,
 } from "@/lib/nilaiTransaksiBasketSizeTable";
@@ -37,15 +38,6 @@ function PeriodHeader({ label }) {
   );
 }
 
-function period_range_label(label) {
-  const normalized_label = String(label ?? "");
-  const separator_index = normalized_label.indexOf(" (");
-
-  return separator_index < 0
-    ? normalized_label
-    : normalized_label.slice(separator_index + 1);
-}
-
 export default function NilaiTransaksiTab({
   category_metrics,
   highest_daily,
@@ -57,7 +49,7 @@ export default function NilaiTransaksiTab({
 }) {
   const selected_date_label = labels?.selected_date_label || "tanggal terpilih";
   const selected_period_label = labels?.selected_period_label || "bulan ini";
-  const selected_period_range_label = period_range_label(selected_period_label);
+  const selected_period_range_label = formatPeriodRangeLabel(selected_period_label);
   const previous_period_label = labels?.previous_period_label || "bulan lalu";
   const previous_month_label = labels?.previous_month_label || "bulan lalu";
 
@@ -84,9 +76,9 @@ export default function NilaiTransaksiTab({
             [selected_period_label, "min-w-[180px]"],
             [previous_period_label, "min-w-[180px]"],
             [`Growth % (dibanding ${previous_month_label})`, "min-w-[140px] text-center"],
-            ["Selisih Pertumbuhan", "min-w-[160px] text-center"],
-            ["Pencapaian Target", "min-w-[150px] text-center"],
-            ["Selisih Target", "min-w-[130px] text-center"],
+            ["Gap Growth", "min-w-[160px] text-center"],
+            ["% Dibanding Target", "min-w-[150px] text-center"],
+            ["Gap Target", "min-w-[130px] text-center"],
           ].map(([label, className]) => (
             <TableHead
               key={label}

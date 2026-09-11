@@ -1,14 +1,19 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import PageHeading from "@/components/page-heading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import BasketSizeTab from "./components/basket-size-tab";
-import GofitkuTab from "./components/gofitku-tab";
-import NilaiTransaksiTab from "./components/nilai-transaksi-tab";
+const BasketSizeTab = dynamic(() => import("./components/basket-size-tab"));
+const GlobalTab = dynamic(() => import("./components/global-tab"));
+const GofitkuTab = dynamic(() => import("./components/gofitku-tab"));
+const NilaiTransaksiTab = dynamic(
+  () => import("./components/nilai-transaksi-tab"),
+);
 
 const TAB_CONFIG = {
+  global: { label: "Global", component: GlobalTab },
   ns: { label: "Nilai Transaksi", component: NilaiTransaksiTab },
   bs: { label: "Basket Size", component: BasketSizeTab },
   gofitku: { label: "GoFitKu", component: GofitkuTab },
@@ -20,7 +25,7 @@ export default function PengaturanTargetPage() {
   const requested_tab = search_params.get("tab");
   const active_tab = Object.hasOwn(TAB_CONFIG, requested_tab)
     ? requested_tab
-    : "ns";
+    : "global";
   const ActiveTab = TAB_CONFIG[active_tab].component;
 
   const handle_tab_change = (next_tab) => {
@@ -34,7 +39,7 @@ export default function PengaturanTargetPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola target Nilai Transaksi, Basket Size, dan GoFitKu."
+          description="Kelola target global, Nilai Transaksi, Basket Size, dan GoFitKu."
         />
       </div>
 

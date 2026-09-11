@@ -13,9 +13,9 @@ import { prisma } from "@/lib/prisma";
 
 const exec_file = promisify(execFile);
 
-const fixed_targets = {
-  nilai_transaksi: 105_000,
-  basket_size: 2,
+const empty_global_targets = {
+  nilai_transaksi: 0,
+  basket_size: 0,
 };
 
 const export_category_labels = {
@@ -83,14 +83,6 @@ function resolve_month_label(date, locale = "id-ID") {
   }).format(date);
 }
 
-/** Memformat nama bulan tanpa menyertakan tahun. */
-function resolve_month_name(date, locale = "id-ID") {
-  return new Intl.DateTimeFormat(locale, {
-    month: "long",
-    timeZone: "UTC",
-  }).format(date);
-}
-
 /** Memformat tanggal lengkap untuk label tampilan. */
 function resolve_date_label(date, locale = "id-ID") {
   return new Intl.DateTimeFormat(locale, {
@@ -102,8 +94,11 @@ function resolve_date_label(date, locale = "id-ID") {
 }
 
 /** Membentuk label periode dari awal bulan hingga tanggal akhir pilihan. */
-function resolve_period_label(start_date, end_date, locale = "id-ID") {
-  return `${resolve_month_name(start_date, locale)} (1 - ${resolve_date_label(end_date, locale)})`;
+function resolve_period_label(end_date, locale = "id-ID") {
+  return `${new Intl.DateTimeFormat(locale, {
+    month: "long",
+    timeZone: "UTC",
+  }).format(end_date)} (1 - ${resolve_date_label(end_date, locale)})`;
 }
 
 /** Memisahkan nama bulan dan rentang tanggal ke dua baris untuk header Excel. */
@@ -222,16 +217,20 @@ function build_nilai_transaksi_metrics({
   last_month,
   current_month,
 }) {
-  const nt_target = to_number(target);
+  const nt_has_target = target !== null && target !== undefined;
+  const nt_target = nt_has_target ? to_number(target) : null;
   const nt_daily = to_number(daily);
   const nt_last_month = to_number(last_month);
   const nt_current_month = to_number(current_month);
   const nt_growth = compare_percentage(nt_current_month, nt_last_month);
   const nt_gap_growth = nt_growth - 100;
-  const nt_target_compare = compare_percentage(nt_current_month, nt_target);
-  const nt_gap_target = nt_target_compare - 100;
+  const nt_target_compare = nt_has_target
+    ? compare_percentage(nt_current_month, nt_target)
+    : null;
+  const nt_gap_target = nt_target_compare === null ? null : nt_target_compare - 100;
 
   return {
+    nt_has_target,
     nt_target,
     nt_daily,
     nt_last_month,
@@ -259,15 +258,19 @@ function build_basket_size_metrics({
   last_month,
   current_month,
 }) {
-  const bs_target = to_number(target);
+  const bs_has_target = target !== null && target !== undefined;
+  const bs_target = bs_has_target ? to_number(target) : null;
   const bs_last_month = to_number(last_month);
   const bs_current_month = to_number(current_month);
   const bs_growth = compare_percentage(bs_current_month, bs_last_month);
   const bs_gap_growth = bs_growth - 100;
-  const bs_target_compare = compare_percentage(bs_current_month, bs_target);
-  const bs_gap_target = bs_target_compare - 100;
+  const bs_target_compare = bs_has_target
+    ? compare_percentage(bs_current_month, bs_target)
+    : null;
+  const bs_gap_target = bs_target_compare === null ? null : bs_target_compare - 100;
 
   return {
+    bs_has_target,
     bs_target,
     bs_last_month,
     bs_current_month,
@@ -340,13 +343,17 @@ function summarize_metric_rows(rows, target_override = {}) {
     bs_current_month_sku_qty: summary.bs_current_month_sku_qty,
     bs_current_month_served: summary.bs_current_month_served,
     ...build_nilai_transaksi_metrics({
-      target: target_override.nilai_transaksi ?? summary.nt_target / row_count,
+      target: Object.hasOwn(target_override, "nilai_transaksi")
+        ? target_override.nilai_transaksi
+        : summary.nt_target / row_count,
       daily: nt_daily,
       last_month: nt_last_month,
       current_month: nt_current_month,
     }),
     ...build_basket_size_metrics({
-      target: target_override.basket_size ?? summary.bs_target / row_count,
+      target: Object.hasOwn(target_override, "basket_size")
+        ? target_override.basket_size
+        : summary.bs_target / row_count,
       last_month: bs_last_month,
       current_month: bs_current_month,
     }),
@@ -430,6 +437,55 @@ async function get_active_target_map({
   }
 
   return target_map;
+}
+
+/** Mengambil target global NT/BS yang aktif pada tanggal dashboard. */
+async function get_global_target_values({
+  selected_day_start,
+  selected_day_end,
+  client = prisma,
+} = {}) {
+  const rows = await client.tbl_target_global.findMany({
+    where: {
+      key: {
+        in: Object.keys(empty_global_targets),
+      },
+      deleted_at: null,
+      ...(selected_day_start && selected_day_end
+        ? {
+            start_date: {
+              lte: selected_day_end,
+            },
+            OR: [
+              { end_date: null },
+              {
+                end_date: {
+                  gte: selected_day_start,
+                },
+              },
+            ],
+          }
+        : {}),
+    },
+    select: {
+      key: true,
+      value: true,
+    },
+    orderBy: {
+      start_date: "desc",
+    },
+  });
+  const targets = { ...empty_global_targets };
+  const resolved_keys = new Set();
+
+  rows.forEach((row) => {
+    if (!resolved_keys.has(row.key)) {
+      targets[row.key] = to_number(row.value);
+      resolved_keys.add(row.key);
+    }
+  });
+
+  return targets;
 }
 
 // ============================================================================
@@ -651,6 +707,7 @@ export async function getNilaiTransaksiBasketSize({
     basket_size_target_map,
     nilai_transaksi_dates,
     basket_size_dates,
+    global_targets,
   ] = await Promise.all([
     prisma.tbl_outlet.findMany({
       where: {
@@ -823,6 +880,10 @@ export async function getNilaiTransaksiBasketSize({
         date: true,
       },
     }),
+    get_global_target_values({
+      selected_day_start: current_day_start,
+      selected_day_end: current_day_end,
+    }),
   ]);
 
   const current_nilai_transaksi_map = build_nilai_transaksi_map(current_nilai_transaksi, current_served);
@@ -858,7 +919,7 @@ export async function getNilaiTransaksiBasketSize({
     ]),
   );
 
-  const overall_metrics = summarize_metric_rows(rows, fixed_targets);
+  const overall_metrics = summarize_metric_rows(rows, global_targets);
 
   const rounded_rows = rows.map(round_nilai_transaksi_row_values);
 
@@ -866,12 +927,12 @@ export async function getNilaiTransaksiBasketSize({
     selected_month_label: resolve_month_label(current_date),
     previous_month_label: resolve_month_label(previous_month_start),
     selected_date_label: resolve_date_label(current_date),
-    selected_period_label: resolve_period_label(current_month_start, current_date),
-    previous_period_label: resolve_period_label(previous_month_start, previous_month_end),
+    selected_period_label: resolve_period_label(current_date),
+    previous_period_label: resolve_period_label(previous_month_end),
     rows: rounded_rows,
     category_metrics,
     overall_metrics,
-    fixed_targets,
+    global_targets,
     available_dates: {
       nilai_transaksi: map_available_dates(nilai_transaksi_dates),
       basket_size: map_available_dates(basket_size_dates),
@@ -1138,7 +1199,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   sheet.getCell("G3").value = resolve_export_period_label(data.selected_period_label);
   sheet.getCell("H3").value = `% GROWTH\n(DIBANDING ${data.previous_month_label.toUpperCase()})`;
   sheet.getCell("I3").value = "GAP GROWTH";
-  sheet.getCell("J3").value = "% DARI TARGET";
+  sheet.getCell("J3").value = "% DIBANDING TARGET";
   sheet.getCell("K3").value = "GAP TARGET";
   sheet.getCell("L3").value = "TARGET";
   sheet.getCell("M3").value = resolve_export_period_label(data.previous_period_label);
@@ -2306,6 +2367,201 @@ function parse_target_value(target, config) {
   }
 
   return stored_target;
+}
+
+/** Memformat target global untuk form pengaturan. */
+function format_global_target(item) {
+  return item
+    ? {
+        uuid: item.uuid,
+        key: item.key,
+        target: to_number(item.value),
+        start_date: item.start_date.toISOString().slice(0, 10),
+        end_date: item.end_date?.toISOString().slice(0, 10) ?? "",
+      }
+    : null;
+}
+
+/** Mencari bentrok periode target global pada jenis yang sama. */
+async function find_overlapping_global_target({
+  key,
+  start_date,
+  end_date,
+  exclude_uuid,
+}) {
+  return prisma.tbl_target_global.findFirst({
+    where: {
+      key,
+      deleted_at: null,
+      ...(exclude_uuid ? { uuid: { not: exclude_uuid } } : {}),
+      start_date: { lte: end_date },
+      OR: [
+        { end_date: null },
+        { end_date: { gte: start_date } },
+      ],
+    },
+    select: { uuid: true },
+  });
+}
+
+/** Mengambil daftar rentang target global untuk satu jenis metrik. */
+export async function getTargetGlobal({ key } = {}) {
+  const metric_key = key || "nilai_transaksi";
+
+  get_metric_config(metric_key);
+  const rows = await prisma.tbl_target_global.findMany({
+    where: { key: metric_key, deleted_at: null },
+    orderBy: [
+      { start_date: "desc" },
+      { created_at: "desc" },
+    ],
+    select: {
+      uuid: true,
+      key: true,
+      value: true,
+      start_date: true,
+      end_date: true,
+    },
+  });
+
+  return { items: rows.map(format_global_target) };
+}
+
+/** Menambahkan rentang target global baru. */
+export async function createTargetGlobal({ key, target, start_date, end_date }) {
+  const config = get_metric_config(key);
+  const parsed_target = parse_target_value(target, config);
+  const parsed_start_date = parse_target_date(start_date, {
+    label: "Tanggal mulai target",
+  });
+  const parsed_end_date = parse_target_date(end_date, {
+    label: "Tanggal selesai target",
+  });
+
+  assert_valid_range(parsed_start_date, parsed_end_date);
+
+  if (await find_overlapping_global_target({
+    key,
+    start_date: parsed_start_date,
+    end_date: parsed_end_date,
+  })) {
+    throw new Error(`Range ${config.label.toLowerCase()} global bentrok dengan data yang sudah ada.`);
+  }
+
+  const created_target = await prisma.tbl_target_global.create({
+    data: {
+      uuid: randomUUID(),
+      key,
+      value: parsed_target,
+      start_date: parsed_start_date,
+      end_date: parsed_end_date,
+    },
+    select: {
+      uuid: true,
+      key: true,
+      value: true,
+      start_date: true,
+      end_date: true,
+    },
+  });
+
+  return {
+    success: true,
+    message: `${config.label} global berhasil ditambahkan.`,
+    data: format_global_target(created_target),
+  };
+}
+
+/** Memperbarui nilai dan rentang target global yang dipilih. */
+export async function updateTargetGlobal({
+  uuid_target_global,
+  key,
+  target,
+  start_date,
+  end_date,
+}) {
+  if (!uuid_target_global) {
+    throw new Error("UUID target global wajib diisi.");
+  }
+
+  const config = get_metric_config(key);
+  const parsed_target = parse_target_value(target, config);
+  const parsed_start_date = parse_target_date(start_date, {
+    label: "Tanggal mulai target",
+  });
+  const parsed_end_date = parse_target_date(end_date, {
+    label: "Tanggal selesai target",
+  });
+
+  assert_valid_range(parsed_start_date, parsed_end_date);
+
+  const existing_target = await prisma.tbl_target_global.findUnique({
+    where: { uuid: uuid_target_global },
+    select: { key: true, deleted_at: true },
+  });
+
+  if (!existing_target || existing_target.deleted_at || existing_target.key !== key) {
+    throw new Error("Data target global tidak ditemukan.");
+  }
+
+  if (await find_overlapping_global_target({
+    key,
+    start_date: parsed_start_date,
+    end_date: parsed_end_date,
+    exclude_uuid: uuid_target_global,
+  })) {
+    throw new Error(`Range ${config.label.toLowerCase()} global bentrok dengan data yang sudah ada.`);
+  }
+
+  const updated_target = await prisma.tbl_target_global.update({
+    where: { uuid: uuid_target_global },
+    data: {
+      value: parsed_target,
+      start_date: parsed_start_date,
+      end_date: parsed_end_date,
+    },
+    select: {
+      uuid: true,
+      key: true,
+      value: true,
+      start_date: true,
+      end_date: true,
+    },
+  });
+
+  return {
+    success: true,
+    message: `${config.label} global berhasil diperbarui.`,
+    data: format_global_target(updated_target),
+  };
+}
+
+/** Menghapus target global yang dipilih secara soft delete. */
+export async function deleteTargetGlobal({ uuid_target_global }) {
+  if (!uuid_target_global) {
+    throw new Error("UUID target global wajib diisi.");
+  }
+
+  const existing_target = await prisma.tbl_target_global.findUnique({
+    where: { uuid: uuid_target_global },
+    select: { key: true, deleted_at: true },
+  });
+
+  if (!existing_target || existing_target.deleted_at) {
+    throw new Error("Data target global tidak ditemukan.");
+  }
+
+  const config = get_metric_config(existing_target.key);
+
+  await prisma.tbl_target_global.update({
+    where: { uuid: uuid_target_global },
+    data: { deleted_at: new Date() },
+  });
+
+  return {
+    success: true,
+    message: `${config.label} global berhasil dihapus.`,
+  };
 }
 
 /** Mengubah nilai target dari skala database ke nilai tampilan. */

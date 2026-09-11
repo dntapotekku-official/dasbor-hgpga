@@ -91,13 +91,13 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
 
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="min-w-0 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Selisih Pertumbuhan</p>
+              <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
               <p className="text-2xl font-semibold tracking-tight">
                 <GapValue value={metrics.nt_gap_growth} />
               </p>
             </div>
             <div className="min-w-0 space-y-1 border-l pl-4">
-              <p className="text-xs font-medium text-muted-foreground">Selisih Target</p>
+              <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
               <p className="text-2xl font-semibold tracking-tight">
                 <GapValue value={metrics.nt_gap_target} />
               </p>
@@ -134,7 +134,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
               value={`${formatDecimal(metrics.nt_growth)}%`}
             />
             <SummaryValue
-              label="Pencapaian Target"
+              label="% Dibanding Target"
               value={`${formatDecimal(metrics.nt_target_compare)}%`}
             />
           </div>
@@ -179,13 +179,13 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
 
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="min-w-0 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Selisih Pertumbuhan</p>
+              <p className="text-xs font-medium text-muted-foreground">Gap Growth</p>
               <p className="text-2xl font-semibold tracking-tight">
                 <GapValue value={metrics.bs_gap_growth} />
               </p>
             </div>
             <div className="min-w-0 space-y-1 border-l pl-4">
-              <p className="text-xs font-medium text-muted-foreground">Selisih Target</p>
+              <p className="text-xs font-medium text-muted-foreground">Gap Target</p>
               <p className="text-2xl font-semibold tracking-tight">
                 <GapValue value={metrics.bs_gap_target} />
               </p>
@@ -210,7 +210,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
               value={`${formatDecimal(metrics.bs_growth)}%`}
             />
             <SummaryValue
-              label="Pencapaian Target"
+              label="% Dibanding Target"
               value={`${formatDecimal(metrics.bs_target_compare)}%`}
             />
           </div>

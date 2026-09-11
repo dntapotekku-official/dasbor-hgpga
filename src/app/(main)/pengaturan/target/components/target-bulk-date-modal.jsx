@@ -18,6 +18,7 @@ export default function TargetBulkDateModal({
   date_mode,
   is_updating,
   target_label,
+  entity_label = "outlet",
   rows,
   on_open_change,
   on_submit,
@@ -53,9 +54,9 @@ export default function TargetBulkDateModal({
     () =>
       periods.map((period) => ({
         value: period.key,
-        label: `${period.range_label} (${period.count} outlet)`,
+        label: `${period.range_label} (${period.count} ${entity_label})`,
       })),
-    [periods],
+    [entity_label, periods],
   );
   const is_range_mode = date_mode === "range";
   const [selected_period_key, setSelectedPeriodKey] = useState(
@@ -108,7 +109,7 @@ export default function TargetBulkDateModal({
                 Edit Massal
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                Ubah tanggal seluruh outlet pada periode {target_label} yang dipilih.
+                Ubah tanggal seluruh {entity_label} pada periode {target_label} yang dipilih.
               </DialogPrimitive.Description>
             </div>
             <DialogPrimitive.Close

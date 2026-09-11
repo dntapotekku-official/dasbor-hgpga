@@ -16,6 +16,7 @@ export default function TargetBulkDeleteModal({
   open,
   is_deleting,
   target_label,
+  entity_label = "outlet",
   rows,
   on_open_change,
   on_submit,
@@ -48,9 +49,9 @@ export default function TargetBulkDeleteModal({
     () =>
       periods.map((period) => ({
         value: period.key,
-        label: `${period.range_label} (${period.count} outlet)`,
+        label: `${period.range_label} (${period.count} ${entity_label})`,
       })),
-    [periods],
+    [entity_label, periods],
   );
   const [selected_period_key, setSelectedPeriodKey] = useState(
     periods[0]?.key ?? "",

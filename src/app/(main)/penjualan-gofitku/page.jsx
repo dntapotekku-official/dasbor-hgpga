@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileSpreadsheetIcon, LoaderCircleIcon } from "lucide-react";
+import dynamic from "next/dynamic";
+import {
+  BadgeDollarSignIcon,
+  FileSpreadsheetIcon,
+  LoaderCircleIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import DetailTab from "./components/detail-tab";
-import RingkasanTab from "./components/ringkasan-tab";
-import SalesEntryModal from "./components/sales-entry-modal";
+import RingkasanTab from "./components/ringkasan-tab-content";
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import CurrencyValue from "@/components/currency-value";
 import OptionDropdown from "@/components/option-dropdown";
 import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 import PageHeading from "@/components/page-heading";
 import { outlet_category_filter_options } from "@/lib/outletCategories";
-import { export_penjualan_gofitku } from "@/lib/penjualanGofitkuExport";
 import { hasRoleAccess } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +24,23 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const default_date = new Date().toISOString().split("T")[0];
+const DetailTab = dynamic(() => import("./components/detail-tab-content"));
+const SalesEntryModal = dynamic(() => import("./components/sales-entry-modal"));
+
+function format_month_label(date_value) {
+  const date = new Date(`${date_value}T00:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Bulan terpilih";
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export default function PenjualanGoFitKuPage() {
   const { role } = useAuth();
 
@@ -34,6 +54,7 @@ export default function PenjualanGoFitKuPage() {
           product_name: default_product?.label ?? "",
           date: default_date,
           sales_total: "",
+          price: "",
         },
       ],
       uploaded_images: [],
@@ -56,6 +77,7 @@ export default function PenjualanGoFitKuPage() {
       product_name: default_product?.label ?? "",
       date: selected_date,
       sales_total: "",
+      price: "",
     };
   }
 
@@ -74,7 +96,6 @@ export default function PenjualanGoFitKuPage() {
   const [editing_outlet, setEditingOutlet] = useState(null);
   const [deleting_row, setDeletingRow] = useState(null);
   const [deleting_outlet, setDeletingOutlet] = useState(null);
-  const [is_updating_row, setIsUpdatingRow] = useState(false);
   const [is_deleting_row, setIsDeletingRow] = useState(false);
 
   const default_product = produk_options[0] ?? null;
@@ -108,6 +129,16 @@ export default function PenjualanGoFitKuPage() {
     is_admin && resolved_outlet_filter !== "all"
       ? category_filtered_outlet_groups.filter((group) => group.uuid === resolved_outlet_filter)
       : category_filtered_outlet_groups;
+  const current_month_sales_total = filtered_outlet_groups.reduce(
+    (group_total, group) =>
+      group_total +
+      (group.rows ?? []).reduce(
+        (row_total, row) => row_total + Number(row.monthly_revenue ?? 0),
+        0,
+      ),
+    0,
+  );
+  const selected_month_label = format_month_label(selected_date);
 
   useEffect(() => {
     let should_ignore = false;
@@ -225,6 +256,7 @@ export default function PenjualanGoFitKuPage() {
     setEditingRow({
       ...row,
       today_input: String(row.today_input ?? 0),
+      price: String(row.price ?? 0),
     });
   };
 
@@ -250,6 +282,11 @@ export default function PenjualanGoFitKuPage() {
       return;
     }
 
+    if (sales_form.scanned_entries.some((entry) => !String(entry.price ?? "").trim())) {
+      toast.error("Harga wajib diisi untuk setiap entri.");
+      return;
+    }
+
     const valid_entries = sales_form.scanned_entries
       .map((entry) => ({
         ...entry,
@@ -267,6 +304,7 @@ export default function PenjualanGoFitKuPage() {
           product_name: selected_product?.label ?? entry.product_name ?? "",
           date: entry.date,
           sales_total: entry.sales_total,
+          price: entry.price,
         };
       });
 
@@ -321,46 +359,34 @@ export default function PenjualanGoFitKuPage() {
       (option) => option.value === next_row.produk_uuid,
     );
 
-    try {
-      setIsUpdatingRow(true);
+    const result = await fetch("/api/penjualan-gofitku", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        uuid_penjualan_gofitku: next_row.uuid,
+        outlet_uuid: editing_outlet.uuid,
+        employee_uuid: next_row.employee_uuid,
+        produk_uuid: next_row.produk_uuid,
+        product_name: selected_product?.label ?? next_row.product_name ?? "",
+        date: next_row.date,
+        sales_total: next_row.today_input,
+        price: next_row.price,
+      }),
+    });
+    const payload = await result.json();
 
-      const result = await fetch("/api/penjualan-gofitku", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uuid_penjualan_gofitku: next_row.uuid,
-          outlet_uuid: editing_outlet.uuid,
-          employee_uuid: next_row.employee_uuid,
-          produk_uuid: next_row.produk_uuid,
-          product_name: selected_product?.label ?? next_row.product_name ?? "",
-          date: next_row.date,
-          sales_total: next_row.today_input,
-        }),
-      });
-      const payload = await result.json();
-
-      if (!result.ok || !payload.success) {
-        throw new Error(payload.message || "Gagal memperbarui penjualan GoFitKu.");
-      }
-
-      await load_outlet_group(
-        editing_outlet.uuid,
-        selected_date,
-      );
-
-      toast.success(payload.message || "Penjualan GoFitKu berhasil diperbarui.");
-      close_edit_modal();
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Gagal memperbarui penjualan GoFitKu.",
-      );
-    } finally {
-      setIsUpdatingRow(false);
+    if (!result.ok || !payload.success) {
+      throw new Error(payload.message || "Gagal memperbarui penjualan GoFitKu.");
     }
+
+    await load_outlet_group(
+      editing_outlet.uuid,
+      selected_date,
+    );
+
+    toast.success(payload.message || "Penjualan GoFitKu berhasil diperbarui.");
   };
 
   const handle_delete_row = async () => {
@@ -495,6 +521,9 @@ export default function PenjualanGoFitKuPage() {
               String(scan_group?.tanggal ?? "").trim() ||
               selected_date,
             sales_total: String(item?.qty ?? 0),
+            price: String(
+              item?.price ?? item?.harga ?? item?.harga_satuan ?? "",
+            ),
           };
         });
       });
@@ -641,6 +670,9 @@ export default function PenjualanGoFitKuPage() {
         return;
       }
 
+      const { export_penjualan_gofitku } = await import(
+        "@/lib/penjualanGofitkuExport"
+      );
       export_penjualan_gofitku(export_groups);
     } catch (error) {
       toast.error(
@@ -739,6 +771,26 @@ export default function PenjualanGoFitKuPage() {
                 </TabsTrigger>
               </TabsList>
 
+              <Card className="border-emerald-200 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-50">
+                <CardContent className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium opacity-75">
+                      Total Penjualan Bulan Berjalan
+                    </p>
+                    <p className="mt-1 text-xs capitalize opacity-70">
+                      {selected_month_label}
+                    </p>
+                    <CurrencyValue
+                      value={current_month_sales_total}
+                      className="mt-2 font-heading text-2xl font-bold"
+                    />
+                  </div>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-100 p-3 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-300">
+                    <BadgeDollarSignIcon className="size-5" />
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="gap-0 border-t-2 border-t-primary/70">
                 <CardHeader className="border-b">
                   <CardTitle>
@@ -768,23 +820,25 @@ export default function PenjualanGoFitKuPage() {
         )}
       </div>
 
-      <SalesEntryModal
-        open={Boolean(active_outlet)}
-        active_outlet={active_outlet}
-        sales_form={sales_form}
-        produk_options={produk_options}
-        is_scanning={is_scanning}
-        is_saving={is_saving}
-        on_close={close_add_modal}
-        on_submit={handle_save_sales}
-        on_image_upload={handle_image_upload}
-        on_scan_images={handle_scan_images}
-        on_remove_image={handle_remove_image}
-        on_add_manual_entry={handle_add_manual_entry}
-        on_remove_entry={handle_remove_entry}
-        on_entry_change={handle_entry_change}
-        on_product_change={handle_product_change}
-      />
+      {active_outlet ? (
+        <SalesEntryModal
+          open
+          active_outlet={active_outlet}
+          sales_form={sales_form}
+          produk_options={produk_options}
+          is_scanning={is_scanning}
+          is_saving={is_saving}
+          on_close={close_add_modal}
+          on_submit={handle_save_sales}
+          on_image_upload={handle_image_upload}
+          on_scan_images={handle_scan_images}
+          on_remove_image={handle_remove_image}
+          on_add_manual_entry={handle_add_manual_entry}
+          on_remove_entry={handle_remove_entry}
+          on_entry_change={handle_entry_change}
+          on_product_change={handle_product_change}
+        />
+      ) : null}
       <PengaturanRowSheet
         key={editing_row?.uuid ?? "edit-penjualan-gofitku-sheet"}
         open={Boolean(editing_row)}
@@ -832,6 +886,14 @@ export default function PenjualanGoFitKuPage() {
             min: "0",
             step: "1",
             placeholder: "Masukkan jumlah",
+          },
+          {
+            key: "price",
+            label: "Harga Satuan",
+            type: "currency",
+            placeholder: "Masukkan harga",
+            helper: "Nilai rupiah otomatis menggunakan pemisah ribuan.",
+            required: true,
           },
         ]}
         on_save={handle_update_row}

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import OptionDropdown from "@/components/option-dropdown";
+import CurrencyInput from "@/components/currency-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -182,7 +183,7 @@ export default function SalesEntryModal({
                           </div>
                         </div>
 
-                        <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-5">
                           <div className="space-y-2">
                             <Label htmlFor={`tanggal-penjualan-${entry.id}`}>Tanggal</Label>
                             <Input
@@ -236,6 +237,20 @@ export default function SalesEntryModal({
                                 on_entry_change(entry.id, "sales_total", event.target.value)
                               }
                               placeholder="Masukkan jumlah"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`harga-penjualan-${entry.id}`}>
+                              Harga Satuan
+                            </Label>
+                            <CurrencyInput
+                              id={`harga-penjualan-${entry.id}`}
+                              value={entry.price}
+                              onValueChange={(value) =>
+                                on_entry_change(entry.id, "price", value)
+                              }
+                              placeholder="Masukkan harga"
                               required
                             />
                           </div>

@@ -116,6 +116,7 @@ export const PATCH = async (request) => {
       product_name: body?.product_name,
       date: body?.date,
       sales_total: body?.sales_total,
+      price: body?.price,
       account_uuid: user_session?.uuid,
       role: user_session?.role,
     });

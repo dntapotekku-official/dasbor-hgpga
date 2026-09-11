@@ -2,6 +2,7 @@
 
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
+import CurrencyValue from "@/components/currency-value";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -46,12 +47,14 @@ export default function DetailTabContent({
               </Button>
             </div>
             <div className="overflow-hidden rounded-lg border bg-card">
-              <Table className="min-w-[760px]">
+              <Table className="min-w-[980px]">
                 <TableHeader className="bg-primary [&_th]:text-primary-foreground">
                   <TableRow>
                     <TableHead className="w-[32%]">Nama</TableHead>
                     <TableHead>Jumlah</TableHead>
                     <TableHead>Produk</TableHead>
+                    <TableHead>Harga Satuan</TableHead>
+                    <TableHead>Total Penjualan</TableHead>
                     <TableHead className="w-[20%]">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -63,6 +66,12 @@ export default function DetailTabContent({
                       </TableCell>
                       <TableCell className="font-medium">{row.today_input}</TableCell>
                       <TableCell>{row.product_name ?? "-"}</TableCell>
+                      <TableCell>
+                        <CurrencyValue value={row.price} />
+                      </TableCell>
+                      <TableCell>
+                        <CurrencyValue value={row.subtotal} />
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button

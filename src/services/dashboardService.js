@@ -17,7 +17,11 @@ function get_month_boundaries(today = new Date()) {
 }
 
 async function get_member_overview(user, period) {
-  const [required_attribute_count, outlet] = await Promise.all([
+  const [
+    required_attribute_count,
+    outlet,
+    monthly_sales_result,
+  ] = await Promise.all([
     prisma.tbl_kolom_atribut.count({
       where: {
         deleted_at: null,
@@ -72,16 +76,20 @@ async function get_member_overview(user, period) {
                 },
               },
             },
-            penjualan_gofitku: {
-              where: {
-                deleted_at: null,
-                date: { gte: period.start, lt: period.end },
-              },
-              select: { qty: true },
-            },
           },
         },
       },
+    }),
+    prisma.tbl_penjualan_gofitku.aggregate({
+      where: {
+        deleted_at: null,
+        date: { gte: period.start, lt: period.end },
+        outlet_insanku: {
+          uuid_outlet: user.uuid,
+          deleted_at: null,
+        },
+      },
+      _sum: { qty: true },
     }),
   ]);
 
@@ -97,16 +105,7 @@ async function get_member_overview(user, period) {
   const attribute_percentage = total_required_attributes
     ? Math.round((filled_attribute_count / total_required_attributes) * 100)
     : 100;
-  const monthly_sales =
-    outlet?.outlet_insanku.reduce(
-      (total, relation) =>
-        total +
-        relation.penjualan_gofitku.reduce(
-          (relation_total, sale) => relation_total + Number(sale.qty || 0),
-          0,
-        ),
-      0,
-    ) ?? 0;
+  const monthly_sales = Number(monthly_sales_result._sum.qty ?? 0);
   const internship_scores = employees
     .map((employee) => employee.nilai_magang?.[0]?.value)
     .filter((value) => value != null)
