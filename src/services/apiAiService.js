@@ -8,34 +8,35 @@ import {
 } from "@/lib/secretEncryption";
 
 async function get_active_ai_config() {
-  const api_ai = await prisma.tbl_api_ai.findFirst({
-    where: {
-      deleted_at: null,
-    },
-    orderBy: {
-      updated_at: "desc",
-    },
-    select: {
-      uuid: true,
-      base_url: true,
-      model: true,
-      api_key: true,
-    },
-  });
-
-  const prompt_rows = await prisma.tbl_prompt.findMany({
-    where: {
-      deleted_at: null,
-    },
-    orderBy: {
-      updated_at: "desc",
-    },
-    select: {
-      uuid: true,
-      key: true,
-      prompt: true,
-    },
-  });
+  const [api_ai, prompt_rows] = await Promise.all([
+    prisma.tbl_api_ai.findFirst({
+      where: {
+        deleted_at: null,
+      },
+      orderBy: {
+        updated_at: "desc",
+      },
+      select: {
+        uuid: true,
+        base_url: true,
+        model: true,
+        api_key: true,
+      },
+    }),
+    prisma.tbl_prompt.findMany({
+      where: {
+        deleted_at: null,
+      },
+      orderBy: {
+        updated_at: "desc",
+      },
+      select: {
+        uuid: true,
+        key: true,
+        prompt: true,
+      },
+    }),
+  ]);
 
   if (api_ai?.api_key && !isEncryptedSecret(api_ai.api_key)) {
     const encrypted_api_key = encryptSecret(api_ai.api_key);

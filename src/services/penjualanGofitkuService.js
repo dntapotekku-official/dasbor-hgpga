@@ -575,22 +575,20 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
   };
 }
 
-export async function getPenjualanGofitkuTopOutletChart({
+async function get_gofitku_chart_scope({
   account_uuid,
   role,
-}) {
+}, { include_outlet = true } = {}) {
   const accessible_outlet_uuids = await get_accessible_outlet_uuids({
     account_uuid,
     role,
   });
 
   if (accessible_outlet_uuids && !accessible_outlet_uuids.length) {
-    return {
-      chart_data: [],
-    };
+    return [];
   }
 
-  const outlet_insanku_rows = await prisma.tbl_outlet_insanku.findMany({
+  return prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
       ...(accessible_outlet_uuids
@@ -607,30 +605,22 @@ export async function getPenjualanGofitkuTopOutletChart({
     },
     select: {
       uuid: true,
-      uuid_outlet: true,
-      outlet: {
-        select: {
-          uuid: true,
-          name: true,
-        },
-      },
+      ...(include_outlet
+        ? {
+            uuid_outlet: true,
+            outlet: {
+              select: {
+                uuid: true,
+                name: true,
+              },
+            },
+          }
+        : {}),
     },
   });
-  const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
-  const sales_totals = relation_uuid_set.length
-    ? await prisma.tbl_penjualan_gofitku.groupBy({
-        by: ["uuid_outlet_insanku"],
-        where: {
-          deleted_at: null,
-          uuid_outlet_insanku: {
-            in: relation_uuid_set,
-          },
-        },
-        _sum: {
-          qty: true,
-        },
-      })
-    : [];
+}
+
+function build_top_outlet_chart(outlet_insanku_rows, sales_totals) {
   const relation_map = new Map(outlet_insanku_rows.map((item) => [item.uuid, item]));
   const outlet_chart_map = new Map();
   
@@ -660,69 +650,94 @@ export async function getPenjualanGofitkuTopOutletChart({
     outlet_chart.value += Number(total_row._sum.qty || 0);
   }
   
-  return {
-    chart_data: get_top_five_chart_rows(Array.from(outlet_chart_map.values())),
-  };
+  return get_top_five_chart_rows(Array.from(outlet_chart_map.values()));
 }
 
-export async function getPenjualanGofitkuTopProdukChart({
+function build_top_product_chart(product_totals) {
+  return get_top_five_chart_rows(
+    product_totals.map((item) => ({
+      key: item.name ?? "-",
+      label: item.name ?? "-",
+      value: Number(item._sum.qty || 0),
+    })),
+  );
+}
+
+async function get_outlet_sales_totals(relation_uuid_set) {
+  if (!relation_uuid_set.length) return [];
+
+  return prisma.tbl_penjualan_gofitku.groupBy({
+    by: ["uuid_outlet_insanku"],
+    where: {
+      deleted_at: null,
+      uuid_outlet_insanku: {
+        in: relation_uuid_set,
+      },
+    },
+    _sum: {
+      qty: true,
+    },
+  });
+}
+
+async function get_product_sales_totals(relation_uuid_set) {
+  if (!relation_uuid_set.length) return [];
+
+  return prisma.tbl_penjualan_gofitku.groupBy({
+    by: ["name"],
+    where: {
+      deleted_at: null,
+      uuid_outlet_insanku: {
+        in: relation_uuid_set,
+      },
+    },
+    _sum: {
+      qty: true,
+    },
+  });
+}
+
+export async function getPenjualanGofitkuDashboardCharts({
   account_uuid,
   role,
 }) {
-  const accessible_outlet_uuids = await get_accessible_outlet_uuids({
+  const outlet_insanku_rows = await get_gofitku_chart_scope({
     account_uuid,
     role,
   });
-
-  if (accessible_outlet_uuids && !accessible_outlet_uuids.length) {
-    return {
-      chart_data: [],
-    };
-  }
-
-  const outlet_insanku_rows = await prisma.tbl_outlet_insanku.findMany({
-    where: {
-      deleted_at: null,
-      ...(accessible_outlet_uuids
-        ? {
-            uuid_outlet: {
-              in: accessible_outlet_uuids,
-            },
-          }
-        : {}),
-      outlet: {
-        deleted_at: null,
-        excep: false,
-      },
-    },
-    select: {
-      uuid: true,
-    },
-  });
   const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
-  const product_totals = relation_uuid_set.length
-    ? await prisma.tbl_penjualan_gofitku.groupBy({
-        by: ["name"],
-        where: {
-          deleted_at: null,
-          uuid_outlet_insanku: {
-            in: relation_uuid_set,
-          },
-        },
-        _sum: {
-          qty: true,
-        },
-      })
-    : [];
-  
+  const [outlet_totals, product_totals] = await Promise.all([
+    get_outlet_sales_totals(relation_uuid_set),
+    get_product_sales_totals(relation_uuid_set),
+  ]);
+
   return {
-    chart_data: get_top_five_chart_rows(
-      product_totals.map((item) => ({
-        key: item.name ?? "-",
-        label: item.name ?? "-",
-        value: Number(item._sum.qty || 0),
-      })),
-    ),
+    outlet_chart_data: build_top_outlet_chart(outlet_insanku_rows, outlet_totals),
+    product_chart_data: build_top_product_chart(product_totals),
+  };
+}
+
+export async function getPenjualanGofitkuTopOutletChart(context) {
+  const outlet_insanku_rows = await get_gofitku_chart_scope(context);
+  const totals = await get_outlet_sales_totals(
+    outlet_insanku_rows.map((item) => item.uuid),
+  );
+
+  return {
+    chart_data: build_top_outlet_chart(outlet_insanku_rows, totals),
+  };
+}
+
+export async function getPenjualanGofitkuTopProdukChart(context) {
+  const outlet_insanku_rows = await get_gofitku_chart_scope(context, {
+    include_outlet: false,
+  });
+  const totals = await get_product_sales_totals(
+    outlet_insanku_rows.map((item) => item.uuid),
+  );
+
+  return {
+    chart_data: build_top_product_chart(totals),
   };
 }
 

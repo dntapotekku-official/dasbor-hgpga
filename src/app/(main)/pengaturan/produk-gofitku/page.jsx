@@ -131,8 +131,7 @@ export default function ProdukGofitkuPage() {
     const payload = await result.json();
 
     if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || "Gagal menyimpan data API AI");
-      return;
+      throw new Error(payload.message || "Gagal menambahkan produk GoFitKu.");
     }
 
     setProduk((current) => [payload.data, ...current]);
@@ -153,8 +152,7 @@ export default function ProdukGofitkuPage() {
     const payload = await result.json();
 
     if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || "Gagal menyimpan data API AI");
-      return;
+      throw new Error(payload.message || "Gagal memperbarui produk GoFitKu.");
     }
 
     setProduk((current) =>

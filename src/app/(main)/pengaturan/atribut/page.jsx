@@ -170,8 +170,7 @@ export default function AtributPage() {
     const payload = await result.json();
 
     if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || "Gagal menambahkan atribut.");
-      return;
+      throw new Error(payload.message || "Gagal menambahkan atribut.");
     }
 
     setAttributes((current) => sort_attributes_by_order([...current, payload.data]));
@@ -197,8 +196,7 @@ export default function AtributPage() {
     const payload = await result.json();
 
     if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || "Gagal memperbarui atribut.");
-      return;
+      throw new Error(payload.message || "Gagal memperbarui atribut.");
     }
 
     setAttributes((current) =>
@@ -287,6 +285,12 @@ export default function AtributPage() {
     try {
       await commit_attribute_update(pending_attribute_update);
       setPendingAttributeUpdate(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal memperbarui atribut.",
+      );
     } finally {
       setIsTypeChangePending(false);
     }

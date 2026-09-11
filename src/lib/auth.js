@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import {
   hasRoleAccess,
@@ -12,7 +13,7 @@ import {
   verifySessionToken,
 } from "@/lib/session";
 
-export async function getCurrentUserFromToken(token) {
+export const getCurrentUserFromToken = cache(async function get_current_user_from_token(token) {
   const token_session = token ? await verifySessionToken(token) : null;
 
   if (!token_session?.uuid) {
@@ -69,9 +70,9 @@ export async function getCurrentUserFromToken(token) {
       ? user.admin_menu_access.map((item) => item.key)
       : [],
   };
-}
+});
 
-export default async function getCurrentUser() {
+const getCurrentUser = cache(async function get_current_user() {
   const cookie_store = await cookies();
   const token = cookie_store.get(session_cookie_name)?.value;
 
@@ -80,7 +81,9 @@ export default async function getCurrentUser() {
   }
 
   return getCurrentUserFromToken(token);
-}
+});
+
+export default getCurrentUser;
 
 export async function requireSession() {
   const user_session = await getCurrentUser();

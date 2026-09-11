@@ -253,8 +253,7 @@ export default function TargetManagementCard({
     const payload = await result.json();
 
     if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || `Gagal menambahkan ${target_label}.`);
-      return;
+      throw new Error(payload.message || `Gagal menambahkan ${target_label}.`);
     }
 
     setTargetRows((current) => [
@@ -294,8 +293,7 @@ export default function TargetManagementCard({
     const payload = await result.json();
 
     if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || `Gagal memperbarui ${target_label}.`);
-      return;
+      throw new Error(payload.message || `Gagal memperbarui ${target_label}.`);
     }
 
     setTargetRows((current) =>

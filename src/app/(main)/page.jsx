@@ -43,8 +43,7 @@ import { getDashboardOverview } from "@/services/dashboardService";
 import { getKepuasanInternalChart } from "@/services/kepuasanInternalService";
 import { getNilaiTransaksiBasketSize } from "@/services/nilaiTransaksiBasketSizeService";
 import {
-  getPenjualanGofitkuTopOutletChart,
-  getPenjualanGofitkuTopProdukChart,
+  getPenjualanGofitkuDashboardCharts,
 } from "@/services/penjualanGofitkuService";
 import KepatuhanSopCctvDashboardCard from "./components/kepatuhan-sop-cctv-dashboard-card";
 import NilaiTransaksiBasketSizeDashboardCard from "./components/nilai-transaksi-basket-size-dashboard-card";
@@ -195,8 +194,7 @@ export default async function Page() {
     overview,
     kepuasan_internal,
     nilai_transaksi_basket_size,
-    outlet_chart,
-    product_chart,
+    gofitku_charts,
   ] = await Promise.all([
     getDashboardOverview(user),
     can_view_kepuasan
@@ -216,21 +214,11 @@ export default async function Page() {
     can_view_gofitku
       ? safely(
           () =>
-            getPenjualanGofitkuTopOutletChart({
+            getPenjualanGofitkuDashboardCharts({
               account_uuid: user?.uuid,
               role,
             }),
-          { chart_data: [] },
-        )
-      : null,
-    can_view_gofitku
-      ? safely(
-          () =>
-            getPenjualanGofitkuTopProdukChart({
-              account_uuid: user?.uuid,
-              role,
-            }),
-          { chart_data: [] },
+          { outlet_chart_data: [], product_chart_data: [] },
         )
       : null,
   ]);
@@ -244,8 +232,8 @@ export default async function Page() {
         value: Number(current_chart_item[item.key]) || 0,
       }))
     : [];
-  const outlet_chart_data = outlet_chart?.chart_data ?? [];
-  const product_chart_data = product_chart?.chart_data ?? [];
+  const outlet_chart_data = gofitku_charts?.outlet_chart_data ?? [];
+  const product_chart_data = gofitku_charts?.product_chart_data ?? [];
   const outlet_chart_height = Math.max(320, outlet_chart_data.length * 42);
   const user_display_name = user?.name || user?.username || "User";
   const quick_actions = menu_access_options

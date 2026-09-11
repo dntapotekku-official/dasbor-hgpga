@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 
 function create_empty_row() {
   return {
-    key: crypto.randomUUID(),
+    key: 0,
     uuid_insanku: "",
     target: "",
   };
@@ -35,6 +35,16 @@ export default function TargetBulkCreateModal({
   const [start_date, setStartDate] = useState("");
   const [end_date, setEndDate] = useState("");
   const [rows, setRows] = useState(() => [create_empty_row()]);
+
+  const add_row = () => {
+    setRows((current) => [
+      ...current,
+      {
+        ...create_empty_row(),
+        key: Math.max(...current.map((row) => row.key), -1) + 1,
+      },
+    ]);
+  };
 
   const update_row = (key, values) => {
     setRows((current) =>
@@ -144,7 +154,7 @@ export default function TargetBulkCreateModal({
                     variant="outline"
                     size="sm"
                     disabled={is_submitting || rows.length >= 100}
-                    onClick={() => setRows((current) => [...current, create_empty_row()])}
+                    onClick={add_row}
                   >
                     <PlusIcon className="size-4" />
                     Tambah Baris
