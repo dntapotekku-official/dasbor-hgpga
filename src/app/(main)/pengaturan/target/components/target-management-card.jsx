@@ -642,14 +642,6 @@ export default function TargetManagementCard({
                 <Trash2Icon className="size-4" />
                 Hapus Massal
               </Button>
-              <Button
-                type="button"
-                onClick={() => setIsCreateSheetOpen(true)}
-                className="flex-1 sm:flex-none"
-              >
-                <PlusIcon className="size-4" />
-                Tambah Target
-              </Button>
               {enable_bulk_create ? (
                 <Button
                   type="button"
@@ -660,6 +652,14 @@ export default function TargetManagementCard({
                   Tambah Massal
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                onClick={() => setIsCreateSheetOpen(true)}
+                className="flex-1 sm:flex-none"
+              >
+                <PlusIcon className="size-4" />
+                Tambah Target
+              </Button>
             </div>
           </div>
 
