@@ -1481,55 +1481,34 @@ export async function createTargetGofitku({
 }
 
 export async function bulkCreateTargetGofitku({
-  items,
+  target,
   start_date,
   end_date,
 }) {
   const parsed_start_date = parse_target_date(start_date);
   const parsed_end_date = parse_target_date(end_date);
+  const normalized_target = String(target ?? "").trim();
+  const parsed_target = Number(normalized_target);
 
   assert_valid_range(parsed_start_date, parsed_end_date);
 
-  if (!Array.isArray(items) || items.length === 0) {
-    throw new Error("Minimal satu target InsanKU wajib diisi.");
+  if (!normalized_target || !Number.isInteger(parsed_target) || parsed_target < 0) {
+    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
   }
 
-  if (items.length > 100) {
-    throw new Error("Maksimal 100 target dalam satu kali tambah massal.");
+  const { insanku_rows, insanku_by_uuid } = await get_target_insanku_maps();
+
+  if (!insanku_rows.length) {
+    throw new Error("Tidak ada InsanKU aktif yang dapat diberikan target.");
   }
 
-  const { insanku_by_uuid } = await get_target_insanku_maps();
-  const normalized_items = [];
-  const seen_insanku_uuids = new Set();
-
-  for (const item of items) {
-    const uuid_insanku = await assert_valid_insanku_uuid(
-      item?.uuid_insanku,
-      insanku_by_uuid,
-    );
-    const parsed_target = Number(item?.target);
-
-    if (seen_insanku_uuids.has(uuid_insanku)) {
-      throw new Error(
-        `InsanKU ${insanku_by_uuid.get(uuid_insanku)?.name ?? "terpilih"} dimasukkan lebih dari satu kali.`,
-      );
-    }
-
-    if (!Number.isInteger(parsed_target) || parsed_target < 0) {
-      throw new Error(
-        `Nilai target untuk ${insanku_by_uuid.get(uuid_insanku)?.name ?? "InsanKU"} harus berupa angka bulat nol atau lebih.`,
-      );
-    }
-
-    seen_insanku_uuids.add(uuid_insanku);
-    normalized_items.push({
-      uuid: randomUUID(),
-      uuid_insanku,
-      value: parsed_target,
-      start_date: parsed_start_date,
-      end_date: parsed_end_date,
-    });
-  }
+  const normalized_items = insanku_rows.map((item) => ({
+    uuid: randomUUID(),
+    uuid_insanku: item.uuid,
+    value: parsed_target,
+    start_date: parsed_start_date,
+    end_date: parsed_end_date,
+  }));
 
   const created_count = await prisma.$transaction(async (transaction) => {
     const overlapping_targets = await transaction.tbl_target_gofitku.findMany({
@@ -1564,8 +1543,14 @@ export async function bulkCreateTargetGofitku({
         ),
       ).sort((a, b) => a.localeCompare(b, "id-ID"));
 
+      const visible_names = names.slice(0, 10);
+      const remaining_count = names.length - visible_names.length;
+      const remaining_label = remaining_count > 0
+        ? `, dan ${remaining_count} InsanKU lainnya`
+        : "";
+
       throw new Error(
-        `Tambah massal dibatalkan karena range target bentrok untuk: ${names.join(", ")}.`,
+        `Tambah massal dibatalkan karena range target bentrok untuk: ${visible_names.join(", ")}${remaining_label}.`,
       );
     }
 

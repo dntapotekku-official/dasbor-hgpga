@@ -52,7 +52,7 @@ export const PUT = async (request) => {
       const data = await bulkCreateTargetGofitku({
         start_date: body?.start_date,
         end_date: body?.end_date,
-        items: body?.items,
+        target: body?.target,
       });
 
       return NextResponse.json(data);

@@ -33,7 +33,7 @@ Untuk membuat atau mereset superadmin, isi `ADMIN_USERNAME`, `ADMIN_PASSWORD`, d
 Menu **Pengaturan → Target → GoFitKu** menyediakan dua cara pengisian banyak data:
 
 - **Impor** menerima berkas `.xlsx` maksimal 10 MB dengan identitas InsanKU, nilai target, tanggal mulai, dan tanggal selesai.
-- **Tambah Massal** membuka form untuk menambahkan beberapa InsanKU dan nilai target sekaligus pada periode yang sama, tanpa berkas Excel.
+- **Tambah Massal** meminta satu range tanggal dan satu nilai target, lalu menerapkannya ke seluruh InsanKU aktif tanpa berkas Excel.
 
 Target disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
 

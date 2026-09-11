@@ -495,7 +495,7 @@ export default function TargetManagementCard({
     }
   };
 
-  const handle_bulk_create = async ({ start_date, end_date, items }) => {
+  const handle_bulk_create = async ({ start_date, end_date, target }) => {
     try {
       setIsBulkCreating(true);
 
@@ -508,7 +508,7 @@ export default function TargetManagementCard({
           action: "bulk_create",
           start_date,
           end_date,
-          items,
+          target,
         }),
       });
       const payload = await result.json();
@@ -823,8 +823,6 @@ export default function TargetManagementCard({
             <TargetBulkCreateModal
               open
               is_submitting={is_bulk_creating}
-              entity_options={entity_options}
-              entity_label={entity_label}
               on_open_change={setIsBulkCreateModalOpen}
               on_submit={handle_bulk_create}
             />
