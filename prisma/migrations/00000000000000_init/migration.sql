@@ -416,4 +416,3 @@ ALTER TABLE `tbl_nilai_magang` ADD CONSTRAINT `fk_nilai_magang_outlet` FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE `tbl_nilai_magang` ADD CONSTRAINT `fk_nilai_magang_insanku` FOREIGN KEY (`uuid_insanku`) REFERENCES `tbl_insanku`(`uuid`) ON DELETE SET NULL ON UPDATE CASCADE;
-
