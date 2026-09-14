@@ -5,32 +5,6 @@ import { promisify } from "node:util";
 
 import { prisma } from "@/lib/prisma";
 
-function parse_sale_price(value) {
-  const raw_value = String(value ?? "").trim();
-
-  if (!raw_value) {
-    throw new Error("Harga wajib diisi.");
-  }
-
-  const cleaned_value = raw_value.replace(/[^\d,.-]/g, "");
-  const normalized_value = cleaned_value.includes(",")
-    ? cleaned_value.replaceAll(".", "").replace(",", ".")
-    : /^\d{1,3}(\.\d{3})+$/.test(cleaned_value)
-      ? cleaned_value.replaceAll(".", "")
-      : cleaned_value;
-  const parsed_value = Number(normalized_value);
-
-  if (!Number.isFinite(parsed_value) || parsed_value < 0) {
-    throw new Error("Harga harus berupa angka nol atau lebih.");
-  }
-
-  return Math.round(parsed_value * 100) / 100;
-}
-
-function get_sale_revenue(sale) {
-  return Number(sale?.qty ?? 0) * Number(sale?.price ?? 0);
-}
-
 function get_date_boundaries(date_value) {
   const normalized_date = String(date_value ?? "").trim();
 
@@ -300,7 +274,6 @@ export async function getPenjualanGofitku({
           uuid_produk_gofitku: true,
           name: true,
           qty: true,
-          price: true,
           date: true,
         },
       })
@@ -318,8 +291,6 @@ export async function getPenjualanGofitku({
       name: relation.insanku?.name ?? "-",
       today_input: 0,
       monthly_total: 0,
-      today_revenue: 0,
-      monthly_revenue: 0,
       daily_totals: {},
       target: active_target_map.get(relation.uuid_insanku) ?? 0,
     });
@@ -331,10 +302,9 @@ export async function getPenjualanGofitku({
     if (!current_summary) {
       continue;
     }
-  
+
     current_summary.monthly_total += Number(sale.qty || 0);
-    current_summary.monthly_revenue += get_sale_revenue(sale);
-  
+
     const sale_day = new Date(sale.date).getUTCDate();
     current_summary.daily_totals[sale_day] =
       Number(current_summary.daily_totals[sale_day] || 0) + Number(sale.qty || 0);
@@ -346,9 +316,8 @@ export async function getPenjualanGofitku({
     if (!current_summary) {
       continue;
     }
-  
+
     current_summary.today_input += Number(sale.qty || 0);
-    current_summary.today_revenue += get_sale_revenue(sale);
   }
   
   const groups_map = new Map();
@@ -389,8 +358,6 @@ export async function getPenjualanGofitku({
       product_name: sale.name ?? "-",
       produk_uuid: sale.uuid_produk_gofitku ?? "",
       today_input: Number(sale.qty || 0),
-      price: Number(sale.price || 0),
-      subtotal: get_sale_revenue(sale),
       date: new Date(sale.date).toISOString().slice(0, 10),
     });
   }
@@ -697,28 +664,10 @@ async function get_product_sales_totals(relation_uuid_set) {
   });
 }
 
-export async function getPenjualanGofitkuDashboardCharts({
-  account_uuid,
-  role,
-}) {
+export async function getPenjualanGofitkuTopOutletChart() {
   const outlet_insanku_rows = await get_gofitku_chart_scope({
-    account_uuid,
-    role,
+    role: null,
   });
-  const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
-  const [outlet_totals, product_totals] = await Promise.all([
-    get_outlet_sales_totals(relation_uuid_set),
-    get_product_sales_totals(relation_uuid_set),
-  ]);
-
-  return {
-    outlet_chart_data: build_top_outlet_chart(outlet_insanku_rows, outlet_totals),
-    product_chart_data: build_top_product_chart(product_totals),
-  };
-}
-
-export async function getPenjualanGofitkuTopOutletChart(context) {
-  const outlet_insanku_rows = await get_gofitku_chart_scope(context);
   const totals = await get_outlet_sales_totals(
     outlet_insanku_rows.map((item) => item.uuid),
   );
@@ -766,7 +715,6 @@ export async function createPenjualanGofitku({
       product_name: String(entry?.product_name ?? "").trim(),
       date: String(entry?.date ?? "").trim(),
       sales_total: Number(entry?.sales_total ?? 0),
-      price: parse_sale_price(entry?.price),
     }))
     .filter((entry) => entry.employee_uuid && entry.date && entry.sales_total >= 0);
 
@@ -843,7 +791,6 @@ export async function createPenjualanGofitku({
           name: fallback_name,
           date,
           qty: Math.max(0, Math.trunc(entry.sales_total)),
-          price: entry.price,
         },
       });
     }),
@@ -863,7 +810,6 @@ export async function updatePenjualanGofitku({
   product_name,
   date,
   sales_total,
-  price,
   account_uuid,
   role,
 }) {
@@ -873,7 +819,6 @@ export async function updatePenjualanGofitku({
   const trimmed_produk_uuid = String(produk_uuid ?? "").trim();
   const trimmed_product_name = String(product_name ?? "").trim();
   const normalized_sales_total = Number(sales_total ?? 0);
-  const normalized_price = parse_sale_price(price);
 
   if (!trimmed_uuid) {
     throw new Error("UUID penjualan wajib diisi.");
@@ -961,7 +906,6 @@ export async function updatePenjualanGofitku({
       name: fallback_name,
       date: parsed_date,
       qty: Math.max(0, Math.trunc(normalized_sales_total)),
-      price: normalized_price,
     },
   });
 
@@ -1150,6 +1094,7 @@ async function bulkUpdateTargetDates({
   source_end_date,
   start_date,
   end_date,
+  target,
 }) {
   const parsed_source_start_date = parse_target_date(source_start_date, {
     label: "Tanggal mulai lama",
@@ -1163,9 +1108,15 @@ async function bulkUpdateTargetDates({
   const parsed_end_date = parse_target_date(end_date, {
     label: "Tanggal selesai baru",
   });
+  const normalized_target = String(target ?? "").trim();
+  const parsed_target = Number(normalized_target);
 
   assert_valid_range(parsed_source_start_date, parsed_source_end_date);
   assert_valid_range(parsed_start_date, parsed_end_date);
+
+  if (!normalized_target || !Number.isInteger(parsed_target) || parsed_target < 0) {
+    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
+  }
 
   const { insanku_by_uuid } = await get_target_insanku_maps();
 
@@ -1249,16 +1200,18 @@ async function bulkUpdateTargetDates({
       data: {
         start_date: parsed_start_date,
         end_date: parsed_end_date,
+        value: parsed_target,
       },
     });
 
     return {
       success: true,
-      message: `Tanggal target GoFitKu berhasil diperbarui untuk ${result.count} InsanKU.`,
+      message: `Tanggal dan target GoFitKu berhasil diperbarui untuk ${result.count} InsanKU.`,
       data: {
         updated_count: result.count,
         start_date: parsed_start_date.toISOString().slice(0, 10),
         end_date: parsed_end_date.toISOString().slice(0, 10),
+        target: parsed_target,
       },
     };
   });

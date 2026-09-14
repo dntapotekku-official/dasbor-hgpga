@@ -21,6 +21,7 @@ export default function GofitkuTab() {
       entity_name_key="insanku_name"
       entity_label="InsanKU"
       enable_bulk_create
+      enable_bulk_target_update
     />
   );
 }

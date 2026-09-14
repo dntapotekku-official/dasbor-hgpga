@@ -10,6 +10,7 @@ import {
   SearchIcon,
 } from "lucide-react";
 
+import { useAuth } from "@/components/auth-provider";
 import { getKepatuhanSopCctvFromDb } from "@/lib/kepatuhanSopCctvClient";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,11 +29,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { hasRoleAccess } from "@/lib/role";
 
 const default_outlet = { value: "semua-outlet", label: "Semua Outlet" };
 const format_number = (value) => Number(value || 0).toLocaleString("id-ID");
 
 export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true }) {
+  const { role } = useAuth();
+  const is_admin = hasRoleAccess(role, ["admin"]);
   const current_day_range = useMemo(() => {
     const today = new Date();
     const today_param = today.toISOString().slice(0, 10);
@@ -89,6 +93,10 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
     let is_active = true;
 
     const run = async () => {
+      if (!is_admin) {
+        return;
+      }
+
       try {
         const response = await fetch("/api/outlet", {
           method: "GET",
@@ -123,7 +131,7 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
     return () => {
       is_active = false;
     };
-  }, []);
+  }, [is_admin]);
 
   useEffect(() => {
     let is_active = true;
@@ -206,7 +214,8 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
+        {is_admin ? (
         <div className="w-full sm:w-auto">
           <div className="flex min-w-0 flex-col gap-2">
             <span className="text-xs font-medium text-muted-foreground">Outlet</span>
@@ -273,6 +282,7 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
             </DropdownMenu>
           </div>
         </div>
+        ) : null}
         {has_data ? (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex min-h-[120px] flex-col justify-center rounded-lg border border-blue-200 bg-blue-50 p-6">

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
 import {
   getAtributInsanku,
+  syncAtributInsanKuData,
   importAtributInsanKu,
   syncAtributInsanKuByNik,
   updateAtributInsanKu,
@@ -59,7 +60,24 @@ export const PATCH = async (request) => {
 
     const user_session = await getCurrentUser();
     const body = await request.json().catch(() => ({}));
+    if (body?.operation === "sync-data") {
+      const data = await syncAtributInsanKuData({
+        actor_role: user_session?.role,
+      });
+
+      return NextResponse.json(data);
+    }
+
     if (body?.operation === "sync-by-nik") {
+      const unauthorized_sync_response = await requireMenuAccess(
+        "atribut-insanku",
+        ["admin"],
+      );
+
+      if (unauthorized_sync_response) {
+        return unauthorized_sync_response;
+      }
+
       const data = await syncAtributInsanKuByNik({
         actor_role: user_session?.role,
       });
@@ -93,7 +111,7 @@ export const POST = async (request) => {
   try {
     const unauthorized_response = await requireMenuAccess(
       "atribut-insanku",
-      ["member"],
+      ["admin"],
     );
 
     if (unauthorized_response) {
@@ -106,7 +124,6 @@ export const POST = async (request) => {
       rows: body?.rows,
       active_tab: body?.active_tab,
       active_category: body?.active_category,
-      actor_uuid: user_session?.uuid,
       actor_role: user_session?.role,
     });
 

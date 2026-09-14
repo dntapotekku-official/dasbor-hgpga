@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
-import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteNilaiTransaksiDate,
   bulkUpdateNilaiTransaksiDate,
@@ -25,14 +25,19 @@ export async function GET(request) {
 
     const selected_date = request.nextUrl.searchParams.get("selected_date");
     const action = request.nextUrl.searchParams.get("action");
-    const user_session = await getCurrentUser();
-    const member_outlet_uuid =
-      user_session?.role === "member" ? user_session.uuid : undefined;
 
     if (action === "export") {
+      const unauthorized_export_response = await requireMenuAccess(
+        "nilai-transaksi-basket-size",
+        ["admin"],
+      );
+
+      if (unauthorized_export_response) {
+        return unauthorized_export_response;
+      }
+
       const { buffer, filename } = await exportNilaiTransaksiBasketSizeWorkbook({
         selected_date,
-        member_outlet_uuid,
       });
 
       return new NextResponse(new Uint8Array(buffer), {
@@ -46,7 +51,6 @@ export async function GET(request) {
 
     const data = await getNilaiTransaksiBasketSize({
       selected_date,
-      member_outlet_uuid,
     });
 
     return NextResponse.json({
@@ -65,17 +69,11 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const user_session = await getCurrentUser();
-
   return import_outlet_report(request, {
     import_handler: importNilaiTransaksi,
     menu_key: "nilai-transaksi-basket-size",
     temp_prefix: "nilai-transaksi",
-    fallback_roles: ["member"],
-    handler_payload: {
-      member_outlet_uuid:
-        user_session?.role === "member" ? user_session.uuid : undefined,
-    },
+    fallback_roles: ["admin"],
   });
 }
 

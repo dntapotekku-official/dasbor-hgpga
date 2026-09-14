@@ -272,8 +272,8 @@ export default function NilaiTransaksiPage() {
   const [deletingItem, setDeletingItem] = useState(null);
   const [bulkAction, setBulkAction] = useState(null);
   const [isMutating, setIsMutating] = useState(false);
-  const canImport = hasRoleAccess(role, ["member"]);
   const canManage = hasRoleAccess(role, ["admin"]);
+  const canImportExport = canManage;
   const activeMetricLabel =
     activeMetric === "nilai-transaksi" ? "Nilai Transaksi" : "Basket Size";
   const selectedPeriodRangeLabel = formatPeriodRangeLabel(
@@ -395,14 +395,49 @@ export default function NilaiTransaksiPage() {
     }),
     [rows],
   );
+  const highest_basket_size_by_category = useMemo(
+    () => outlet_category_slug_options.map((category) => {
+      const highest_row = rows
+        .filter((row) => row.category_key === category.value)
+        .reduce((highest, row) => {
+          if (
+            !highest
+            || Number(row.bs_current_month ?? 0) >
+              Number(highest.bs_current_month ?? 0)
+          ) {
+            return row;
+          }
+
+          return highest;
+        }, null);
+
+      return {
+        category_key: category.value,
+        category_label: category.label,
+        outlet_name: highest_row?.outlet_name ?? "-",
+        value: Number(highest_row?.bs_current_month ?? 0),
+      };
+    }),
+    [rows],
+  );
   const displayed_metrics = selectedOutlet !== "all"
     ? summarizeVisibleRows(filtered_outlet_rows)
     : (categoryMetrics[selectedCategory] ?? empty_metrics);
   const onImportButtonClick = () => {
+    if (!canImportExport) {
+      toast.error("Akun outlet tidak memiliki akses impor.");
+      return;
+    }
+
     setIsImportModalOpen(true);
   };
 
   const onExportButtonClick = async () => {
+    if (!canImportExport) {
+      toast.error("Akun outlet tidak memiliki akses ekspor.");
+      return;
+    }
+
     try {
       setIsExporting(true);
       const response = await fetch(
@@ -460,7 +495,7 @@ export default function NilaiTransaksiPage() {
 
   const onImportSubmit = async ({ import_date, file, import_type }) => {
     try {
-      if (!canImport) {
+      if (!canImportExport) {
         throw new Error("Akun tidak memiliki akses untuk mengimpor file Excel.");
       }
 
@@ -671,7 +706,11 @@ export default function NilaiTransaksiPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Nilai Transaksi & Basket Size"
-          description="Pantau nilai transaksi, basket size, pertumbuhan outlet, dan pencapaian target berdasarkan periode berjalan."
+          description={
+            canManage
+              ? "Pantau nilai transaksi, basket size, pertumbuhan outlet, dan pencapaian target berdasarkan periode berjalan."
+              : "Lihat nilai transaksi, basket size, dan pencapaian target untuk outlet Anda."
+          }
         />
       </div>
 
@@ -853,6 +892,31 @@ export default function NilaiTransaksiPage() {
                       value={`${formatDecimal(overallMetrics.bs_target_compare)}%`}
                     />
                   </div>
+                  <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950/30">
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      Basket Size Tertinggi per Kategori
+                    </p>
+                    <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                      {highest_basket_size_by_category.map((item) => (
+                        <div
+                          key={item.category_key}
+                          className="min-w-0 rounded-md bg-white/70 px-3 py-2 dark:bg-white/5"
+                        >
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            {item.category_label}
+                          </p>
+                          <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
+                            <span className="truncate font-medium text-blue-950 dark:text-blue-100">
+                              {item.outlet_name}
+                            </span>
+                            <span className="shrink-0 font-semibold text-blue-950 dark:text-blue-100">
+                              {formatDecimal(item.value)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -892,16 +956,18 @@ export default function NilaiTransaksiPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
-                <Button
-                  type="button"
-                  className="bg-emerald-600 text-white hover:bg-emerald-700"
-                  onClick={onExportButtonClick}
-                >
-                  <FileSpreadsheetIcon className="size-4" />
-                  {isExporting ? "Mengekspor..." : "Ekspor"}
-                </Button>
-              </div>
+              {canImportExport ? (
+                <div className="flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    onClick={onExportButtonClick}
+                  >
+                    <FileSpreadsheetIcon className="size-4" />
+                    {isExporting ? "Mengekspor..." : "Ekspor"}
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
             <TabsList className="w-full">
@@ -918,26 +984,28 @@ export default function NilaiTransaksiPage() {
                 <CardTitle>
                   {activeMetricLabel}
                 </CardTitle>
-                <Button
-                  type="button"
-                  className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                  onClick={onImportButtonClick}
-                >
-                  {isImporting ? (
-                    <>
-                      <LoaderCircleIcon className="size-4 animate-spin" />
-                      Mengimpor...
-                    </>
-                  ) : (
-                    <>
-                      <FileSpreadsheetIcon className="size-4" />
-                      Impor
-                    </>
-                  )}
-                </Button>
+                {canImportExport ? (
+                  <Button
+                    type="button"
+                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                    onClick={onImportButtonClick}
+                  >
+                    {isImporting ? (
+                      <>
+                        <LoaderCircleIcon className="size-4 animate-spin" />
+                        Mengimpor...
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheetIcon className="size-4" />
+                        Impor
+                      </>
+                    )}
+                  </Button>
+                ) : null}
               </CardHeader>
               <CardContent>
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 sm:w-[320px]">
                     <OptionDropdown
                       value={selectedOutlet}
@@ -1017,7 +1085,7 @@ export default function NilaiTransaksiPage() {
         </Tabs>
       </div>
 
-      {isImportModalOpen ? (
+      {canImportExport && isImportModalOpen ? (
         <ImportDataModal
           default_date={selectedDate}
           import_type={activeMetric}

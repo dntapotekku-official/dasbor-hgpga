@@ -3,25 +3,29 @@ import {
   getKepatuhanSopCCTVChart,
   syncKepatuhanSopCCTV,
 } from "@/services/kepatuhanSopCCTVService";
-import { requireMenuAccess } from "@/lib/auth";
+import getCurrentUser, { requireMenuAccess } from "@/lib/auth";
+import { normalizeRole } from "@/lib/role";
 
 export const GET = async (request) => {
   try {
     const unauthorized_response = await requireMenuAccess(
       ["dashboard", "kepatuhan-sop-cctv"],
+      ["member"],
     );
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
+    const user_session = await getCurrentUser();
+    const role = normalizeRole(user_session?.role);
     const { searchParams } = new URL(request.url);
     const outlet_id =
       searchParams.get("uuid_outlet") ?? searchParams.get("id_outlet") ?? undefined;
     const result = await getKepatuhanSopCCTVChart({
       tanggal_awal: searchParams.get("tanggal_awal") ?? undefined,
       tanggal_akhir: searchParams.get("tanggal_akhir") ?? undefined,
-      uuid_outlet: outlet_id,
+      uuid_outlet: role === "member" ? user_session?.uuid : outlet_id,
     });
 
     return NextResponse.json(

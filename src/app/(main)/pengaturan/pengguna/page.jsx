@@ -46,7 +46,7 @@ export default function PenggunaPage() {
       </div>
 
       <div className="px-4 lg:px-6">
-        <Tabs value={active_tab} onValueChange={handle_tab_change} className="gap-4">
+        <Tabs value={active_tab} onValueChange={handle_tab_change}>
           <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
             {Object.entries(tab_labels).map(([key, label]) => (
               <TabsTrigger key={key} value={key} className="min-w-max px-4 py-2">

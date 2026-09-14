@@ -123,7 +123,8 @@ export default function AtributInsanKuPage() {
   const [active_category, setActiveCategory] = useState("slip-gaji");
   const [active_tab, setActiveTab] = useState("aktif");
   const [can_edit_values, setCanEditValues] = useState(false);
-  const [is_member_view, setIsMemberView] = useState(false);
+  const [can_manage_attributes, setCanManageAttributes] = useState(false);
+  const [is_member_view, setIsMemberView] = useState(true);
   const [search, setSearch] = useState("");
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
@@ -137,6 +138,8 @@ export default function AtributInsanKuPage() {
   const [draft_attribute_filters, setDraftAttributeFilters] = useState({});
   const import_input_ref = useRef(null);
   const previous_cell_values_ref = useRef({});
+  const can_import_export = can_manage_attributes;
+  const can_sync_attributes = is_member_view || can_manage_attributes;
 
   const fetch_attributes = useCallback(async () => {
     const response = await fetch("/api/atribut-insanku", {
@@ -157,6 +160,7 @@ export default function AtributInsanKuPage() {
     setAttributeColumns(data?.attribute_columns ?? []);
     setEmployees(data?.rows ?? []);
     setCanEditValues(Boolean(data?.can_edit_values));
+    setCanManageAttributes(Boolean(data?.can_manage_attributes));
     setIsMemberView(Boolean(data?.is_member_view));
   }, [fetch_attributes]);
 
@@ -176,6 +180,7 @@ export default function AtributInsanKuPage() {
         setAttributeColumns(data?.attribute_columns ?? []);
         setEmployees(data?.rows ?? []);
         setCanEditValues(Boolean(data?.can_edit_values));
+        setCanManageAttributes(Boolean(data?.can_manage_attributes));
         setIsMemberView(Boolean(data?.is_member_view));
       } catch (error) {
         if (!is_active) {
@@ -261,7 +266,9 @@ export default function AtributInsanKuPage() {
       const response = await fetch("/api/atribut-insanku", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ operation: "sync-by-nik" }),
+        body: JSON.stringify({
+          operation: is_member_view ? "sync-data" : "sync-by-nik",
+        }),
       });
       const payload = await response.json();
 
@@ -307,10 +314,12 @@ export default function AtributInsanKuPage() {
           : String(value ?? "").trim() !== ""),
     );
 
-    const category_employees = employees.filter(
-      (employee) =>
-        employee.is_slip_gaji_account === (active_category === "slip-gaji"),
-    );
+    const category_employees = is_member_view
+      ? employees
+      : employees.filter(
+          (employee) =>
+            employee.is_slip_gaji_account === (active_category === "slip-gaji"),
+        );
 
     if (!keyword && !active_attribute_filters.length) {
       return category_employees;
@@ -370,6 +379,7 @@ export default function AtributInsanKuPage() {
     active_category,
     employees,
     filterable_attribute_columns,
+    is_member_view,
     search,
   ]);
 
@@ -385,11 +395,13 @@ export default function AtributInsanKuPage() {
 
   const export_employees = useMemo(
     () =>
-      employees.filter((employee) =>
-        employee.is_slip_gaji_account === (active_category === "slip-gaji") &&
-        (active_tab === "aktif" ? employee.is_active : !employee.is_active),
-      ),
-    [active_category, active_tab, employees],
+      is_member_view
+        ? employees
+        : employees.filter((employee) =>
+            employee.is_slip_gaji_account === (active_category === "slip-gaji") &&
+            (active_tab === "aktif" ? employee.is_active : !employee.is_active),
+          ),
+    [active_category, active_tab, employees, is_member_view],
   );
 
   const required_attribute_columns = useMemo(
@@ -444,8 +456,18 @@ export default function AtributInsanKuPage() {
   }, [attribute_columns]);
 
   const tab_employees = useMemo(
-    () => (active_tab === "aktif" ? active_employees : non_active_employees),
-    [active_employees, active_tab, non_active_employees],
+    () => is_member_view
+      ? filtered_employees
+      : active_tab === "aktif"
+        ? active_employees
+        : non_active_employees,
+    [
+      active_employees,
+      active_tab,
+      filtered_employees,
+      is_member_view,
+      non_active_employees,
+    ],
   );
 
   const sorted_employees = useMemo(() => {
@@ -509,6 +531,10 @@ export default function AtributInsanKuPage() {
     }
 
     try {
+      if (!can_import_export) {
+        throw new Error("Akun outlet tidak memiliki akses impor.");
+      }
+
       setIsImporting(true);
 
       if (!file.name.toLowerCase().endsWith(".xlsx")) {
@@ -616,6 +642,11 @@ export default function AtributInsanKuPage() {
   };
 
   const handle_export = async (export_scope) => {
+    if (!can_import_export) {
+      toast.error("Akun outlet tidak memiliki akses ekspor.");
+      return;
+    }
+
     const selected_employees =
       export_scope === "complete"
         ? complete_export_employees
@@ -929,26 +960,32 @@ export default function AtributInsanKuPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Atribut InsanKu"
-          description="Pantau kelengkapan atribut InsanKu."
+          description={
+            is_member_view
+              ? "Lihat atribut InsanKu yang terhubung dengan outlet Anda."
+              : "Pantau dan kelola kelengkapan atribut InsanKu."
+          }
         />
       </div>
       <div className="px-4 lg:px-6">
-        <div>
+        <div className="flex flex-col gap-6">
           <div
             className={
-              active_category === "non-slip-gaji"
-                ? "grid gap-3"
-                : "grid gap-3 md:grid-cols-2"
+              can_manage_attributes && active_category === "slip-gaji"
+                ? "grid gap-6 md:grid-cols-2"
+                : "grid gap-6"
             }
           >
             <div className="flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-900">
               <InfoIcon className="mt-0.5 size-4 shrink-0 text-sky-600" />
               <p className="text-sm leading-5">
-                Data atribut InsanKu diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja.
+                {is_member_view
+                  ? "Data atribut InsanKu outlet diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja."
+                  : "Data atribut InsanKu diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja."}
               </p>
             </div>
 
-            {active_category === "slip-gaji" ? (
+            {can_manage_attributes && active_category === "slip-gaji" ? (
               <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
                 <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
                 <p className="text-sm leading-5">
@@ -963,32 +1000,36 @@ export default function AtributInsanKuPage() {
             ) : null}
           </div>
 
-          <div className="mt-4 mb-4 grid gap-3 lg:grid-cols-2">
-            <Tabs value={active_category} onValueChange={handle_category_change}>
-              <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
-              <TabsTrigger value="slip-gaji" className="min-w-max flex-1 px-4 py-2">
-                InsanKu (Slip Gaji)
-                </TabsTrigger>
-                <TabsTrigger value="non-slip-gaji" className="min-w-max flex-1 px-4 py-2">
-                  InsanKu (Non Slip Gaji)
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          {can_manage_attributes ? (
+            <>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Tabs value={active_category} onValueChange={handle_category_change}>
+                  <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
+                  <TabsTrigger value="slip-gaji" className="min-w-max flex-1 px-4 py-2">
+                    InsanKu (Slip Gaji)
+                    </TabsTrigger>
+                    <TabsTrigger value="non-slip-gaji" className="min-w-max flex-1 px-4 py-2">
+                      InsanKu (Non Slip Gaji)
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
 
-            <Tabs value={active_tab} onValueChange={handle_tab_change}>
-              <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
-                <TabsTrigger value="aktif" className="min-w-max flex-1 px-4 py-2">
-                  Aktif
-                </TabsTrigger>
-                <TabsTrigger value="non-aktif" className="min-w-max flex-1 px-4 py-2">
-                  Non-Aktif
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+                <Tabs value={active_tab} onValueChange={handle_tab_change}>
+                  <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
+                    <TabsTrigger value="aktif" className="min-w-max flex-1 px-4 py-2">
+                      Aktif
+                    </TabsTrigger>
+                    <TabsTrigger value="non-aktif" className="min-w-max flex-1 px-4 py-2">
+                      Non-Aktif
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </>
+          ) : null}
 
           {attribute_summary_cards.length ? (
-            <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {attribute_summary_cards.map((summary, index) => (
                 <Card
                   key={summary.key}
@@ -1012,46 +1053,51 @@ export default function AtributInsanKuPage() {
           <CardHeader className="border-b">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
               <CardTitle className="min-w-0 flex-1">
-                {active_category === "non-slip-gaji"
-                  ? "Data Atribut InsanKu (Non Slip Gaji)"
-                  : "Data Atribut InsanKu (Slip Gaji)"}{" "}
-                {active_tab === "aktif" ? "Aktif" : "Non-Aktif"}
+                {is_member_view
+                  ? "Data Atribut InsanKu Outlet"
+                  : `${active_category === "non-slip-gaji"
+                      ? "Data Atribut InsanKu (Non Slip Gaji)"
+                      : "Data Atribut InsanKu (Slip Gaji)"} ${
+                      active_tab === "aktif" ? "Aktif" : "Non-Aktif"
+                    }`}
               </CardTitle>
-              <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
-                <Button
-                  type="button"
-                  onClick={() => import_input_ref.current?.click()}
-                  disabled={is_importing}
-                  className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                >
-                  {is_importing ? (
-                    <LoaderCircleIcon className="size-4 animate-spin" />
-                  ) : (
+              {can_import_export ? (
+                <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+                  <Button
+                    type="button"
+                    onClick={() => import_input_ref.current?.click()}
+                    disabled={is_importing}
+                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                  >
+                    {is_importing ? (
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                    ) : (
+                      <FileSpreadsheetIcon className="size-4" />
+                    )}
+                    Impor
+                  </Button>
+                  <Input
+                    ref={import_input_ref}
+                    type="file"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={handle_import}
+                    className="sr-only"
+                    tabIndex={-1}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                  >
                     <FileSpreadsheetIcon className="size-4" />
-                  )}
-                  Impor
-                </Button>
-                <Input
-                  ref={import_input_ref}
-                  type="file"
-                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={handle_import}
-                  className="sr-only"
-                  tabIndex={-1}
-                />
-                <Button
-                  type="button"
-                  onClick={() => setIsExportModalOpen(true)}
-                  className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                >
-                  <FileSpreadsheetIcon className="size-4" />
-                  Ekspor
-                </Button>
-              </div>
+                    Ekspor
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="relative w-full sm:max-w-sm">
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -1071,11 +1117,19 @@ export default function AtributInsanKuPage() {
                   <FilterIcon className="size-4" />
                   Filter Lanjutan
                 </Button>
-                {active_category === "slip-gaji" && !is_member_view ? (
+                {active_category === "slip-gaji" && can_sync_attributes ? (
                   <SyncActionButton
                     onConfirm={handle_sync_attributes}
-                    title="Konfirmasi sinkronisasi atribut InsanKu"
-                    description="Sistem juga akan mencocokkan NIK InsanKu Non Slip Gaji dengan Slip Gaji. Data atribut dengan NIK yang sama akan otomatis dioper ke akun Slip Gaji dan akun Non Slip Gaji dihapus permanen. Lanjutkan?"
+                    title={
+                      is_member_view
+                        ? "Konfirmasi sinkronisasi InsanKu outlet"
+                        : "Konfirmasi sinkronisasi atribut InsanKu"
+                    }
+                    description={
+                      is_member_view
+                        ? "Sistem akan memperbarui data InsanKu dan penempatan outlet. Lanjutkan?"
+                        : "Sistem juga akan mencocokkan NIK InsanKu Non Slip Gaji dengan Slip Gaji. Data atribut dengan NIK yang sama akan otomatis dioper ke akun Slip Gaji dan akun Non Slip Gaji dihapus permanen. Lanjutkan?"
+                    }
                     confirmLabel="Ya, sinkronkan atribut"
                     isPending={sync_status === "syncing"}
                     className="w-full sm:ml-auto sm:w-auto"

@@ -46,6 +46,19 @@ export function NavMain({ items }) {
     return is_active_group(item);
   };
 
+  const render_title = (item) => (
+    <span className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="min-w-0 whitespace-normal break-words leading-snug">
+        {item.title}
+      </span>
+      {item.badge ? (
+        <span className="shrink-0 rounded-full border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] leading-none font-semibold text-white/90">
+          {item.badge}
+        </span>
+      ) : null}
+    </span>
+  );
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-3 px-2">
@@ -66,9 +79,7 @@ export function NavMain({ items }) {
                     }
                   >
                     {item.icon}
-                    <span className="whitespace-normal break-words leading-snug">
-                      {item.title}
-                    </span>
+                    {render_title(item)}
                     <ChevronDownIcon
                       className={`ml-auto shrink-0 transition-transform ${
                         is_open_group(item) ? "rotate-180" : ""
@@ -86,9 +97,7 @@ export function NavMain({ items }) {
                             render={<Link href={child_item.url} />}
                           >
                             {child_item.icon ?? null}
-                            <span className="whitespace-normal break-words leading-snug">
-                              {child_item.title}
-                            </span>
+                            {render_title(child_item)}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
@@ -103,9 +112,7 @@ export function NavMain({ items }) {
                   render={<Link href={item.url} />}
                 >
                   {item.icon}
-                  <span className="whitespace-normal break-words leading-snug">
-                    {item.title}
-                  </span>
+                  {render_title(item)}
                 </SidebarMenuButton>
               )}
             </SidebarMenuItem>

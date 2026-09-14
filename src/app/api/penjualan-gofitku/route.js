@@ -47,9 +47,18 @@ export const GET = async (request) => {
     let data;
 
     if (is_export) {
+      const unauthorized_export_response = await requireMenuAccess(
+        "penjualan-gofitku",
+        ["admin"],
+      );
+
+      if (unauthorized_export_response) {
+        return unauthorized_export_response;
+      }
+
       data = await getPenjualanGofitkuExport(user_context);
     } else if (is_outlet_chart) {
-      data = await getPenjualanGofitkuTopOutletChart(user_context);
+      data = await getPenjualanGofitkuTopOutletChart();
     } else if (is_product_chart) {
       data = await getPenjualanGofitkuTopProdukChart(user_context);
     } else {
@@ -116,7 +125,6 @@ export const PATCH = async (request) => {
       product_name: body?.product_name,
       date: body?.date,
       sales_total: body?.sales_total,
-      price: body?.price,
       account_uuid: user_session?.uuid,
       role: user_session?.role,
     });

@@ -150,7 +150,6 @@ model tbl_penjualan_gofitku {
   name                String    @db.VarChar(30)
   date                DateTime
   qty                 Int       @default(0)
-  price               Decimal   @default(0) @db.Decimal(18, 2)
   created_at          DateTime  @default(now())
   updated_at          DateTime  @updatedAt
   deleted_at          DateTime?
@@ -253,7 +252,6 @@ model tbl_nilai_transaksi {
   @@index([uuid_outlet])
   @@index([date])
 }
-
 model tbl_basket_size {
   id          Int       @id @default(autoincrement())
   uuid        String    @unique @db.Char(36)

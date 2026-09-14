@@ -24,7 +24,7 @@ export async function scanNota({
     },
     prompt,
   );
-  const rendered_prompt = `${rendered_prompt_template}\n\nSetiap objek dalam array items wajib memiliki field \"price\" berupa angka harga satuan produk dari nota, tanpa simbol mata uang dan tanpa pemisah ribuan.`;
+  const rendered_prompt = rendered_prompt_template;
 
   const normalized_images = images
     .map((item, index) => ({

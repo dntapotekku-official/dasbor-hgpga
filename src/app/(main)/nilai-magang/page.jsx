@@ -334,7 +334,7 @@ export default function NilaiMagangPage() {
         />
       </div>
 
-      <div className="space-y-4 px-4 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {summary_cards.map((item) => (
             <SummaryCard key={item.label} {...item} />
@@ -346,7 +346,7 @@ export default function NilaiMagangPage() {
             <CardTitle>Data Nilai Rapor Mentee</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                 <div className="relative w-full xl:max-w-md">
                   <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />

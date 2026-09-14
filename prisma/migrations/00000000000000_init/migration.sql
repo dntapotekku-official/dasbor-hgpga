@@ -3,6 +3,10 @@ CREATE TABLE `tbl_outlet` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `uuid` CHAR(36) NOT NULL,
     `name` VARCHAR(100) NOT NULL,
+    `username` VARCHAR(100) NOT NULL,
+    `password` TEXT NULL,
+    `is_username_change` BOOLEAN NOT NULL DEFAULT false,
+    `is_password_change` BOOLEAN NOT NULL DEFAULT false,
     `category` ENUM('non_pariwisata', 'pariwisata', 'parsial') NOT NULL,
     `excep` BOOLEAN NOT NULL DEFAULT false,
     `is_skip_sync` BOOLEAN NOT NULL DEFAULT false,
@@ -11,6 +15,7 @@ CREATE TABLE `tbl_outlet` (
     `deleted_at` DATETIME(3) NULL,
 
     UNIQUE INDEX `tbl_outlet_uuid_key`(`uuid`),
+    UNIQUE INDEX `tbl_outlet_username_key`(`username`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -126,6 +131,7 @@ CREATE TABLE `tbl_penjualan_gofitku` (
     INDEX `tbl_penjualan_gofitku_uuid_outlet_insanku_idx`(`uuid_outlet_insanku`),
     INDEX `tbl_penjualan_gofitku_uuid_produk_gofitku_idx`(`uuid_produk_gofitku`),
     INDEX `tbl_penjualan_gofitku_date_idx`(`date`),
+    INDEX `tbl_penjualan_gofitku_uuid_outlet_insanku_date_deleted_at_idx`(`uuid_outlet_insanku`, `date`, `deleted_at`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -161,7 +167,7 @@ CREATE TABLE `tbl_api_ai` (
 CREATE TABLE `tbl_prompt` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `uuid` CHAR(36) NOT NULL,
-    `key` VARCHAR(100) NOT NULL,
+    `key` VARCHAR(20) NOT NULL,
     `prompt` TEXT NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
@@ -175,7 +181,7 @@ CREATE TABLE `tbl_prompt` (
 CREATE TABLE `tbl_target_gofitku` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `uuid` CHAR(36) NOT NULL,
-    `uuid_outlet` CHAR(36) NULL,
+    `uuid_insanku` CHAR(36) NULL,
     `value` INTEGER NOT NULL DEFAULT 0,
     `start_date` DATETIME(3) NOT NULL,
     `end_date` DATETIME(3) NULL,
@@ -184,6 +190,8 @@ CREATE TABLE `tbl_target_gofitku` (
     `deleted_at` DATETIME(3) NULL,
 
     UNIQUE INDEX `tbl_target_gofitku_uuid_key`(`uuid`),
+    INDEX `tbl_target_gofitku_uuid_insanku_idx`(`uuid_insanku`),
+    INDEX `idx_target_gofitku_insanku_period`(`uuid_insanku`, `start_date`, `end_date`, `deleted_at`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -318,7 +326,7 @@ CREATE TABLE `tbl_kolom_atribut` (
 CREATE TABLE `tbl_target_global` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `uuid` CHAR(36) NOT NULL,
-    `name` VARCHAR(100) NOT NULL,
+    `key` VARCHAR(100) NOT NULL,
     `value` DECIMAL(10, 2) NOT NULL DEFAULT 0,
     `start_date` DATETIME(3) NOT NULL,
     `end_date` DATETIME(3) NULL,
@@ -327,6 +335,7 @@ CREATE TABLE `tbl_target_global` (
     `deleted_at` DATETIME(3) NULL,
 
     UNIQUE INDEX `tbl_target_global_uuid_key`(`uuid`),
+    INDEX `tbl_target_global_key_idx`(`key`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -382,6 +391,9 @@ ALTER TABLE `tbl_penjualan_gofitku` ADD CONSTRAINT `fk_penjualan_gofitku_outlet_
 ALTER TABLE `tbl_penjualan_gofitku` ADD CONSTRAINT `fk_penjualan_gofitku_produk` FOREIGN KEY (`uuid_produk_gofitku`) REFERENCES `tbl_produk_gofitku`(`uuid`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `tbl_target_gofitku` ADD CONSTRAINT `fk_target_gofitku_insanku` FOREIGN KEY (`uuid_insanku`) REFERENCES `tbl_insanku`(`uuid`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `tbl_nilai_transaksi` ADD CONSTRAINT `fk_nilai_transaksi_outlet` FOREIGN KEY (`uuid_outlet`) REFERENCES `tbl_outlet`(`uuid`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -404,3 +416,4 @@ ALTER TABLE `tbl_nilai_magang` ADD CONSTRAINT `fk_nilai_magang_outlet` FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE `tbl_nilai_magang` ADD CONSTRAINT `fk_nilai_magang_insanku` FOREIGN KEY (`uuid_insanku`) REFERENCES `tbl_insanku`(`uuid`) ON DELETE SET NULL ON UPDATE CASCADE;
+

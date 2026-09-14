@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import {
-  BadgeDollarSignIcon,
   FileSpreadsheetIcon,
   LoaderCircleIcon,
+  PlusIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ChartBarLabel } from "@/components/charts/chart-bar-label";
 import RingkasanTab from "./components/ringkasan-tab-content";
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
-import CurrencyValue from "@/components/currency-value";
 import OptionDropdown from "@/components/option-dropdown";
 import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 import PageHeading from "@/components/page-heading";
@@ -23,23 +23,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const default_date = new Date().toISOString().split("T")[0];
 const DetailTab = dynamic(() => import("./components/detail-tab-content"));
 const SalesEntryModal = dynamic(() => import("./components/sales-entry-modal"));
-
-function format_month_label(date_value) {
-  const date = new Date(`${date_value}T00:00:00.000Z`);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Bulan terpilih";
-  }
-
-  return new Intl.DateTimeFormat("id-ID", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
+const default_date = new Date().toISOString().split("T")[0];
 
 export default function PenjualanGoFitKuPage() {
   const { role } = useAuth();
@@ -54,7 +40,6 @@ export default function PenjualanGoFitKuPage() {
           product_name: default_product?.label ?? "",
           date: default_date,
           sales_total: "",
-          price: "",
         },
       ],
       uploaded_images: [],
@@ -77,12 +62,15 @@ export default function PenjualanGoFitKuPage() {
       product_name: default_product?.label ?? "",
       date: selected_date,
       sales_total: "",
-      price: "",
     };
   }
 
   const [outlet_groups, setOutletGroups] = useState([]);
   const [produk_options, setProdukOptions] = useState([]);
+  const [chart_data, setChartData] = useState({
+    outlet_chart_data: [],
+    product_chart_data: [],
+  });
   const [active_tab, setActiveTab] = useState("ringkasan");
   const [selected_date, setSelectedDate] = useState(default_date);
   const [selected_kategori_filter, setSelectedKategoriFilter] = useState("all");
@@ -129,16 +117,41 @@ export default function PenjualanGoFitKuPage() {
     is_admin && resolved_outlet_filter !== "all"
       ? category_filtered_outlet_groups.filter((group) => group.uuid === resolved_outlet_filter)
       : category_filtered_outlet_groups;
-  const current_month_sales_total = filtered_outlet_groups.reduce(
-    (group_total, group) =>
-      group_total +
-      (group.rows ?? []).reduce(
-        (row_total, row) => row_total + Number(row.monthly_revenue ?? 0),
-        0,
-      ),
-    0,
+  const outlet_active_group = !is_admin ? filtered_outlet_groups[0] : null;
+  const outlet_chart_height = Math.max(
+    320,
+    chart_data.outlet_chart_data.length * 42,
   );
-  const selected_month_label = format_month_label(selected_date);
+
+  const load_sales_charts = async () => {
+    const [outlet_chart_result, product_chart_result] = await Promise.all([
+      fetch("/api/penjualan-gofitku?outlet_chart=true"),
+      fetch("/api/penjualan-gofitku?product_chart=true"),
+    ]);
+    const [outlet_chart_payload, product_chart_payload] = await Promise.all([
+      outlet_chart_result.json(),
+      product_chart_result.json(),
+    ]);
+
+    if (!outlet_chart_result.ok || !outlet_chart_payload.success) {
+      throw new Error(
+        outlet_chart_payload.message ||
+          "Gagal mengambil statistik outlet GoFitKu.",
+      );
+    }
+
+    if (!product_chart_result.ok || !product_chart_payload.success) {
+      throw new Error(
+        product_chart_payload.message ||
+          "Gagal mengambil statistik produk GoFitKu.",
+      );
+    }
+
+    setChartData({
+      outlet_chart_data: outlet_chart_payload.data?.chart_data ?? [],
+      product_chart_data: product_chart_payload.data?.chart_data ?? [],
+    });
+  };
 
   useEffect(() => {
     let should_ignore = false;
@@ -180,6 +193,7 @@ export default function PenjualanGoFitKuPage() {
 
         setProdukOptions(next_produk_options);
         setOutletGroups(next_outlet_groups);
+        await load_sales_charts();
       } catch (error) {
         if (!should_ignore) {
           toast.error(
@@ -246,6 +260,15 @@ export default function PenjualanGoFitKuPage() {
     });
   };
 
+  const handle_open_add_modal = () => {
+    if (!outlet_active_group) {
+      toast.error("Outlet belum tersedia untuk akun ini.");
+      return;
+    }
+
+    open_add_modal(outlet_active_group);
+  };
+
   const close_add_modal = () => {
     setActiveOutlet(null);
     setSalesForm(get_initial_sales_form(null, default_product));
@@ -256,7 +279,6 @@ export default function PenjualanGoFitKuPage() {
     setEditingRow({
       ...row,
       today_input: String(row.today_input ?? 0),
-      price: String(row.price ?? 0),
     });
   };
 
@@ -282,11 +304,6 @@ export default function PenjualanGoFitKuPage() {
       return;
     }
 
-    if (sales_form.scanned_entries.some((entry) => !String(entry.price ?? "").trim())) {
-      toast.error("Harga wajib diisi untuk setiap entri.");
-      return;
-    }
-
     const valid_entries = sales_form.scanned_entries
       .map((entry) => ({
         ...entry,
@@ -304,7 +321,6 @@ export default function PenjualanGoFitKuPage() {
           product_name: selected_product?.label ?? entry.product_name ?? "",
           date: entry.date,
           sales_total: entry.sales_total,
-          price: entry.price,
         };
       });
 
@@ -336,6 +352,7 @@ export default function PenjualanGoFitKuPage() {
         active_outlet.uuid,
         selected_date,
       );
+      await load_sales_charts();
 
       toast.success(payload.message || "Penjualan GoFitKu berhasil disimpan.");
       close_add_modal();
@@ -372,7 +389,6 @@ export default function PenjualanGoFitKuPage() {
         product_name: selected_product?.label ?? next_row.product_name ?? "",
         date: next_row.date,
         sales_total: next_row.today_input,
-        price: next_row.price,
       }),
     });
     const payload = await result.json();
@@ -385,6 +401,7 @@ export default function PenjualanGoFitKuPage() {
       editing_outlet.uuid,
       selected_date,
     );
+    await load_sales_charts();
 
     toast.success(payload.message || "Penjualan GoFitKu berhasil diperbarui.");
   };
@@ -417,6 +434,7 @@ export default function PenjualanGoFitKuPage() {
         deleting_outlet.uuid,
         selected_date,
       );
+      await load_sales_charts();
 
       toast.success(payload.message || "Penjualan GoFitKu berhasil dihapus.");
       close_delete_dialog();
@@ -521,9 +539,6 @@ export default function PenjualanGoFitKuPage() {
               String(scan_group?.tanggal ?? "").trim() ||
               selected_date,
             sales_total: String(item?.qty ?? 0),
-            price: String(
-              item?.price ?? item?.harga ?? item?.harga_satuan ?? "",
-            ),
           };
         });
       });
@@ -686,7 +701,11 @@ export default function PenjualanGoFitKuPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Penjualan GoFitKu"
-          description="Input harian yang cepat, hasil scan bisa diedit, lalu simpan."
+          description={
+            is_admin
+              ? "Pantau dan kelola input penjualan GoFitKu seluruh outlet."
+              : "Input penjualan GoFitKu harian untuk outlet Anda."
+          }
         />
       </div>
 
@@ -696,8 +715,45 @@ export default function PenjualanGoFitKuPage() {
             <LoaderCircleIcon className="size-5 animate-spin" />
           </div>
         ) : (
-          <Tabs value={active_tab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6">
+            <Card>
+              <div className="grid divide-y xl:grid-cols-2 xl:divide-x xl:divide-y-0">
+                <ChartBarLabel
+                  renderCard={false}
+                  title="Top 5 Outlet"
+                  description="Akumulasi penjualan tertinggi per outlet."
+                  data={chart_data.outlet_chart_data}
+                  showLegend={false}
+                  icon={
+                    <FileSpreadsheetIcon className="size-5 text-rose-700" />
+                  }
+                  chartClassName="w-full"
+                  chartStyle={{ minHeight: `${outlet_chart_height}px` }}
+                  emptyClassName="min-h-[320px]"
+                  emptyMessage="Diagram penjualan outlet belum tersedia."
+                />
+                <ChartBarLabel
+                  renderCard={false}
+                  title="Top 5 Produk GoFitKu"
+                  description={
+                    is_admin
+                      ? "Produk dengan total penjualan tertinggi."
+                      : "Produk dengan total penjualan tertinggi di outlet Anda."
+                  }
+                  data={chart_data.product_chart_data}
+                  showLegend={false}
+                  icon={
+                    <FileSpreadsheetIcon className="size-5 text-rose-700" />
+                  }
+                  chartClassName="w-full"
+                  chartStyle={{ minHeight: "320px" }}
+                  emptyClassName="min-h-[320px]"
+                  emptyMessage="Diagram penjualan produk belum tersedia."
+                />
+              </div>
+            </Card>
+
+            <Tabs value={active_tab} onValueChange={setActiveTab} className="w-full">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                   {is_admin ? (
@@ -750,16 +806,19 @@ export default function PenjualanGoFitKuPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    onClick={handle_export_sales}
-                    className="bg-emerald-600 text-white hover:bg-emerald-700"
-                  >
-                    <FileSpreadsheetIcon className="size-4" />
-                    Ekspor
-                  </Button>
-                </div>
+                {!is_admin ? (
+                  <div className="flex justify-end sm:items-end">
+                    <Button
+                      type="button"
+                      onClick={handle_open_add_modal}
+                      disabled={!outlet_active_group}
+                      className="w-full shrink-0 sm:w-auto"
+                    >
+                      <PlusIcon className="size-4" />
+                      Tambah Penjualan
+                    </Button>
+                  </div>
+                ) : null}
               </div>
 
               <TabsList className="w-full">
@@ -771,52 +830,44 @@ export default function PenjualanGoFitKuPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <Card className="border-emerald-200 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-50">
-                <CardContent className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium opacity-75">
-                      Total Penjualan Bulan Berjalan
-                    </p>
-                    <p className="mt-1 text-xs capitalize opacity-70">
-                      {selected_month_label}
-                    </p>
-                    <CurrencyValue
-                      value={current_month_sales_total}
-                      className="mt-2 font-heading text-2xl font-bold"
-                    />
-                  </div>
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-100 p-3 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-300">
-                    <BadgeDollarSignIcon className="size-5" />
-                  </div>
-                </CardContent>
-              </Card>
-
               <Card className="gap-0 border-t-2 border-t-primary/70">
-                <CardHeader className="border-b">
+                <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle>
                     {active_tab === "ringkasan" ? "Ringkasan" : "Detail"}
                   </CardTitle>
+                  {is_admin && active_tab === "ringkasan" ? (
+                    <Button
+                      type="button"
+                      onClick={handle_export_sales}
+                      className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                    >
+                      <FileSpreadsheetIcon className="size-4" />
+                      Ekspor
+                    </Button>
+                  ) : null}
                 </CardHeader>
 
                 <CardContent className="space-y-5">
                   <TabsContent value="ringkasan">
                   <RingkasanTab
                       outlet_groups={filtered_outlet_groups}
+                      is_outlet_view={!is_admin}
                     />
                   </TabsContent>
 
                   <TabsContent value="detail">
                   <DetailTab
                       outlet_groups={filtered_outlet_groups}
-                      on_add_sales={open_add_modal}
+                      is_outlet_view={!is_admin}
+                      on_add_sale={open_add_modal}
                       on_edit_row={open_edit_modal}
                       on_delete_row={open_delete_dialog}
                     />
                   </TabsContent>
                 </CardContent>
               </Card>
-            </div>
-          </Tabs>
+            </Tabs>
+          </div>
         )}
       </div>
 
@@ -886,14 +937,6 @@ export default function PenjualanGoFitKuPage() {
             min: "0",
             step: "1",
             placeholder: "Masukkan jumlah",
-          },
-          {
-            key: "price",
-            label: "Harga Satuan",
-            type: "currency",
-            placeholder: "Masukkan harga",
-            helper: "Nilai rupiah otomatis menggunakan pemisah ribuan.",
-            required: true,
           },
         ]}
         on_save={handle_update_row}

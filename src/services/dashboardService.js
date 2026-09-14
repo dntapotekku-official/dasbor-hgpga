@@ -64,16 +64,6 @@ async function get_member_overview(user, period) {
                     atribut: { select: { type: true } },
                   },
                 },
-                nilai_magang: {
-                  where: {
-                    uuid_outlet: user.uuid,
-                    deleted_at: null,
-                    date: { gte: period.start, lt: period.end },
-                  },
-                  orderBy: { updated_at: "desc" },
-                  take: 1,
-                  select: { value: true },
-                },
               },
             },
           },
@@ -106,14 +96,6 @@ async function get_member_overview(user, period) {
     ? Math.round((filled_attribute_count / total_required_attributes) * 100)
     : 100;
   const monthly_sales = Number(monthly_sales_result._sum.qty ?? 0);
-  const internship_scores = employees
-    .map((employee) => employee.nilai_magang?.[0]?.value)
-    .filter((value) => value != null)
-    .map(Number);
-  const internship_score = internship_scores.length
-    ? internship_scores.reduce((total, value) => total + value, 0) /
-      internship_scores.length
-    : null;
   const notices = [];
 
   if (!employees.length) {
@@ -153,18 +135,6 @@ async function get_member_overview(user, period) {
         value: `${attribute_percentage}%`,
         caption: `${filled_attribute_count} dari ${total_required_attributes} atribut`,
         tone: attribute_percentage === 100 ? "emerald" : "amber",
-      },
-      {
-        key: "internship",
-        label: "Nilai Magang",
-        value:
-          internship_score == null
-            ? "—"
-            : Number(internship_score).toLocaleString("id-ID", {
-                maximumFractionDigits: 2,
-              }),
-        caption: internship_score == null ? "Belum ada nilai" : "Rata-rata bulan ini",
-        tone: "violet",
       },
       {
         key: "sales",
