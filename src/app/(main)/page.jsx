@@ -2,23 +2,18 @@ import Link from "next/link";
 import {
   ArrowRightIcon,
   BadgeDollarSignIcon,
-  BotMessageSquareIcon,
   Building2Icon,
   CalendarDaysIcon,
   ChartNoAxesCombinedIcon,
   CheckCircle2Icon,
   CircleAlertIcon,
   ClipboardCheckIcon,
-  Columns3Icon,
-  CrosshairIcon,
   IdCardIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   PieChartIcon,
-  PackageIcon,
   ShieldCheckIcon,
   ShoppingBasketIcon,
-  StoreIcon,
   UserRoundCogIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -36,14 +31,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import getCurrentUser from "@/lib/auth";
-import { canAccessMenu, menu_access_options } from "@/lib/menu-access";
+import { canAccessMenu } from "@/lib/menu-access";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { normalizeRole } from "@/lib/role";
 import { getDashboardOverview } from "@/services/dashboardService";
 import { getKepuasanInternalChart } from "@/services/kepuasanInternalService";
 import { getNilaiTransaksiBasketSize } from "@/services/nilaiTransaksiBasketSizeService";
 import {
-  getPenjualanGofitkuDashboardCharts,
+  getPenjualanGofitkuTopOutletChart,
+  getPenjualanGofitkuTopProdukChart,
 } from "@/services/penjualanGofitkuService";
 import KepatuhanSopCctvDashboardCard from "./components/kepatuhan-sop-cctv-dashboard-card";
 import NilaiTransaksiBasketSizeDashboardCard from "./components/nilai-transaksi-basket-size-dashboard-card";
@@ -52,19 +48,19 @@ const ROLE_META = {
   member: {
     label: "Outlet",
     description:
-      "Pantau InsanKu, kelengkapan data, dan performa outlet dalam satu tempat.",
+      "Lihat ringkasan data InsanKu dan performa outlet Anda dalam satu tempat.",
     icon: IdCardIcon,
   },
   admin: {
     label: "Admin",
     description:
-      "Lihat ringkasan data dan menu yang dapat Anda kelola.",
+      "Pantau ringkasan operasional dan menu yang menjadi kewenangan Anda.",
     icon: ShieldCheckIcon,
   },
   superadmin: {
     label: "Superadmin",
     description:
-      "Lihat ringkasan data dan pengaturan sistem secara menyeluruh.",
+      "Pantau ringkasan operasional dan pengaturan sistem secara menyeluruh.",
     icon: KeyRoundIcon,
   },
 };
@@ -100,29 +96,6 @@ const KPI_TONES = {
     card: "border-rose-200 bg-rose-50/80 text-rose-950 dark:border-rose-900 dark:bg-rose-950/35 dark:text-rose-50",
     icon: "border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-800 dark:bg-rose-900/70 dark:text-rose-300",
   },
-};
-
-const ACTION_ICONS = {
-  "kepuasan-internal": PieChartIcon,
-  "kepatuhan-sop-cctv": ClipboardCheckIcon,
-  "penjualan-gofitku": ShoppingBasketIcon,
-  "nilai-transaksi-basket-size": BadgeDollarSignIcon,
-  "nilai-magang": ChartNoAxesCombinedIcon,
-  "atribut-insanku": IdCardIcon,
-  "pengaturan-pengguna": UserRoundCogIcon,
-  "pengaturan-outlet": StoreIcon,
-  "pengaturan-kunjungan": UsersRoundIcon,
-  "pengaturan-produk-gofitku": PackageIcon,
-  "pengaturan-target": CrosshairIcon,
-  "pengaturan-atribut": Columns3Icon,
-  "pengaturan-api-ai": BotMessageSquareIcon,
-};
-
-const FALLBACK_ROLES = {
-  dashboard: ["member"],
-  "penjualan-gofitku": ["member"],
-  "nilai-transaksi-basket-size": ["member"],
-  "atribut-insanku": ["member"],
 };
 
 async function safely(load, fallback) {
@@ -168,6 +141,14 @@ function SectionHeading({ title, description }) {
   );
 }
 
+function DashboardSection({ children, className = "space-y-6" }) {
+  return (
+    <section className={`border-t pt-4 ${className}`}>
+      {children}
+    </section>
+  );
+}
+
 export default async function Page() {
   await connection();
 
@@ -179,7 +160,11 @@ export default async function Page() {
   const current_year = String(today.getFullYear());
   const current_month = `${current_year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const can_view_kepuasan = canAccessMenu(user, "kepuasan-internal");
-  const can_view_cctv = canAccessMenu(user, "kepatuhan-sop-cctv");
+  const can_view_cctv = canAccessMenu(
+    user,
+    "kepatuhan-sop-cctv",
+    ["member"],
+  );
   const can_view_gofitku = canAccessMenu(
     user,
     "penjualan-gofitku",
@@ -194,7 +179,8 @@ export default async function Page() {
     overview,
     kepuasan_internal,
     nilai_transaksi_basket_size,
-    gofitku_charts,
+    gofitku_outlet_chart,
+    gofitku_product_chart,
   ] = await Promise.all([
     getDashboardOverview(user),
     can_view_kepuasan
@@ -204,21 +190,25 @@ export default async function Page() {
         )
       : null,
     can_view_ntbs
-      ? safely(() => getNilaiTransaksiBasketSize({
-          member_outlet_uuid: role === "member" ? user?.uuid : undefined,
-        }), {
+      ? safely(() => getNilaiTransaksiBasketSize(), {
           rows: [],
           overall_metrics: {},
         })
       : null,
     can_view_gofitku
       ? safely(
+          () => getPenjualanGofitkuTopOutletChart(),
+          { chart_data: [] },
+        )
+      : null,
+    can_view_gofitku
+      ? safely(
           () =>
-            getPenjualanGofitkuDashboardCharts({
+            getPenjualanGofitkuTopProdukChart({
               account_uuid: user?.uuid,
               role,
             }),
-          { outlet_chart_data: [], product_chart_data: [] },
+          { chart_data: [] },
         )
       : null,
   ]);
@@ -232,26 +222,10 @@ export default async function Page() {
         value: Number(current_chart_item[item.key]) || 0,
       }))
     : [];
-  const outlet_chart_data = gofitku_charts?.outlet_chart_data ?? [];
-  const product_chart_data = gofitku_charts?.product_chart_data ?? [];
+  const outlet_chart_data = gofitku_outlet_chart?.chart_data ?? [];
+  const product_chart_data = gofitku_product_chart?.chart_data ?? [];
   const outlet_chart_height = Math.max(320, outlet_chart_data.length * 42);
   const user_display_name = user?.name || user?.username || "User";
-  const quick_actions = menu_access_options
-    .filter((item) => item.value !== "dashboard")
-    .filter((item) =>
-      canAccessMenu(user, item.value, FALLBACK_ROLES[item.value] ?? []),
-    )
-    .sort((first, second) => {
-      if (role === "member") {
-        return 0;
-      }
-
-      const first_priority = first.value.startsWith("pengaturan-") ? 0 : 1;
-      const second_priority = second.value.startsWith("pengaturan-") ? 0 : 1;
-
-      return first_priority - second_priority;
-    })
-    .slice(0, 6);
   const highest_nilai_transaksi_by_category = outlet_category_slug_options.map(
     (category) => {
       const row = (nilai_transaksi_basket_size?.rows ?? [])
@@ -275,12 +249,38 @@ export default async function Page() {
       };
     },
   );
+  const highest_basket_size_by_category = outlet_category_slug_options.map(
+    (category) => {
+      const row = (nilai_transaksi_basket_size?.rows ?? [])
+        .filter((item) => item.category_key === category.value)
+        .reduce((highest, item) => {
+          if (
+            !highest ||
+            Number(item.bs_current_month ?? 0) >
+              Number(highest.bs_current_month ?? 0)
+          ) {
+            return item;
+          }
+
+          return highest;
+        }, null);
+
+      return {
+        category_key: category.value,
+        category_label: category.label,
+        outlet_name: row?.outlet_name ?? "-",
+        value: Number(row?.bs_current_month ?? 0),
+      };
+    },
+  );
   const formatted_date = new Intl.DateTimeFormat("id-ID", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(today);
+  const summary_grid_columns =
+    overview.stats.length === 3 ? "xl:grid-cols-3" : "xl:grid-cols-4";
   const show_operational_section =
     can_view_kepuasan || can_view_cctv || can_view_gofitku || can_view_ntbs;
 
@@ -308,19 +308,23 @@ export default async function Page() {
         </div>
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-6">
         <SectionHeading
           title="Ringkasan"
-          description="Data terbaru yang perlu Anda ketahui."
+          description={
+            role === "member"
+              ? "Kondisi terbaru dari outlet Anda."
+              : "Ringkasan terbaru dari data operasional."
+          }
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={`grid gap-4 sm:grid-cols-2 ${summary_grid_columns}`}>
           {overview.stats.map((item) => (
             <KpiCard key={item.key} item={item} />
           ))}
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <section>
         <Card className="h-full gap-0">
           <CardHeader className="border-b bg-muted/30">
             <div className="flex items-start gap-3">
@@ -362,116 +366,17 @@ export default async function Page() {
             ))}
           </CardContent>
         </Card>
-
-        <Card className="h-full gap-0">
-          <CardHeader className="border-b bg-muted/30">
-            <CardTitle>
-              {role === "member" ? "Profil Singkat" : "Akses Cepat"}
-            </CardTitle>
-            <CardDescription>
-              {role === "member"
-                ? "Informasi akun dan penempatan Anda."
-                : "Buka menu pengelolaan yang paling sering digunakan."}
-            </CardDescription>
-          </CardHeader>
-          {role === "member" ? (
-            <CardContent className="space-y-4 p-4">
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-xl border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Jenis Akun</p>
-                  <p className="mt-1 font-semibold">
-                    {overview.profile.account_type}
-                  </p>
-                </div>
-                <div className="rounded-xl border bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Username</p>
-                  <p className="mt-1 font-semibold">
-                    {overview.profile.username || "Belum tersedia"}
-                  </p>
-                </div>
-              </div>
-              {canAccessMenu(user, "atribut-insanku", ["member"]) ? (
-                <Link
-                  href="/atribut-insanku"
-                  className={buttonVariants({
-                    variant: "outline",
-                    className: "w-full",
-                  })}
-                >
-                  Lihat Atribut InsanKu
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
-              ) : null}
-            </CardContent>
-          ) : (
-            <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
-              {quick_actions.length ? (
-                quick_actions.slice(0, 4).map((action) => {
-                  const Icon =
-                    ACTION_ICONS[action.value] ?? LayoutDashboardIcon;
-
-                  return (
-                    <Link
-                      key={action.value}
-                      href={action.path}
-                      className="group flex items-center gap-3 rounded-xl border bg-background p-3 transition-colors hover:border-primary/30 hover:bg-accent"
-                    >
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Icon className="size-4" />
-                      </div>
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                        {action.label}
-                      </span>
-                      <ArrowRightIcon className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                    </Link>
-                  );
-                })
-              ) : (
-                <p className="p-3 text-sm text-muted-foreground">
-                  Belum ada menu pengelolaan tambahan.
-                </p>
-              )}
-            </CardContent>
-          )}
-        </Card>
       </section>
 
-      {role === "member" && quick_actions.length ? (
-        <section className="space-y-4">
-          <SectionHeading
-            title="Akses Cepat"
-            description="Buka aktivitas utama Anda tanpa mencari menu di sidebar."
-          />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {quick_actions.map((action) => {
-              const Icon = ACTION_ICONS[action.value] ?? LayoutDashboardIcon;
-
-              return (
-                <Link
-                  key={action.value}
-                  href={action.path}
-                  className="group flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
-                >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="size-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{action.label}</p>
-                    <p className="text-xs text-muted-foreground">Buka menu</p>
-                  </div>
-                  <ArrowRightIcon className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
       {show_operational_section ? (
-        <section className="space-y-4">
+        <DashboardSection>
           <SectionHeading
             title="Statistik"
-            description="Grafik dan angka terbaru sesuai akses Anda."
+            description={
+              role === "member"
+                ? "Grafik terbaru dari outlet Anda dan data pembanding yang tersedia."
+                : "Grafik dan angka terbaru sesuai kewenangan menu Anda."
+            }
           />
 
           {can_view_kepuasan || can_view_cctv ? (
@@ -516,12 +421,8 @@ export default async function Page() {
               <div className="grid divide-y xl:grid-cols-2 xl:divide-x xl:divide-y-0">
                 <ChartBarLabel
                   renderCard={false}
-                  title="Top 5 Outlet GoFitKu"
-                  description={
-                    role === "member"
-                      ? "Outlet dalam penempatan Anda."
-                      : "Akumulasi penjualan tertinggi per outlet."
-                  }
+                  title="Top 5 Outlet"
+                  description="Akumulasi penjualan tertinggi per outlet."
                   data={outlet_chart_data}
                   showLegend={false}
                   icon={
@@ -535,7 +436,11 @@ export default async function Page() {
                 <ChartBarLabel
                   renderCard={false}
                   title="Top 5 Produk GoFitKu"
-                  description="Produk dengan total penjualan tertinggi."
+                  description={
+                    role === "member"
+                      ? "Produk dengan total penjualan tertinggi di outlet Anda."
+                      : "Produk dengan total penjualan tertinggi."
+                  }
                   data={product_chart_data}
                   showLegend={false}
                   icon={
@@ -569,9 +474,10 @@ export default async function Page() {
               highest_nilai_transaksi_by_category={
                 highest_nilai_transaksi_by_category
               }
+              highest_basket_size_by_category={highest_basket_size_by_category}
             />
           ) : null}
-        </section>
+        </DashboardSection>
       ) : null}
     </div>
   );

@@ -125,6 +125,7 @@ export default function TargetManagementCard({
   entity_label = "Outlet",
   import_button_label = "Impor",
   enable_bulk_create = false,
+  enable_bulk_target_update = false,
 }) {
   const [target_rows, setTargetRows] = useState([]);
   const [entity_options, setEntityOptions] = useState([]);
@@ -406,6 +407,7 @@ export default function TargetManagementCard({
     source_end_date,
     start_date,
     end_date,
+    target,
   }) => {
     try {
       setIsBulkDateUpdating(true);
@@ -421,6 +423,7 @@ export default function TargetManagementCard({
           source_end_date,
           start_date,
           end_date,
+          ...(enable_bulk_target_update ? { target } : {}),
         }),
       });
       const payload = await result.json();
@@ -604,7 +607,7 @@ export default function TargetManagementCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <OptionDropdown
               value={selected_entity}
@@ -835,6 +838,7 @@ export default function TargetManagementCard({
               target_label={target_label}
               entity_label={entity_label}
               rows={target_rows}
+              enable_target_update={enable_bulk_target_update}
               on_open_change={setIsBulkDateModalOpen}
               on_submit={handle_bulk_date_update}
             />

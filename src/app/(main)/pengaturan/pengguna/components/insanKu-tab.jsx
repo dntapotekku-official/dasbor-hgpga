@@ -262,7 +262,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {!is_non_slip_gaji ? (
         <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
           <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
@@ -282,7 +282,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-start">
               <Input
                 value={search}

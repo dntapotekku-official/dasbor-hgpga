@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }) {
           <SiteHeader />
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="@container/main flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex min-w-0 flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="flex min-w-0 flex-col gap-6 py-6">
                 {children}
               </div>
             </div>

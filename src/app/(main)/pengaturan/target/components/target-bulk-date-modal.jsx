@@ -20,6 +20,7 @@ export default function TargetBulkDateModal({
   target_label,
   entity_label = "outlet",
   rows,
+  enable_target_update = false,
   on_open_change,
   on_submit,
 }) {
@@ -42,7 +43,15 @@ export default function TargetBulkDateModal({
         end_date: row.end_date,
         range_label: row.range_label,
         count: 1,
+        targets: new Set([Number(row.target ?? 0)]),
       });
+    }
+
+    for (const row of rows) {
+      const key = get_period_key(row.start_date, row.end_date);
+      const current_period = period_map.get(key);
+
+      current_period?.targets.add(Number(row.target ?? 0));
     }
 
     return Array.from(period_map.values()).sort((first_period, second_period) =>
@@ -70,6 +79,11 @@ export default function TargetBulkDateModal({
       ? periods[0]?.end_date ?? ""
       : periods[0]?.start_date ?? "",
   );
+  const [target, setTarget] = useState(() => {
+    const target_values = Array.from(periods[0]?.targets ?? []);
+
+    return target_values.length === 1 ? String(target_values[0]) : "";
+  });
   const selected_period = periods.find(
     (period) => period.key === selected_period_key,
   );
@@ -80,8 +94,11 @@ export default function TargetBulkDateModal({
     setSelectedPeriodKey(next_key);
 
     if (next_period) {
+      const target_values = Array.from(next_period.targets ?? []);
+
       setStartDate(next_period.start_date);
       setEndDate(is_range_mode ? next_period.end_date : next_period.start_date);
+      setTarget(target_values.length === 1 ? String(target_values[0]) : "");
     }
   };
 
@@ -94,6 +111,9 @@ export default function TargetBulkDateModal({
           ? periods[0]?.end_date ?? ""
           : periods[0]?.start_date ?? "",
       );
+      const target_values = Array.from(periods[0]?.targets ?? []);
+
+      setTarget(target_values.length === 1 ? String(target_values[0]) : "");
       on_open_change(false);
     }
   };
@@ -140,6 +160,7 @@ export default function TargetBulkDateModal({
                 source_end_date: selected_period.end_date,
                 start_date,
                 end_date: is_range_mode ? end_date : start_date,
+                ...(enable_target_update ? { target } : {}),
               });
             }}
           >
@@ -207,6 +228,28 @@ export default function TargetBulkDateModal({
                 />
               </div>
             )}
+
+            {enable_target_update ? (
+              <div className="space-y-2">
+                <Label htmlFor={`${field_id}-target-baru`}>
+                  Target Baru
+                </Label>
+                <Input
+                  id={`${field_id}-target-baru`}
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={target}
+                  onChange={(event) => setTarget(event.target.value)}
+                  placeholder="Masukkan nilai target"
+                  disabled={is_updating}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Nilai ini akan diterapkan ke seluruh {entity_label} pada periode lama yang dipilih.
+                </p>
+              </div>
+            ) : null}
 
             <div className="flex justify-end gap-2 pt-1">
               <DialogPrimitive.Close

@@ -6,7 +6,7 @@ import { session_cookie_name } from "@/lib/session";
 const fallback_roles_by_menu = {
   dashboard: ["member"],
   "kepuasan-internal": [],
-  "kepatuhan-sop-cctv": [],
+  "kepatuhan-sop-cctv": ["member"],
   "penjualan-gofitku": ["member"],
   "nilai-transaksi-basket-size": ["member"],
   "nilai-magang": [],

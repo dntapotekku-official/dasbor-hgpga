@@ -150,7 +150,7 @@ export default function KepuasanInternalPage() {
           description="Pantau tren jawaban puas dan tidak puas dari monthly review."
         />
       </div>
-      <div className="space-y-4 px-4 lg:px-6">
+      <div className="flex flex-col gap-6 px-4 lg:px-6">
         <ChartBarMultiple
           title="Tren Bulanan"
           filter={

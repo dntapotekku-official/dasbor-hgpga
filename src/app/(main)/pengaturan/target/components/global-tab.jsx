@@ -374,7 +374,7 @@ export default function GlobalTab() {
   const [active_target, setActiveTarget] = useState("nilai_transaksi");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Tabs value={active_target} onValueChange={setActiveTarget}>
         <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
           {Object.entries(target_config).map(([key, item]) => (

@@ -485,7 +485,7 @@ export default function KunjunganPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <OptionDropdown
                   value={selected_outlet}

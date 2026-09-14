@@ -93,6 +93,7 @@ export const PATCH = async (request) => {
         source_end_date: body?.source_end_date,
         start_date: body?.start_date,
         end_date: body?.end_date,
+        target: body?.target,
       });
 
       return NextResponse.json(data);

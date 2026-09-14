@@ -60,6 +60,7 @@ const data = {
       icon: (
         <CctvIcon />
       ),
+      roles: ["member"],
       menuKey: "kepatuhan-sop-cctv",
     },
     {
@@ -74,6 +75,7 @@ const data = {
     {
       title: "Nilai Transaksi & Basket Size",
       url: "/nilai-transaksi-basket-size",
+      badge: "Beta",
       icon: (
         <BadgeDollarSignIcon />
       ),

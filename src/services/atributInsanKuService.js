@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { normalizeRole } from "@/lib/role";
 import { emit_socket_event } from "@/lib/socket";
 import { hardDeleteInsanKuRelations } from "@/services/hardDeleteInsanKuRelations";
+import { syncInsanKu } from "@/services/insanKuService";
+import { syncOutletInsanKu } from "@/services/outletInsanKuService";
 
 function normalize_name(name) {
   return String(name ?? "").trim();
@@ -153,10 +155,11 @@ function is_attribute_value_valid_for_type(type, value) {
 export async function getAtributInsanku({ user_uuid, user_role } = {}) {
   const normalized_role = normalizeRole(user_role);
   const is_member = normalized_role === "member";
+  const can_manage_attributes =
+    normalized_role === "admin" || normalized_role === "superadmin";
   const can_edit_values =
     normalized_role === "member" ||
-    normalized_role === "admin" ||
-    normalized_role === "superadmin";
+    can_manage_attributes;
 
   const [attributes, employees] = await Promise.all([
     prisma.tbl_kolom_atribut.findMany({
@@ -226,6 +229,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
   return {
     actor_role: normalized_role,
     can_edit_values,
+    can_manage_attributes,
     is_member_view: is_member,
     attribute_columns: attributes.map((attribute) => ({
       key: attribute.uuid,
@@ -403,7 +407,7 @@ export async function syncAtributInsanKuByNik({ actor_role }) {
     normalized_role === "admin" || normalized_role === "superadmin";
 
   if (!is_admin) {
-    throw new Error("Hanya admin yang dapat menyinkronkan oper atribut berdasarkan NIK.");
+    throw new Error("Tidak memiliki akses untuk menyinkronkan oper atribut berdasarkan NIK.");
   }
 
   const [non_slip_accounts, slip_accounts] = await Promise.all([
@@ -499,19 +503,48 @@ export async function syncAtributInsanKuByNik({ actor_role }) {
   };
 }
 
+export async function syncAtributInsanKuData({ actor_role }) {
+  const normalized_role = normalizeRole(actor_role);
+  const can_sync =
+    normalized_role === "member" ||
+    normalized_role === "admin" ||
+    normalized_role === "superadmin";
+
+  if (!can_sync) {
+    throw new Error("Tidak memiliki akses untuk menyinkronkan data atribut InsanKu.");
+  }
+
+  const insanku_result = await syncInsanKu();
+  const outlet_insanku_result = await syncOutletInsanKu();
+
+  emit_socket_event("attribute.sync.completed", {
+    operation: "sync-insanku-outlet-placement",
+    synced_insanku: insanku_result?.summary?.inserted_insanku ?? 0,
+    synced_outlet_insanku:
+      outlet_insanku_result?.summary?.synced_outlet_insanku ?? 0,
+  });
+
+  return {
+    success: true,
+    data: {
+      insanku: insanku_result?.summary ?? null,
+      outlet_insanku: outlet_insanku_result?.summary ?? null,
+    },
+    message: "Data InsanKu dan penempatan outlet berhasil disinkronkan.",
+  };
+}
+
 export async function importAtributInsanKu({
   rows,
   active_tab,
   active_category,
-  actor_uuid,
   actor_role,
 }) {
   const normalized_role = normalizeRole(actor_role);
-  const is_member = normalized_role === "member";
   const is_admin =
     normalized_role === "admin" || normalized_role === "superadmin";
 
-  if (!is_member && !is_admin) {
+  if (!is_admin) {
     throw new Error("Tidak memiliki akses untuk mengimpor atribut.");
   }
 
@@ -555,17 +588,6 @@ export async function importAtributInsanKu({
     username: { in: usernames },
     deleted_at: active_tab === "aktif" ? null : { not: null },
     is_slip_gaji_account: active_category === "slip-gaji",
-    ...(is_member
-      ? {
-          outlet_insanku: {
-            some: {
-              uuid_outlet: actor_uuid,
-              deleted_at: null,
-              outlet: { deleted_at: null, excep: false },
-            },
-          },
-        }
-      : {}),
   };
   const attribute_uuids = Array.from(
     new Set(normalized_rows.flatMap((row) => Object.keys(row.values))),

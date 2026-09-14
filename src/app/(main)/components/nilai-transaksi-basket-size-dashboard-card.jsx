@@ -73,6 +73,7 @@ function MetricHeading({ icon, title, description }) {
 export default function NilaiTransaksiBasketSizeDashboardCard({
   metrics,
   highest_nilai_transaksi_by_category = [],
+  highest_basket_size_by_category = [],
   showDetailLink = true,
 }) {
   return (
@@ -214,6 +215,32 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
               value={`${formatDecimal(metrics.bs_target_compare)}%`}
             />
           </div>
+
+          {highest_basket_size_by_category.length ? (
+            <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-900 dark:bg-blue-950/30">
+              <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                Basket Size Tertinggi per Kategori
+              </p>
+              <div className="mt-2 space-y-2">
+                {highest_basket_size_by_category.map((item) => (
+                  <div
+                    key={item.category_key}
+                    className="grid gap-1 sm:grid-cols-[120px_1fr_auto] sm:items-center"
+                  >
+                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      {item.category_label}
+                    </span>
+                    <span className="truncate text-sm font-medium text-blue-900 dark:text-blue-100">
+                      {item.outlet_name}
+                    </span>
+                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      {formatDecimal(item.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       </div>
 

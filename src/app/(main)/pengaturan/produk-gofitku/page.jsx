@@ -212,7 +212,7 @@ export default function ProdukGofitkuPage() {
             <CardTitle>Produk GoFitKu</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
                   value={search}
