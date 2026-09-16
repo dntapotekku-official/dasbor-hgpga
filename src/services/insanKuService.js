@@ -5,6 +5,8 @@ import { dedupeByUuid } from "@/lib/utils";
 import { normalizeNik, stripInvisibleCharacters } from "@/lib/nik";
 import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
 
+const DEFAULT_INSANKU_PASSWORD = "Apotekku";
+
 function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
   const normalized_placements = Array.isArray(outlet_placements)
     ? outlet_placements
@@ -153,8 +155,8 @@ export async function fetchOutletInsanKuPayload() {
   return response.data ?? response;
 }
 
-export function normalizeOutletInsanKuCredentials(outlet_insanku_payload) {
-  const credential_map = new Map();
+export function normalizeOutletInsanKuUsernames(outlet_insanku_payload) {
+  const username_map = new Map();
   const outlet_insanku_lists = Array.isArray(outlet_insanku_payload)
     ? [outlet_insanku_payload]
     : Object.values(outlet_insanku_payload ?? {});
@@ -167,23 +169,19 @@ export function normalizeOutletInsanKuCredentials(outlet_insanku_payload) {
     insanku_list.forEach((item) => {
       const uuid = getInsanKuPayloadUuid(item);
       const username = stripInvisibleCharacters(item?.username ?? "").trim();
-      const password = String(item?.password ?? "").trim();
 
-      if (!uuid || credential_map.has(uuid)) {
+      if (!uuid || !username || username_map.has(uuid)) {
         return;
       }
 
-      credential_map.set(uuid, {
-        username,
-        password,
-      });
+      username_map.set(uuid, username);
     });
   });
 
-  return credential_map;
+  return username_map;
 }
 
-export function normalizeInsanKuRows(insanku_payload, credential_map = new Map()) {
+export function normalizeInsanKuRows(insanku_payload, username_map = new Map()) {
   const data_insanku = insanku_payload
     .map((item) => {
       const uuid = getInsanKuPayloadUuid(item);
@@ -192,7 +190,7 @@ export function normalizeInsanKuRows(insanku_payload, credential_map = new Map()
         return null;
       }
 
-      const credential = credential_map.get(uuid);
+      const username = username_map.get(uuid);
 
       return {
         uuid,
@@ -205,8 +203,8 @@ export function normalizeInsanKuRows(insanku_payload, credential_map = new Map()
               "",
           ) || null,
         name: String(item?.nama ?? item?.name ?? "-").trim() || "-",
-        username: credential?.username || buildDefaultInsanKuUsername(item, uuid),
-        password: credential?.password || item?.password || "apotekku",
+        username: username || buildDefaultInsanKuUsername(item, uuid),
+        password: DEFAULT_INSANKU_PASSWORD,
         is_username_change: false,
         is_password_change: false,
         avatar: item?.foto_profile ?? item?.avatar ?? null,
@@ -290,8 +288,8 @@ export async function syncInsanKu() {
     fetchInsanKuPayload(),
     fetchOutletInsanKuPayload(),
   ]);
-  const credential_map = normalizeOutletInsanKuCredentials(outlet_insanku_payload);
-  const unique_insanku = normalizeInsanKuRows(insanku_payload, credential_map);
+  const username_map = normalizeOutletInsanKuUsernames(outlet_insanku_payload);
+  const unique_insanku = normalizeInsanKuRows(insanku_payload, username_map);
   const incoming_insanku_uuid_set = new Set(
     unique_insanku.map((item) => item.uuid),
   );
@@ -304,6 +302,7 @@ export async function syncInsanKu() {
         uuid: true,
         password: true,
         username: true,
+        is_password_change: true,
         is_skip_sync: true,
         deleted_at: true,
       },
@@ -366,32 +365,30 @@ export async function syncInsanKu() {
 
     return reserveUsername(item.username, item.uuid) ?? existing_item?.username;
   };
-  const new_insanku = await Promise.all(
-    unique_insanku
-      .filter((item) => !existing_insanku_map.has(item.uuid))
-      .map(async (item) => ({
-        ...item,
-        username: resolveNewUsername(item),
-        password: await hashPassword(item.password),
-      })),
-  );
+  const default_password = await hashPassword(DEFAULT_INSANKU_PASSWORD);
+  const new_insanku = unique_insanku
+    .filter((item) => !existing_insanku_map.has(item.uuid))
+    .map((item) => ({
+      ...item,
+      username: resolveNewUsername(item),
+      password: default_password,
+    }));
   const update_insanku = unique_insanku
     .filter((item) => existing_insanku_map.has(item.uuid))
     .filter((item) => !existing_insanku_map.get(item.uuid)?.is_skip_sync)
-    .map(async (item) => {
+    .map((item) => {
       const existing_item = existing_insanku_map.get(item.uuid);
-      const credential = credential_map.get(item.uuid);
+      const resolved_password = existing_item?.is_password_change
+        ? existing_item?.password ?? default_password
+        : default_password;
 
       return {
         ...item,
         username: resolveUpdateUsername(item),
         nik: item.nik,
-        password: credential?.password
-          ? await hashPassword(credential.password)
-          : existing_item?.password ?? await hashPassword(item.password),
+        password: resolved_password,
       };
     });
-  const resolved_update_insanku = await Promise.all(update_insanku);
   const skipped_insanku = unique_insanku.filter(
     (item) => existing_insanku_map.get(item.uuid)?.is_skip_sync,
   );
@@ -419,7 +416,7 @@ export async function syncInsanKu() {
     }
 
     await Promise.all(
-      resolved_update_insanku.map((item) =>
+      update_insanku.map((item) =>
         tx.tbl_insanku.update({
           where: { uuid: item.uuid },
           data: {
@@ -465,7 +462,7 @@ export async function syncInsanKu() {
       inserted_insanku,
       skipped_duplicate_insanku: new_insanku.length - inserted_insanku,
       username_conflict_insanku,
-      updated_insanku: resolved_update_insanku.length,
+      updated_insanku: update_insanku.length,
       skipped_insanku: skipped_insanku.length,
       deleted_insanku: deleted_insanku.length,
       retained_skipped_insanku: skipped_deleted_insanku.length,
