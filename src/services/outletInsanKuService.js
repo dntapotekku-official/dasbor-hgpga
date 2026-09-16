@@ -3,47 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { dedupeByKey } from "@/lib/utils";
 import {
   fetchInsanKuPayload,
+  fetchOutletInsanKuPayload,
   getInsanKuSettingsData,
   normalizeInsanKuRows,
 } from "@/services/insanKuService";
-import {
-  fetchOutletPayload,
-  normalizeOutletRows,
-} from "@/services/outletService";
 
 function buildRelationKey({ uuid_outlet, uuid_insanku }) {
   return `${uuid_outlet}:${uuid_insanku}`;
-}
-
-async function fetchOutletInsanKuPayload() {
-  const url = process.env.OUTLET_KARYAWAN_SLIPGAJI_API_URL;
-  const api_key = process.env.APOTEKKU_API_KEY;
-
-  if (!url) {
-    throw new Error(
-      "Environment variable OUTLET_KARYAWAN_SLIPGAJI_API_URL belum diatur.",
-    );
-  }
-
-  if (!api_key) {
-    throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
-  }
-
-  const result = await fetch(url, {
-    headers: {
-      "x-api-key": api_key,
-    },
-  });
-
-  if (!result.ok) {
-    throw new Error(
-      `Gagal menyinkronkan OUTLET_KARYAWAN_SLIPGAJI_API_URL: ${result.status}`,
-    );
-  }
-
-  const response = await result.json();
-
-  return response.data ?? response;
 }
 
 function normalizeOutletInsanKuRows({
@@ -94,16 +60,23 @@ function normalizeOutletInsanKuRows({
 }
 
 export async function syncOutletInsanKu() {
-  const [outlet_payload, insanku_payload, outlet_insanku_payload] =
+  const [insanku_payload, outlet_insanku_payload, existing_outlets] =
     await Promise.all([
-      fetchOutletPayload(),
       fetchInsanKuPayload(),
       fetchOutletInsanKuPayload(),
+      prisma.tbl_outlet.findMany({
+        where: {
+          deleted_at: null,
+          excep: false,
+        },
+        select: {
+          uuid: true,
+        },
+      }),
     ]);
-  const unique_outlet = normalizeOutletRows(outlet_payload);
   const unique_insanku = normalizeInsanKuRows(insanku_payload);
   const valid_outlet_uuid_set = new Set(
-    unique_outlet.map((item) => item.uuid),
+    existing_outlets.map((item) => item.uuid),
   );
   const valid_insanku_uuid_set = new Set(
     unique_insanku.map((item) => item.uuid),

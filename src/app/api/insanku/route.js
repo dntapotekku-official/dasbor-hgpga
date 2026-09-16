@@ -5,6 +5,7 @@ import {
   updateInsanKu,
 } from "@/services/insanKuService";
 import { requireMenuAccess } from "@/lib/auth";
+import { buildApiErrorResponse } from "@/lib/api-error";
 
 export const GET = async () => {
   try {
@@ -22,10 +23,7 @@ export const GET = async () => {
     });
   } catch (error) {
     return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
-      },
+      buildApiErrorResponse(error),
       { status: 500 },
     );
   }
@@ -48,10 +46,7 @@ export const POST = async () => {
     });
   } catch (error) {
     return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
-      },
+      buildApiErrorResponse(error, "Terjadi kesalahan saat sinkronisasi InsanKu."),
       { status: 500 },
     );
   }
@@ -81,10 +76,7 @@ export const PATCH = async (request) => {
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      {
-        success: false,
-        message: error instanceof Error ? error.message : "Terjadi kesalahan pada server.",
-      },
+      buildApiErrorResponse(error, "Terjadi kesalahan saat menyimpan data InsanKu."),
       { status: 500 },
     );
   }

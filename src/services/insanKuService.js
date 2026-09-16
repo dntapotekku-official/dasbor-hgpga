@@ -46,6 +46,27 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
   };
 }
 
+function getInsanKuPayloadUuid(item) {
+  return String(
+    item?.id_karyawans ?? item?.id_karyawan ?? item?.uuid ?? item?.id ?? "",
+  ).trim();
+}
+
+function normalizeUsernameKey(username) {
+  return String(username ?? "").trim().toLowerCase();
+}
+
+function buildDefaultInsanKuUsername(item, uuid) {
+  const base_username = stripInvisibleCharacters(
+    item?.username ?? item?.nip ?? item?.nik ?? "",
+  )
+    .trim()
+    .replace(/@apotekku$/i, "")
+    .replace(/@[^@]+$/i, "");
+
+  return base_username ? `${base_username}@apotekku` : `${uuid}@apotekku`;
+}
+
 async function validateOutlets(database, outlet_uuids) {
   if (outlet_uuids.length === 0) {
     return;
@@ -101,21 +122,77 @@ export async function fetchInsanKuPayload() {
   return payload;
 }
 
-export function normalizeInsanKuRows(insanku_payload) {
+export async function fetchOutletInsanKuPayload() {
+  const url = process.env.OUTLET_KARYAWAN_SLIPGAJI_API_URL;
+  const api_key = process.env.APOTEKKU_API_KEY;
+
+  if (!url) {
+    throw new Error(
+      "Environment variable OUTLET_KARYAWAN_SLIPGAJI_API_URL belum diatur.",
+    );
+  }
+
+  if (!api_key) {
+    throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
+  }
+
+  const result = await fetch(url, {
+    headers: {
+      "x-api-key": api_key,
+    },
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      `Gagal menyinkronkan OUTLET_KARYAWAN_SLIPGAJI_API_URL: ${result.status}`,
+    );
+  }
+
+  const response = await result.json();
+
+  return response.data ?? response;
+}
+
+export function normalizeOutletInsanKuCredentials(outlet_insanku_payload) {
+  const credential_map = new Map();
+  const outlet_insanku_lists = Array.isArray(outlet_insanku_payload)
+    ? [outlet_insanku_payload]
+    : Object.values(outlet_insanku_payload ?? {});
+
+  outlet_insanku_lists.forEach((insanku_list) => {
+    if (!Array.isArray(insanku_list)) {
+      return;
+    }
+
+    insanku_list.forEach((item) => {
+      const uuid = getInsanKuPayloadUuid(item);
+      const username = stripInvisibleCharacters(item?.username ?? "").trim();
+      const password = String(item?.password ?? "").trim();
+
+      if (!uuid || credential_map.has(uuid)) {
+        return;
+      }
+
+      credential_map.set(uuid, {
+        username,
+        password,
+      });
+    });
+  });
+
+  return credential_map;
+}
+
+export function normalizeInsanKuRows(insanku_payload, credential_map = new Map()) {
   const data_insanku = insanku_payload
     .map((item) => {
-      const uuid = String(
-        item?.id_karyawans ?? item?.id_karyawan ?? item?.uuid ?? item?.id ?? "",
-      ).trim();
-      const base_username = stripInvisibleCharacters(
-        item?.username ?? item?.nip ?? item?.nik ?? "",
-      )
-        .trim()
-        .replace(/@apotekku$/i, "");
+      const uuid = getInsanKuPayloadUuid(item);
 
       if (!uuid) {
         return null;
       }
+
+      const credential = credential_map.get(uuid);
 
       return {
         uuid,
@@ -128,8 +205,8 @@ export function normalizeInsanKuRows(insanku_payload) {
               "",
           ) || null,
         name: String(item?.nama ?? item?.name ?? "-").trim() || "-",
-        username: base_username ? `${base_username}@apotekku` : `${uuid}@apotekku`,
-        password: item?.password ?? "apotekku",
+        username: credential?.username || buildDefaultInsanKuUsername(item, uuid),
+        password: credential?.password || item?.password || "apotekku",
         is_username_change: false,
         is_password_change: false,
         avatar: item?.foto_profile ?? item?.avatar ?? null,
@@ -209,46 +286,112 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
 }
 
 export async function syncInsanKu() {
-  const insanku_payload = await fetchInsanKuPayload();
-  const unique_insanku = normalizeInsanKuRows(insanku_payload);
+  const [insanku_payload, outlet_insanku_payload] = await Promise.all([
+    fetchInsanKuPayload(),
+    fetchOutletInsanKuPayload(),
+  ]);
+  const credential_map = normalizeOutletInsanKuCredentials(outlet_insanku_payload);
+  const unique_insanku = normalizeInsanKuRows(insanku_payload, credential_map);
   const incoming_insanku_uuid_set = new Set(
     unique_insanku.map((item) => item.uuid),
   );
-  const existing_insanku = await prisma.tbl_insanku.findMany({
-    where: {
-      is_slip_gaji_account: true,
-    },
-    select: {
-      uuid: true,
-      password: true,
-      is_skip_sync: true,
-      deleted_at: true,
-    },
-  });
+  const [existing_insanku, existing_username_rows] = await Promise.all([
+    prisma.tbl_insanku.findMany({
+      where: {
+        is_slip_gaji_account: true,
+      },
+      select: {
+        uuid: true,
+        password: true,
+        username: true,
+        is_skip_sync: true,
+        deleted_at: true,
+      },
+    }),
+    prisma.tbl_insanku.findMany({
+      select: {
+        uuid: true,
+        username: true,
+      },
+    }),
+  ]);
   const existing_insanku_map = new Map(
     existing_insanku.map((item) => [item.uuid, item]),
   );
+  const reserved_username_owner_map = new Map(
+    existing_username_rows
+      .map((item) => [normalizeUsernameKey(item.username), item.uuid])
+      .filter(([username]) => username),
+  );
+  let username_conflict_insanku = 0;
+  const reserveUsername = (username, owner_uuid) => {
+    const username_key = normalizeUsernameKey(username);
+    const username_owner_uuid = reserved_username_owner_map.get(username_key);
+
+    if (username_owner_uuid && username_owner_uuid !== owner_uuid) {
+      username_conflict_insanku += 1;
+      return null;
+    }
+
+    if (username_key) {
+      reserved_username_owner_map.set(username_key, owner_uuid);
+    }
+
+    return username;
+  };
+  const reserveFallbackUsername = (item) => {
+    let attempt = 0;
+
+    while (attempt < 100) {
+      const username =
+        attempt === 0
+          ? `${item.uuid}@apotekku`
+          : `${item.uuid}-${attempt}@apotekku`;
+      const reserved_username = reserveUsername(username, item.uuid);
+
+      if (reserved_username) {
+        return reserved_username;
+      }
+
+      attempt += 1;
+    }
+
+    throw new Error("Gagal membuat username fallback unik untuk InsanKu.");
+  };
+  const resolveNewUsername = (item) => {
+    return reserveUsername(item.username, item.uuid) ?? reserveFallbackUsername(item);
+  };
+  const resolveUpdateUsername = (item) => {
+    const existing_item = existing_insanku_map.get(item.uuid);
+
+    return reserveUsername(item.username, item.uuid) ?? existing_item?.username;
+  };
   const new_insanku = await Promise.all(
     unique_insanku
       .filter((item) => !existing_insanku_map.has(item.uuid))
       .map(async (item) => ({
         ...item,
+        username: resolveNewUsername(item),
         password: await hashPassword(item.password),
       })),
   );
   const update_insanku = unique_insanku
     .filter((item) => existing_insanku_map.has(item.uuid))
     .filter((item) => !existing_insanku_map.get(item.uuid)?.is_skip_sync)
-    .map((item) => {
+    .map(async (item) => {
       const existing_item = existing_insanku_map.get(item.uuid);
+      const credential = credential_map.get(item.uuid);
 
       return {
         ...item,
-        username: item.username,
+        username: resolveUpdateUsername(item),
         nik: item.nik,
-        password: existing_item?.password ?? item.password,
+        password: credential?.password
+          ? await hashPassword(credential.password)
+          : existing_item?.password ?? await hashPassword(item.password),
       };
     });
+  const resolved_update_insanku = await Promise.all(update_insanku);
   const skipped_insanku = unique_insanku.filter(
     (item) => existing_insanku_map.get(item.uuid)?.is_skip_sync,
   );
@@ -276,7 +419,7 @@ export async function syncInsanKu() {
     }
 
     await Promise.all(
-      update_insanku.map((item) =>
+      resolved_update_insanku.map((item) =>
         tx.tbl_insanku.update({
           where: { uuid: item.uuid },
           data: {
@@ -321,7 +464,8 @@ export async function syncInsanKu() {
     summary: {
       inserted_insanku,
       skipped_duplicate_insanku: new_insanku.length - inserted_insanku,
-      updated_insanku: update_insanku.length,
+      username_conflict_insanku,
+      updated_insanku: resolved_update_insanku.length,
       skipped_insanku: skipped_insanku.length,
       deleted_insanku: deleted_insanku.length,
       retained_skipped_insanku: skipped_deleted_insanku.length,
