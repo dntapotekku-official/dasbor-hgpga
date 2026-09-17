@@ -59,7 +59,7 @@ export default function LoginPage() {
           <CardHeader className="items-center text-center">
             <div className="mb-1 flex w-fit max-w-full justify-self-center rounded-2xl border border-primary/30 bg-primary p-3 shadow-md ring-1 ring-primary/10">
               <Image
-                src="/apotekku-logo-crop.png"
+                src="/apotekku-logo-legal.png"
                 alt="Performance Report"
                 width={120}
                 height={83}

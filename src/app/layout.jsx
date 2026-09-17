@@ -16,7 +16,7 @@ export const metadata = {
   title: "Performance Report",
   description: "Performance Report",
   icons: {
-    icon: "/apotekku-logo.jpeg",
+    icon: "/apotekku-logo-legal.png",
   },
 };
 

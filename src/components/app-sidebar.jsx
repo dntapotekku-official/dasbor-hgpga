@@ -196,7 +196,7 @@ export function AppSidebar({
               className="h-auto data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link href="/" />}>
               <Image
-                src="/apotekku-logo-crop.png"
+                src="/apotekku-logo-legal.png"
                 alt="Performance Report"
                 width={120}
                 height={83}
