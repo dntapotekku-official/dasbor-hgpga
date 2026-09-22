@@ -706,8 +706,28 @@ export default function AtributInsanKuPage() {
       worksheet.views = [{ state: "frozen", ySplit: 1 }];
       worksheet.eachRow({ includeEmpty: true }, (row) => {
         row.eachCell({ includeEmpty: true }, (cell) => {
-          cell.font = { ...cell.font, name: "Aptos" };
+          cell.font = { ...cell.font, name: "Aptos", size: 12 };
+          cell.alignment = {
+            ...cell.alignment,
+            vertical: "middle",
+            wrapText: true,
+          };
         });
+      });
+      worksheet.columns.forEach((column) => {
+        let maximum_content_length = 0;
+
+        column.eachCell({ includeEmpty: false }, (cell) => {
+          const longest_line_length = String(cell.text ?? cell.value ?? "")
+            .split("\n")
+            .reduce((maximum_length, line) => Math.max(maximum_length, line.length), 0);
+
+          maximum_content_length = Math.max(
+            maximum_content_length,
+            longest_line_length,
+          );
+        });
+        column.width = Math.min(28, Math.max(12, maximum_content_length + 2));
       });
 
       const workbook_buffer = await workbook.xlsx.writeBuffer();

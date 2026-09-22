@@ -1,5 +1,6 @@
 export function export_penjualan_gofitku(export_groups) {
   const export_font_name = "Aptos";
+  const export_font_size = 12;
   const month_names = [
     "JANUARI",
     "FEBRUARI",
@@ -93,35 +94,49 @@ export function export_penjualan_gofitku(export_groups) {
       { label: "PERSENTASE", type: "percentage" },
     ];
   };
-  const get_column_width = (column_type) => {
+  const get_column_width = (column_type, name_column_width) => {
     if (column_type === "no") {
-      return 42;
+      return 36;
     }
 
     if (column_type === "name") {
-      return 300;
+      return name_column_width;
     }
 
     if (column_type === "week") {
-      return 120;
+      return 90;
     }
 
     if (column_type === "month") {
-      return 110;
+      return 78;
     }
 
     if (column_type === "percentage") {
-      return 120;
+      return 76;
     }
 
     if (column_type === "target") {
-      return 80;
+      return 68;
     }
 
-    return 42;
+    return 36;
   };
   const get_sheet_column_widths = (monthly_groups) => {
     const column_widths = [];
+    const longest_name_length = monthly_groups.reduce(
+      (maximum_length, monthly_group) => (monthly_group.rows ?? []).reduce(
+        (group_maximum, row) => Math.max(
+          group_maximum,
+          String(row.name ?? "").length,
+        ),
+        maximum_length,
+      ),
+      0,
+    );
+    const name_column_width = Math.min(
+      210,
+      Math.max(120, (longest_name_length + 2) * 6.5),
+    );
 
     for (const monthly_group of monthly_groups) {
       const export_columns = get_export_columns(monthly_group.total_days);
@@ -129,7 +144,7 @@ export function export_penjualan_gofitku(export_groups) {
       export_columns.forEach((column, index) => {
         column_widths[index] = Math.max(
           column_widths[index] ?? 0,
-          get_column_width(column.type),
+          get_column_width(column.type, name_column_width),
         );
       });
     }
@@ -260,13 +275,14 @@ export function export_penjualan_gofitku(export_groups) {
     >
       <Styles>
         <Style ss:ID="Default" ss:Name="Normal">
-          <Font ss:FontName="${export_font_name}" ss:Size="11"/>
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}"/>
         </Style>
         <Style ss:ID="Title">
-          <Font ss:FontName="${export_font_name}" ss:Bold="1" ss:Size="16"/>
+          <Font ss:FontName="${export_font_name}" ss:Bold="1" ss:Size="18"/>
         </Style>
         <Style ss:ID="Header">
-          <Font ss:FontName="${export_font_name}" ss:Bold="1"/>
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}" ss:Bold="1"/>
+          <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
           <Interior ss:Color="#FFFF00" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -276,7 +292,8 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="Cell">
-          <Font ss:FontName="${export_font_name}"/>
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}"/>
+          <Alignment ss:Vertical="Center" ss:WrapText="1"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
             <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -285,7 +302,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="WeekTotal">
-          <Font ss:FontName="${export_font_name}"/>
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}"/>
           <Interior ss:Color="#FFFF00" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -295,7 +312,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="Total">
-          <Font ss:FontName="${export_font_name}" ss:Bold="1"/>
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}" ss:Bold="1"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
             <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -304,7 +321,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="GrandTotal">
-          <Font ss:FontName="${export_font_name}" ss:Bold="1"/>
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}" ss:Bold="1"/>
           <Interior ss:Color="#00E5E5" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>

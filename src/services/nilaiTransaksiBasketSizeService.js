@@ -25,24 +25,24 @@ const export_category_labels = {
 };
 
 const export_columns = [
-  { key: "number", width: 6 },
-  { key: "outlet", width: 38 },
-  { key: "category", width: 17 },
-  { key: "nt_target", width: 16 },
-  { key: "nt_daily", width: 18 },
-  { key: "nt_last_month", width: 20 },
-  { key: "nt_current_month", width: 20 },
-  { key: "nt_growth", width: 20 },
-  { key: "nt_gap_growth", width: 15 },
-  { key: "nt_target_compare", width: 18 },
-  { key: "nt_gap_target", width: 15 },
+  { key: "number", width: 5 },
+  { key: "outlet", width: 28 },
+  { key: "category", width: 14 },
+  { key: "nt_target", width: 14 },
+  { key: "nt_daily", width: 15 },
+  { key: "nt_last_month", width: 15 },
+  { key: "nt_current_month", width: 15 },
+  { key: "nt_growth", width: 14 },
+  { key: "nt_gap_growth", width: 12 },
+  { key: "nt_target_compare", width: 14 },
+  { key: "nt_gap_target", width: 12 },
   { key: "bs_target", width: 12 },
-  { key: "bs_last_month", width: 18 },
-  { key: "bs_current_month", width: 20 },
-  { key: "bs_growth", width: 18 },
-  { key: "bs_gap_growth", width: 15 },
-  { key: "bs_target_compare", width: 18 },
-  { key: "bs_gap_target", width: 15 },
+  { key: "bs_last_month", width: 14 },
+  { key: "bs_current_month", width: 14 },
+  { key: "bs_growth", width: 14 },
+  { key: "bs_gap_growth", width: 12 },
+  { key: "bs_target_compare", width: 14 },
+  { key: "bs_gap_target", width: 12 },
 ];
 
 // ============================================================================
@@ -1099,7 +1099,7 @@ function add_export_average_row({
       pattern: "solid",
       fgColor: { argb: "FFFFFF00" },
     };
-    cell.font = { name: export_font_name, bold: true, size: 10 };
+    cell.font = { name: export_font_name, bold: true, size: 11 };
   });
 
   return row_number;
@@ -1131,7 +1131,7 @@ function add_export_total_row(sheet, metrics) {
       pattern: "solid",
       fgColor: { argb: "FFFFFF00" },
     };
-    cell.font = { name: export_font_name, bold: true, size: 10 };
+    cell.font = { name: export_font_name, bold: true, size: 11 };
   });
 
   ["I", "K", "P", "R"].forEach((column) => {
@@ -1176,7 +1176,18 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
 
   workbook.creator = "Performance Report";
   workbook.created = new Date();
-  sheet.columns = export_columns;
+  const outlet_column_width = data.rows.reduce(
+    (maximum_width, row) => Math.max(
+      maximum_width,
+      String(row.outlet_name ?? "").length + 2,
+    ),
+    22,
+  );
+  sheet.columns = export_columns.map((column) => (
+    column.key === "outlet"
+      ? { ...column, width: Math.min(40, outlet_column_width) }
+      : column
+  ));
   sheet.mergeCells("A1:R1");
   sheet.getCell("A1").value =
     `PEMANTAUAN NILAI TRANSAKSI DAN BASKET SIZE APOTEKKU ${data.selected_month_label.toUpperCase()}`;
@@ -1218,7 +1229,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   for (let row_number = 2; row_number <= 4; row_number += 1) {
     for (let column_number = 1; column_number <= 18; column_number += 1) {
       const cell = sheet.getCell(row_number, column_number);
-      cell.font = { name: export_font_name, bold: true, size: 10 };
+      cell.font = { name: export_font_name, bold: true, size: 11 };
       cell.alignment = {
         horizontal: "center",
         vertical: "middle",
@@ -1292,8 +1303,10 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
         cell.alignment = {
           vertical: "middle",
           horizontal: column_number === 2 ? "left" : "center",
+          wrapText: column_number === 3,
+          shrinkToFit: column_number === 2,
         };
-        cell.font = { ...cell.font, name: export_font_name, size: 9 };
+        cell.font = { ...cell.font, name: export_font_name, size: 11 };
       }
     }
   }
