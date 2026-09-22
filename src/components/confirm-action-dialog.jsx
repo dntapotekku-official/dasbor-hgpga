@@ -64,6 +64,8 @@ export default function ConfirmActionDialog({
               type="button"
               variant={confirmVariant}
               onClick={onConfirm}
+              disabled={isPending}
+              aria-busy={isPending}
             >
               {isPending ? (
                 <>

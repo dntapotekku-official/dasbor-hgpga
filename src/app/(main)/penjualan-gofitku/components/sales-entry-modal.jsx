@@ -131,6 +131,8 @@ export default function SalesEntryModal({
                     type="button"
                     onClick={on_scan_images}
                     className="w-full"
+                    disabled={is_scanning || is_saving}
+                    aria-busy={is_scanning}
                   >
                     {is_scanning ? (
                       <LoaderCircleIcon className="size-4 animate-spin" />
@@ -255,7 +257,11 @@ export default function SalesEntryModal({
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit">
+              <Button
+                type="submit"
+                disabled={is_saving || is_scanning}
+                aria-busy={is_saving}
+              >
                 {is_saving ? (
                   <LoaderCircleIcon className="size-4 animate-spin" />
                 ) : null}

@@ -86,7 +86,11 @@ export default function NilaiTransaksiDailyEditModal({
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit">
+              <Button
+                type="submit"
+                disabled={is_saving}
+                aria-busy={is_saving}
+              >
                 {is_saving ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

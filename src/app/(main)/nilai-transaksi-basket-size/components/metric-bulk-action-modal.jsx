@@ -143,6 +143,8 @@ export default function MetricBulkActionModal({
               <Button
                 type="submit"
                 variant={is_edit ? "default" : "delete"}
+                disabled={is_processing}
+                aria-busy={is_processing}
               >
                 {is_processing ? (
                   <>

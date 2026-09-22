@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -22,13 +22,19 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [is_loading, setIsLoading] = useState(false);
+  const login_lock_ref = useRef(false);
 
   const loginHandler = async (event) => {
     event.preventDefault();
 
-    try {
-      setIsLoading(true);
+    if (login_lock_ref.current) {
+      return;
+    }
 
+    login_lock_ref.current = true;
+    setIsLoading(true);
+
+    try {
       const response = await fetch("/api/auth", {
         method: "POST",
         headers: {
@@ -47,7 +53,7 @@ export default function LoginPage() {
       router.refresh();
     } catch (error) {
       toast.error(error.message || "Terjadi kesalahan saat login.");
-    } finally {
+      login_lock_ref.current = false;
       setIsLoading(false);
     }
   };
@@ -84,6 +90,7 @@ export default function LoginPage() {
                   onChange={(event) => setUsername(event.target.value)}
                   autoComplete="username"
                   className="bg-background"
+                  disabled={is_loading}
                   required
                 />
               </div>
@@ -96,10 +103,16 @@ export default function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
                   className="bg-background"
+                  disabled={is_loading}
                   required
                 />
               </div>
-              <Button className="w-full shadow-sm" type="submit">
+              <Button
+                className="w-full shadow-sm"
+                type="submit"
+                disabled={is_loading}
+                aria-busy={is_loading}
+              >
                 {is_loading ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

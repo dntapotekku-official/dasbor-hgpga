@@ -989,6 +989,8 @@ export default function NilaiTransaksiPage() {
                     type="button"
                     className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                     onClick={onImportButtonClick}
+                    disabled={isImporting}
+                    aria-busy={isImporting}
                   >
                     {isImporting ? (
                       <>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { EyeIcon, EyeOffIcon, KeyRoundIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { EyeIcon, EyeOffIcon, LoaderCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import PageHeading from "@/components/page-heading";
@@ -23,6 +23,8 @@ export default function AiApiPage() {
   const [api_key, setApiKey] = useState("");
   const [prompt_penjualan_gofitku, setPromptPenjualanGofitku] = useState("");
   const [show_api_key, setShowApiKey] = useState(false);
+  const [is_saving, setIsSaving] = useState(false);
+  const save_lock_ref = useRef(false);
 
   useEffect(() => {
     const load_settings = async () => {
@@ -57,32 +59,49 @@ export default function AiApiPage() {
   const handle_submit = async (event) => {
     event.preventDefault();
 
-    const result = await fetch("/api/api-ai", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        base_url: base_url,
-        model: model,
-        api_key: api_key,
-        prompts: [
-          {
-            name: prompt_key,
-            prompt: prompt_penjualan_gofitku,
-          },
-        ],
-      }),
-    });
-
-    const payload = await result.json();
-
-    if (!result.ok || !payload.success || !payload.data) {
-      toast.error(payload.message || "Gagal menyimpan data API AI");
+    if (save_lock_ref.current) {
       return;
     }
 
-    toast.success(payload.message || "Data API AI berhasil disimpan.");
+    save_lock_ref.current = true;
+    setIsSaving(true);
+
+    try {
+      const result = await fetch("/api/api-ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          base_url: base_url,
+          model: model,
+          api_key: api_key,
+          prompts: [
+            {
+              name: prompt_key,
+              prompt: prompt_penjualan_gofitku,
+            },
+          ],
+        }),
+      });
+
+      const payload = await result.json();
+
+      if (!result.ok || !payload.success || !payload.data) {
+        throw new Error(payload.message || "Gagal menyimpan data API AI.");
+      }
+
+      toast.success(payload.message || "Data API AI berhasil disimpan.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal menyimpan data API AI.",
+      );
+    } finally {
+      save_lock_ref.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -161,8 +180,20 @@ export default function AiApiPage() {
               </div>
 
               <div className="flex justify-end">
-                <Button type="submit" className="w-full sm:w-auto">
-                  Simpan
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={is_saving}
+                  aria-busy={is_saving}
+                >
+                  {is_saving ? (
+                    <>
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan"
+                  )}
                 </Button>
               </div>
             </form>

@@ -240,7 +240,11 @@ export default function TargetImportModal({
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit">
+              <Button
+                type="submit"
+                disabled={is_importing}
+                aria-busy={is_importing}
+              >
                 {is_importing ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />

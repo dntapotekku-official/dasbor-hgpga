@@ -135,6 +135,8 @@ export default function TargetBulkDeleteModal({
               <Button
                 type="submit"
                 variant="delete"
+                disabled={is_deleting}
+                aria-busy={is_deleting}
               >
                 {is_deleting ? (
                   <>

@@ -21,6 +21,10 @@ function get_date_boundaries(date_value) {
   const month_start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
   const month_end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
   const day_end = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  const week_day = date.getUTCDay();
+  const days_since_monday = (week_day + 6) % 7;
+  const week_start = new Date(date.getTime() - days_since_monday * 24 * 60 * 60 * 1000);
+  const week_end = new Date(week_start.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   return {
     normalized_date,
@@ -28,6 +32,8 @@ function get_date_boundaries(date_value) {
     day_end,
     month_start,
     month_end,
+    week_start,
+    week_end,
   };
 }
 
@@ -174,7 +180,14 @@ export async function getPenjualanGofitku({
   account_uuid,
   role,
 }) {
-  const { date: selected_date, day_end, month_start, month_end } =
+  const {
+    date: selected_date,
+    day_end,
+    month_start,
+    month_end,
+    week_start,
+    week_end,
+  } =
     get_date_boundaries(date);
   const trimmed_outlet_uuid = String(outlet_uuid ?? "").trim();
   const member_outlet_uuids = await get_accessible_outlet_uuids({
@@ -248,6 +261,9 @@ export async function getPenjualanGofitku({
   }
 
   const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
+  const sales_range_start =
+    week_start < month_start ? week_start : month_start;
+  const sales_range_end = week_end > month_end ? week_end : month_end;
   const sales_rows = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.findMany({
         where: {
@@ -256,8 +272,8 @@ export async function getPenjualanGofitku({
             in: relation_uuid_set,
           },
           date: {
-            gte: month_start,
-            lt: month_end,
+            gte: sales_range_start,
+            lt: sales_range_end,
           },
         },
         orderBy: [
@@ -290,6 +306,7 @@ export async function getPenjualanGofitku({
       uuid: relation.uuid_insanku ?? relation.uuid,
       name: relation.insanku?.name ?? "-",
       today_input: 0,
+      weekly_total: 0,
       monthly_total: 0,
       daily_totals: {},
       target: active_target_map.get(relation.uuid_insanku) ?? 0,
@@ -303,11 +320,22 @@ export async function getPenjualanGofitku({
       continue;
     }
 
-    current_summary.monthly_total += Number(sale.qty || 0);
+    const sale_date = new Date(sale.date);
+    const sale_qty = Number(sale.qty || 0);
 
-    const sale_day = new Date(sale.date).getUTCDate();
+    if (sale_date >= week_start && sale_date < week_end) {
+      current_summary.weekly_total += sale_qty;
+    }
+
+    if (sale_date < month_start || sale_date >= month_end) {
+      continue;
+    }
+
+    current_summary.monthly_total += sale_qty;
+
+    const sale_day = sale_date.getUTCDate();
     current_summary.daily_totals[sale_day] =
-      Number(current_summary.daily_totals[sale_day] || 0) + Number(sale.qty || 0);
+      Number(current_summary.daily_totals[sale_day] || 0) + sale_qty;
   }
   
   for (const sale of today_sales) {

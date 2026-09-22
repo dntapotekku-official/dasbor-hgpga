@@ -193,7 +193,13 @@ function KunjunganSheet({
           </div>
         </div>
         <div className="border-t p-4">
-          <Button type="button" onClick={handle_save} className="w-full">
+          <Button
+            type="button"
+            onClick={handle_save}
+            className="w-full"
+            disabled={is_submitting}
+            aria-busy={is_submitting}
+          >
             {is_submitting ? "Menyimpan..." : "Simpan Perubahan"}
           </Button>
         </div>
@@ -468,6 +474,8 @@ export default function KunjunganPage() {
                   type="button"
                   onClick={() => setIsImportModalOpen(true)}
                   className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                  disabled={is_importing}
+                  aria-busy={is_importing}
                 >
                   {is_importing ? (
                     <>

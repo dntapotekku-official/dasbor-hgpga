@@ -26,7 +26,8 @@ export default function SyncActionButton({
       <Button
         type="button"
         onClick={() => setOpen(true)}
-        disabled={disabled}
+        disabled={disabled || is_pending}
+        aria-busy={is_pending}
         className={className}
       >
         {is_pending ? (

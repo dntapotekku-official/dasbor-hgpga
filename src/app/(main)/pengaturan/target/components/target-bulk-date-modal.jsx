@@ -259,7 +259,11 @@ export default function TargetBulkDateModal({
               >
                 Batal
               </DialogPrimitive.Close>
-              <Button type="submit">
+              <Button
+                type="submit"
+                disabled={is_updating}
+                aria-busy={is_updating}
+              >
                 {is_updating ? (
                   <>
                     <LoaderCircleIcon className="size-4 animate-spin" />
