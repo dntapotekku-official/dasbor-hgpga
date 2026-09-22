@@ -945,6 +945,8 @@ export async function getNilaiTransaksiBasketSize({
 // Export Excel laporan NS/BS
 // ============================================================================
 
+const export_font_name = "Aptos";
+
 function set_export_formula(cell, formula, result) {
   cell.value = {
     formula,
@@ -1097,7 +1099,7 @@ function add_export_average_row({
       pattern: "solid",
       fgColor: { argb: "FFFFFF00" },
     };
-    cell.font = { bold: true, size: 10 };
+    cell.font = { name: export_font_name, bold: true, size: 10 };
   });
 
   return row_number;
@@ -1129,7 +1131,7 @@ function add_export_total_row(sheet, metrics) {
       pattern: "solid",
       fgColor: { argb: "FFFFFF00" },
     };
-    cell.font = { bold: true, size: 10 };
+    cell.font = { name: export_font_name, bold: true, size: 10 };
   });
 
   ["I", "K", "P", "R"].forEach((column) => {
@@ -1178,7 +1180,11 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   sheet.mergeCells("A1:R1");
   sheet.getCell("A1").value =
     `PEMANTAUAN NILAI TRANSAKSI DAN BASKET SIZE APOTEKKU ${data.selected_month_label.toUpperCase()}`;
-  sheet.getCell("A1").font = { bold: true, size: 20 };
+  sheet.getCell("A1").font = {
+    name: export_font_name,
+    bold: true,
+    size: 20,
+  };
   sheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
   sheet.getRow(1).height = 38;
 
@@ -1212,7 +1218,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   for (let row_number = 2; row_number <= 4; row_number += 1) {
     for (let column_number = 1; column_number <= 18; column_number += 1) {
       const cell = sheet.getCell(row_number, column_number);
-      cell.font = { bold: true, size: 10 };
+      cell.font = { name: export_font_name, bold: true, size: 10 };
       cell.alignment = {
         horizontal: "center",
         vertical: "middle",
@@ -1287,7 +1293,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
           vertical: "middle",
           horizontal: column_number === 2 ? "left" : "center",
         };
-        cell.font = { ...cell.font, size: 9 };
+        cell.font = { ...cell.font, name: export_font_name, size: 9 };
       }
     }
   }

@@ -704,6 +704,11 @@ export default function AtributInsanKuPage() {
       };
       header_row.alignment = { vertical: "middle", horizontal: "center" };
       worksheet.views = [{ state: "frozen", ySplit: 1 }];
+      worksheet.eachRow({ includeEmpty: true }, (row) => {
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.font = { ...cell.font, name: "Aptos" };
+        });
+      });
 
       const workbook_buffer = await workbook.xlsx.writeBuffer();
       const excel_blob = new Blob([workbook_buffer], {

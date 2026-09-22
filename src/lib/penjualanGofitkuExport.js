@@ -1,4 +1,5 @@
 export function export_penjualan_gofitku(export_groups) {
+  const export_font_name = "Aptos";
   const month_names = [
     "JANUARI",
     "FEBRUARI",
@@ -258,11 +259,14 @@ export function export_penjualan_gofitku(export_groups) {
       xmlns:html="http://www.w3.org/TR/REC-html40"
     >
       <Styles>
+        <Style ss:ID="Default" ss:Name="Normal">
+          <Font ss:FontName="${export_font_name}" ss:Size="11"/>
+        </Style>
         <Style ss:ID="Title">
-          <Font ss:Bold="1" ss:Size="16"/>
+          <Font ss:FontName="${export_font_name}" ss:Bold="1" ss:Size="16"/>
         </Style>
         <Style ss:ID="Header">
-          <Font ss:Bold="1"/>
+          <Font ss:FontName="${export_font_name}" ss:Bold="1"/>
           <Interior ss:Color="#FFFF00" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -272,6 +276,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="Cell">
+          <Font ss:FontName="${export_font_name}"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
             <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -280,6 +285,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="WeekTotal">
+          <Font ss:FontName="${export_font_name}"/>
           <Interior ss:Color="#FFFF00" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -289,7 +295,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="Total">
-          <Font ss:Bold="1"/>
+          <Font ss:FontName="${export_font_name}" ss:Bold="1"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
             <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -298,7 +304,7 @@ export function export_penjualan_gofitku(export_groups) {
           </Borders>
         </Style>
         <Style ss:ID="GrandTotal">
-          <Font ss:Bold="1"/>
+          <Font ss:FontName="${export_font_name}" ss:Bold="1"/>
           <Interior ss:Color="#00E5E5" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
