@@ -954,6 +954,21 @@ export default function NilaiTransaksiPage() {
                     aria-label="Tanggal nilai transaksi"
                   />
                 </div>
+
+                <div className="flex min-w-0 flex-col gap-2 sm:w-[320px]">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Outlet
+                  </span>
+                  <OptionDropdown
+                    value={selectedOutlet}
+                    onValueChange={setSelectedOutlet}
+                    options={outlet_filter_options}
+                    searchable
+                    ariaLabel="Filter outlet"
+                    searchPlaceholder="Cari outlet..."
+                    emptySearchMessage="Outlet tidak ditemukan."
+                  />
+                </div>
               </div>
 
               {canImportExport ? (
@@ -1007,51 +1022,38 @@ export default function NilaiTransaksiPage() {
                 ) : null}
               </CardHeader>
               <CardContent>
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 sm:w-[320px]">
-                    <OptionDropdown
-                      value={selectedOutlet}
-                      onValueChange={setSelectedOutlet}
-                      options={outlet_filter_options}
-                      searchable
-                      ariaLabel="Filter outlet"
-                      searchPlaceholder="Cari outlet..."
-                      emptySearchMessage="Outlet tidak ditemukan."
-                    />
-                  </div>
-                  {canManage ? (
-                    <div className="flex flex-wrap justify-end gap-2">
-                      {activeMetric === "nilai-transaksi" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            setBulkAction({
-                              action: "edit_date",
-                              metric: "nilai-transaksi",
-                            })
-                          }
-                        >
-                          <CalendarRangeIcon className="size-4" />
-                          Edit Massal
-                        </Button>
-                      ) : null}
+                {canManage ? (
+                  <div className="mb-6 flex flex-wrap justify-end gap-2">
+                    {activeMetric === "nilai-transaksi" ? (
                       <Button
                         type="button"
-                        variant="delete"
+                        variant="outline"
                         onClick={() =>
                           setBulkAction({
-                            action: "delete_date",
-                            metric: activeMetric,
+                            action: "edit_date",
+                            metric: "nilai-transaksi",
                           })
                         }
                       >
-                        <Trash2Icon className="size-4" />
-                        Hapus Massal
+                        <CalendarRangeIcon className="size-4" />
+                        Edit Massal
                       </Button>
-                    </div>
-                  ) : null}
-                </div>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="delete"
+                      onClick={() =>
+                        setBulkAction({
+                          action: "delete_date",
+                          metric: activeMetric,
+                        })
+                      }
+                    >
+                      <Trash2Icon className="size-4" />
+                      Hapus Massal
+                    </Button>
+                  </div>
+                ) : null}
                 {isLoading ? (
                   <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">
                     <LoaderCircleIcon className="mr-2 size-4 animate-spin" />
