@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import PageHeading from "@/components/page-heading";
 import Pagination from "@/components/pagination";
@@ -347,18 +348,30 @@ export default function NilaiMagangPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-                <div className="relative w-full xl:max-w-md">
-                  <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Cari nama mentee..."
-                    className="pl-9"
-                  />
-                </div>
-                <div className="w-full xl:w-72 xl:flex-none">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+                <FilterField
+                  label="Pencarian"
+                  htmlFor="filter-pencarian-nilai-magang"
+                  className="w-full xl:max-w-md"
+                >
+                  <div className="relative w-full">
+                    <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="filter-pencarian-nilai-magang"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Cari nama mentee..."
+                      className="pl-9"
+                    />
+                  </div>
+                </FilterField>
+                <FilterField
+                  label="Outlet"
+                  htmlFor="filter-outlet-nilai-magang"
+                  className="w-full xl:w-72 xl:flex-none"
+                >
                   <OptionDropdown
+                    id="filter-outlet-nilai-magang"
                     value={selected_outlet}
                     onValueChange={setSelectedOutlet}
                     options={outlet_options}
@@ -367,23 +380,33 @@ export default function NilaiMagangPage() {
                     emptySearchMessage="Outlet tidak ditemukan."
                     ariaLabel="Pilih outlet magang"
                   />
-                </div>
-                <div className="w-full xl:w-44">
+                </FilterField>
+                <FilterField
+                  label="Bulan"
+                  htmlFor="filter-bulan-nilai-magang"
+                  className="w-full xl:w-44"
+                >
                   <OptionDropdown
+                    id="filter-bulan-nilai-magang"
                     value={selected_month}
                     onValueChange={setSelectedMonth}
                     options={MONTH_OPTIONS}
                     ariaLabel="Pilih bulan nilai magang"
                   />
-                </div>
-                <div className="w-full xl:w-36">
+                </FilterField>
+                <FilterField
+                  label="Tahun"
+                  htmlFor="filter-tahun-nilai-magang"
+                  className="w-full xl:w-36"
+                >
                   <OptionDropdown
+                    id="filter-tahun-nilai-magang"
                     value={selected_year}
                     onValueChange={setSelectedYear}
                     options={year_options}
                     ariaLabel="Pilih tahun nilai magang"
                   />
-                </div>
+                </FilterField>
                 <SyncActionButton
                   onConfirm={handle_sync}
                   title="Konfirmasi sinkronisasi nilai magang"

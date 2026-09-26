@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FieldLabel from "@/components/field-label";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -83,7 +83,7 @@ export default function LoginPage() {
           <CardContent>
             <form className="space-y-5" onSubmit={loginHandler}>
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <FieldLabel htmlFor="username" label="Username" required />
                 <Input
                   id="username"
                   value={username}
@@ -95,7 +95,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Kata Sandi</Label>
+                <FieldLabel htmlFor="password" label="Kata Sandi" required />
                 <Input
                   id="password"
                   type="password"

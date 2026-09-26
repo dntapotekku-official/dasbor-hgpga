@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import PageHeading from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
@@ -268,6 +269,7 @@ export default function NilaiTransaksiPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importModalType, setImportModalType] = useState("nilai-transaksi");
   const [editingRow, setEditingRow] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
   const [bulkAction, setBulkAction] = useState(null);
@@ -423,12 +425,13 @@ export default function NilaiTransaksiPage() {
   const displayed_metrics = selectedOutlet !== "all"
     ? summarizeVisibleRows(filtered_outlet_rows)
     : (categoryMetrics[selectedCategory] ?? empty_metrics);
-  const onImportButtonClick = () => {
+  const onImportButtonClick = (import_type = activeMetric) => {
     if (!canImportExport) {
       toast.error("Akun outlet tidak memiliki akses impor.");
       return;
     }
 
+    setImportModalType(import_type);
     setIsImportModalOpen(true);
   };
 
@@ -493,7 +496,12 @@ export default function NilaiTransaksiPage() {
     setAvailableDates(metrics.available_dates ?? default_available_dates);
   };
 
-  const onImportSubmit = async ({ import_date, file, import_type }) => {
+  const onImportSubmit = async ({
+    import_date,
+    import_from_date,
+    file,
+    import_type,
+  }) => {
     try {
       if (!canImportExport) {
         throw new Error("Akun tidak memiliki akses untuk mengimpor file Excel.");
@@ -501,10 +509,17 @@ export default function NilaiTransaksiPage() {
 
       const uses_file_dates = import_type === "basket-size";
 
-      if (!file || !import_type || (!uses_file_dates && !import_date)) {
+      if (
+        !file
+        || !import_type
+        || (!uses_file_dates && !import_date)
+        || (import_type === "nilai-transaksi-monthly" && !import_from_date)
+      ) {
         throw new Error(
           uses_file_dates
             ? "File Excel wajib dipilih."
+            : import_type === "nilai-transaksi-monthly"
+            ? "Tanggal dari, tanggal sampai, dan file Excel wajib diisi."
             : "Tanggal data dan file Excel wajib diisi.",
         );
       }
@@ -516,6 +531,11 @@ export default function NilaiTransaksiPage() {
 
       if (!uses_file_dates) {
         formData.append("import_date", import_date);
+      }
+
+      if (import_type === "nilai-transaksi-monthly") {
+        formData.append("import_scope", "monthly");
+        formData.append("from_date", import_from_date);
       }
 
       const import_endpoint = resolveMetricEndpoint(import_type);
@@ -532,7 +552,7 @@ export default function NilaiTransaksiPage() {
       const result_date = payload.data?.import_date ?? import_date;
 
       if (selectedDate === result_date) {
-        const metrics = await fetchMetricData(result_date, import_type);
+        const metrics = await fetchMetricData(result_date, activeMetric);
         setRows(metrics.rows ?? []);
         setCategoryMetrics(metrics.category_metrics ?? {});
         setOverallMetrics(
@@ -571,7 +591,10 @@ export default function NilaiTransaksiPage() {
     }
   };
 
-  const handleDailyEdit = async ({ total_revenue }) => {
+  const handleNilaiTransaksiEdit = async ({
+    total_revenue_daily,
+    total_revenue_monthly,
+  }) => {
     if (!editingRow) {
       return;
     }
@@ -584,10 +607,11 @@ export default function NilaiTransaksiPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          action: "update_daily",
+          action: "update_totals",
           uuid_outlet: editingRow.uuid,
           selected_date: selectedDate,
-          total_revenue,
+          total_revenue_daily,
+          total_revenue_monthly,
         }),
       });
       const payload = await response.json();
@@ -598,7 +622,7 @@ export default function NilaiTransaksiPage() {
 
       await refreshMetrics();
       setEditingRow(null);
-      toast.success(payload.message || "Nilai harian berhasil diperbarui.");
+      toast.success(payload.message || "Nilai transaksi berhasil diperbarui.");
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -923,10 +947,11 @@ export default function NilaiTransaksiPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                <div className="flex min-w-0 flex-col gap-2 sm:w-[220px]">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Kategori
-                  </span>
+                <FilterField
+                  label="Kategori"
+                  htmlFor={`filter-kategori-${activeMetric}`}
+                  className="sm:w-[220px]"
+                >
                   <OptionDropdown
                     id={`filter-kategori-${activeMetric}`}
                     value={selectedCategory}
@@ -937,12 +962,21 @@ export default function NilaiTransaksiPage() {
                     }}
                     ariaLabel="Filter kategori outlet"
                   />
-                </div>
+                </FilterField>
 
-                <div className="flex min-w-0 flex-col gap-2 sm:w-[180px]">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Tanggal
-                  </span>
+                <FilterField label="Outlet" className="sm:w-[320px]">
+                  <OptionDropdown
+                    value={selectedOutlet}
+                    onValueChange={setSelectedOutlet}
+                    options={outlet_filter_options}
+                    searchable
+                    ariaLabel="Filter outlet"
+                    searchPlaceholder="Cari outlet..."
+                    emptySearchMessage="Outlet tidak ditemukan."
+                  />
+                </FilterField>
+
+                <FilterField label="Tanggal" className="sm:w-[180px]">
                   <Input
                     type="date"
                     value={selectedDate}
@@ -953,22 +987,7 @@ export default function NilaiTransaksiPage() {
                     className="bg-card"
                     aria-label="Tanggal nilai transaksi"
                   />
-                </div>
-
-                <div className="flex min-w-0 flex-col gap-2 sm:w-[320px]">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Outlet
-                  </span>
-                  <OptionDropdown
-                    value={selectedOutlet}
-                    onValueChange={setSelectedOutlet}
-                    options={outlet_filter_options}
-                    searchable
-                    ariaLabel="Filter outlet"
-                    searchPlaceholder="Cari outlet..."
-                    emptySearchMessage="Outlet tidak ditemukan."
-                  />
-                </div>
+                </FilterField>
               </div>
 
               {canImportExport ? (
@@ -1000,25 +1019,70 @@ export default function NilaiTransaksiPage() {
                   {activeMetricLabel}
                 </CardTitle>
                 {canImportExport ? (
-                  <Button
-                    type="button"
-                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                    onClick={onImportButtonClick}
-                    disabled={isImporting}
-                    aria-busy={isImporting}
-                  >
-                    {isImporting ? (
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    {activeMetric === "nilai-transaksi" ? (
                       <>
-                        <LoaderCircleIcon className="size-4 animate-spin" />
-                        Mengimpor...
+                        <Button
+                          type="button"
+                          className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                          onClick={() => onImportButtonClick("nilai-transaksi")}
+                          disabled={isImporting}
+                          aria-busy={isImporting}
+                        >
+                          {isImporting && importModalType === "nilai-transaksi" ? (
+                            <>
+                              <LoaderCircleIcon className="size-4 animate-spin" />
+                              Mengimpor...
+                            </>
+                          ) : (
+                            <>
+                              <FileSpreadsheetIcon className="size-4" />
+                              Impor Harian
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                          onClick={() => onImportButtonClick("nilai-transaksi-monthly")}
+                          disabled={isImporting}
+                          aria-busy={isImporting}
+                        >
+                          {isImporting && importModalType === "nilai-transaksi-monthly" ? (
+                            <>
+                              <LoaderCircleIcon className="size-4 animate-spin" />
+                              Mengimpor...
+                            </>
+                          ) : (
+                            <>
+                              <FileSpreadsheetIcon className="size-4" />
+                              Impor Bulanan
+                            </>
+                          )}
+                        </Button>
                       </>
                     ) : (
-                      <>
-                        <FileSpreadsheetIcon className="size-4" />
-                        Impor
-                      </>
+                      <Button
+                        type="button"
+                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                        onClick={() => onImportButtonClick("basket-size")}
+                        disabled={isImporting}
+                        aria-busy={isImporting}
+                      >
+                        {isImporting ? (
+                          <>
+                            <LoaderCircleIcon className="size-4 animate-spin" />
+                            Mengimpor...
+                          </>
+                        ) : (
+                          <>
+                            <FileSpreadsheetIcon className="size-4" />
+                            Impor
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 ) : null}
               </CardHeader>
               <CardContent>
@@ -1092,7 +1156,7 @@ export default function NilaiTransaksiPage() {
       {canImportExport && isImportModalOpen ? (
         <ImportDataModal
           default_date={selectedDate}
-          import_type={activeMetric}
+          import_type={importModalType}
           is_importing={isImporting}
           on_open_change={setIsImportModalOpen}
           on_submit={onImportSubmit}
@@ -1110,7 +1174,7 @@ export default function NilaiTransaksiPage() {
               setEditingRow(null);
             }
           }}
-          on_submit={handleDailyEdit}
+          on_submit={handleNilaiTransaksiEdit}
         />
       ) : null}
 

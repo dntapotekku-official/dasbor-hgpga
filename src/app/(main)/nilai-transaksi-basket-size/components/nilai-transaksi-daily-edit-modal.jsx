@@ -6,7 +6,7 @@ import { LoaderCircleIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import CurrencyInput from "@/components/currency-input";
-import { Label } from "@/components/ui/label";
+import FieldLabel from "@/components/field-label";
 
 export default function NilaiTransaksiDailyEditModal({
   open,
@@ -17,13 +17,19 @@ export default function NilaiTransaksiDailyEditModal({
   on_submit,
 }) {
   const field_id = useId();
-  const [totalRevenue, setTotalRevenue] = useState(
-    String(row?.total_revenue ?? 0),
+  const initial_daily_total_revenue = row?.nt_daily_total_revenue ?? row?.total_revenue;
+  const initial_monthly_total_revenue = row?.nt_current_month_total_revenue;
+  const [dailyTotalRevenue, setDailyTotalRevenue] = useState(
+    String(initial_daily_total_revenue ?? 0),
+  );
+  const [monthlyTotalRevenue, setMonthlyTotalRevenue] = useState(
+    String(initial_monthly_total_revenue ?? 0),
   );
 
   const handle_close = (next_open) => {
     if (!next_open && !is_saving) {
-      setTotalRevenue(String(row?.total_revenue ?? 0));
+      setDailyTotalRevenue(String(initial_daily_total_revenue ?? 0));
+      setMonthlyTotalRevenue(String(initial_monthly_total_revenue ?? 0));
       on_open_change(false);
     }
   };
@@ -61,19 +67,37 @@ export default function NilaiTransaksiDailyEditModal({
             onSubmit={(event) => {
               event.preventDefault();
               on_submit({
-                total_revenue: totalRevenue,
+                total_revenue_daily: dailyTotalRevenue,
+                total_revenue_monthly: monthlyTotalRevenue,
               });
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor={`${field_id}-total-revenue`}>
-                Total Penerimaan Pendapatan
-              </Label>
+              <FieldLabel
+                htmlFor={`${field_id}-daily-total-revenue`}
+                label="Total Penerimaan Pendapatan (Harian)"
+                required
+              />
               <CurrencyInput
-                id={`${field_id}-total-revenue`}
+                id={`${field_id}-daily-total-revenue`}
                 allowDecimals
-                value={totalRevenue}
-                onValueChange={setTotalRevenue}
+                value={dailyTotalRevenue}
+                onValueChange={setDailyTotalRevenue}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <FieldLabel
+                htmlFor={`${field_id}-monthly-total-revenue`}
+                label="Total Penerimaan (Bulanan)"
+                required
+              />
+              <CurrencyInput
+                id={`${field_id}-monthly-total-revenue`}
+                allowDecimals
+                value={monthlyTotalRevenue}
+                onValueChange={setMonthlyTotalRevenue}
                 required
               />
             </div>

@@ -17,11 +17,11 @@ function should_skip_import_outlet(value) {
   return /\(\s*ho\s*\)\s*$/i.test(String(value ?? "").trim());
 }
 
-function parse_visit_date(value) {
+function parse_visit_date(value, label = "Tanggal kunjungan") {
   const normalized_date = String(value ?? "").trim();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized_date)) {
-    throw new Error("Tanggal kunjungan wajib diisi dengan format yang valid.");
+    throw new Error(`${label} wajib diisi dengan format yang valid.`);
   }
 
   const date = new Date(`${normalized_date}T00:00:00.000Z`);
@@ -30,7 +30,7 @@ function parse_visit_date(value) {
     Number.isNaN(date.getTime()) ||
     date.toISOString().slice(0, 10) !== normalized_date
   ) {
-    throw new Error("Tanggal kunjungan tidak valid.");
+    throw new Error(`${label} tidak valid.`);
   }
 
   return date;
@@ -42,6 +42,14 @@ function end_of_day(date) {
 
 function build_active_daily_key(uuid_outlet, date) {
   return `${uuid_outlet}:${date.toISOString().slice(0, 10)}`;
+}
+
+function to_date_key(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function build_active_bulanan_key(uuid_outlet, from_date, to_date) {
+  return `${uuid_outlet}:${to_date_key(from_date)}:${to_date_key(to_date)}`;
 }
 
 async function clear_daily_visit_active_keys(
@@ -65,6 +73,43 @@ async function clear_daily_visit_active_keys(
       date: {
         gte: date,
         lte: end_of_day(date),
+      },
+      active_key: {
+        not: null,
+      },
+    },
+    data: {
+      active_key: null,
+    },
+  });
+}
+
+async function clear_bulanan_active_keys(
+  transaction,
+  {
+    uuid_outlet,
+    from_date,
+    to_date,
+    exclude_uuid,
+  },
+) {
+  await transaction.tbl_dilayani_bulanan.updateMany({
+    where: {
+      uuid_outlet,
+      ...(exclude_uuid
+        ? {
+            uuid: {
+              not: exclude_uuid,
+            },
+          }
+        : {}),
+      from_date: {
+        gte: from_date,
+        lte: end_of_day(from_date),
+      },
+      to_date: {
+        gte: to_date,
+        lte: end_of_day(to_date),
       },
       active_key: {
         not: null,
@@ -129,6 +174,18 @@ function format_kunjungan_row(item) {
   };
 }
 
+function format_kunjungan_bulanan_row(item) {
+  return {
+    uuid: item.uuid,
+    uuid_outlet: item.uuid_outlet ?? "",
+    outlet_name: item.outlet?.name ?? "Outlet tidak diketahui",
+    kategori: item.outlet?.category ?? "",
+    from_date: item.from_date.toISOString().slice(0, 10),
+    to_date: item.to_date.toISOString().slice(0, 10),
+    value: item.value,
+  };
+}
+
 async function find_duplicate_kunjungan({
   uuid_outlet,
   date,
@@ -154,6 +211,49 @@ async function find_duplicate_kunjungan({
       uuid: true,
     },
   });
+}
+
+async function find_duplicate_kunjungan_bulanan({
+  uuid_outlet,
+  from_date,
+  to_date,
+  exclude_uuid,
+}) {
+  return prisma.tbl_dilayani_bulanan.findFirst({
+    where: {
+      uuid_outlet,
+      deleted_at: null,
+      ...(exclude_uuid
+        ? {
+            uuid: {
+              not: exclude_uuid,
+            },
+          }
+        : {}),
+      from_date: {
+        gte: from_date,
+        lte: end_of_day(from_date),
+      },
+      to_date: {
+        gte: to_date,
+        lte: end_of_day(to_date),
+      },
+    },
+    select: {
+      uuid: true,
+    },
+  });
+}
+
+function parse_range_dates(from_date_value, to_date_value) {
+  const parsed_from = parse_visit_date(from_date_value, "Tanggal dari");
+  const parsed_to = parse_visit_date(to_date_value, "Tanggal sampai");
+
+  if (parsed_from.getTime() > parsed_to.getTime()) {
+    throw new Error("Tanggal dari tidak boleh lebih besar dari tanggal sampai.");
+  }
+
+  return { parsed_from, parsed_to };
 }
 
 function normalize_header(value) {
@@ -596,5 +696,233 @@ export async function importKunjungan({
       unmatched_outlets,
       import_date: parsed_date.toISOString().slice(0, 10),
     },
+  };
+}
+
+export async function getKunjunganBulanan() {
+  const data_kunjungan_bulanan = await prisma.tbl_dilayani_bulanan.findMany({
+    where: {
+      deleted_at: null,
+      outlet: {
+        deleted_at: null,
+        excep: false,
+      },
+    },
+    orderBy: [
+      {
+        to_date: "desc",
+      },
+      {
+        from_date: "desc",
+      },
+      {
+        outlet: {
+          name: "asc",
+        },
+      },
+    ],
+    select: {
+      uuid: true,
+      uuid_outlet: true,
+      value: true,
+      from_date: true,
+      to_date: true,
+      outlet: {
+        select: {
+          name: true,
+          category: true,
+        },
+      },
+    },
+  });
+
+  return {
+    data_kunjungan_bulanan: data_kunjungan_bulanan.map(format_kunjungan_bulanan_row),
+  };
+}
+
+export async function createKunjunganBulanan({
+  uuid_outlet,
+  from_date,
+  to_date,
+  value,
+}) {
+  const { parsed_from, parsed_to } = parse_range_dates(from_date, to_date);
+  const parsed_value = parse_visit_value(value);
+  const resolved_uuid_outlet = await assert_active_outlet(uuid_outlet);
+  const duplicate = await find_duplicate_kunjungan_bulanan({
+    uuid_outlet: resolved_uuid_outlet,
+    from_date: parsed_from,
+    to_date: parsed_to,
+  });
+
+  if (duplicate) {
+    throw new Error("Kunjungan bulanan untuk outlet dan rentang tanggal ini sudah ada.");
+  }
+
+  const created = await prisma.$transaction(async (transaction) => {
+    await clear_bulanan_active_keys(transaction, {
+      uuid_outlet: resolved_uuid_outlet,
+      from_date: parsed_from,
+      to_date: parsed_to,
+    });
+
+    return transaction.tbl_dilayani_bulanan.create({
+      data: {
+        uuid: randomUUID(),
+        uuid_outlet: resolved_uuid_outlet,
+        active_key: build_active_bulanan_key(
+          resolved_uuid_outlet,
+          parsed_from,
+          parsed_to,
+        ),
+        from_date: parsed_from,
+        to_date: parsed_to,
+        value: parsed_value,
+      },
+      select: {
+        uuid: true,
+        uuid_outlet: true,
+        value: true,
+        from_date: true,
+        to_date: true,
+        outlet: {
+          select: {
+            name: true,
+            category: true,
+          },
+        },
+      },
+    });
+  });
+
+  return {
+    success: true,
+    data: format_kunjungan_bulanan_row(created),
+    message: "Kunjungan bulanan berhasil ditambahkan.",
+  };
+}
+
+export async function updateKunjunganBulanan({
+  uuid_kunjungan_bulanan,
+  uuid_outlet,
+  from_date,
+  to_date,
+  value,
+}) {
+  const normalized_uuid = String(uuid_kunjungan_bulanan ?? "").trim();
+
+  if (!normalized_uuid) {
+    throw new Error("UUID kunjungan bulanan wajib diisi.");
+  }
+
+  const { parsed_from, parsed_to } = parse_range_dates(from_date, to_date);
+  const parsed_value = parse_visit_value(value);
+  const resolved_uuid_outlet = await assert_active_outlet(uuid_outlet);
+  const existing = await prisma.tbl_dilayani_bulanan.findUnique({
+    where: {
+      uuid: normalized_uuid,
+    },
+    select: {
+      uuid: true,
+      deleted_at: true,
+    },
+  });
+
+  if (!existing || existing.deleted_at) {
+    throw new Error("Data kunjungan bulanan tidak ditemukan.");
+  }
+
+  const duplicate = await find_duplicate_kunjungan_bulanan({
+    uuid_outlet: resolved_uuid_outlet,
+    from_date: parsed_from,
+    to_date: parsed_to,
+    exclude_uuid: normalized_uuid,
+  });
+
+  if (duplicate) {
+    throw new Error("Kunjungan bulanan untuk outlet dan rentang tanggal ini sudah ada.");
+  }
+
+  const updated = await prisma.$transaction(async (transaction) => {
+    await clear_bulanan_active_keys(transaction, {
+      uuid_outlet: resolved_uuid_outlet,
+      from_date: parsed_from,
+      to_date: parsed_to,
+      exclude_uuid: normalized_uuid,
+    });
+
+    return transaction.tbl_dilayani_bulanan.update({
+      where: {
+        uuid: normalized_uuid,
+      },
+      data: {
+        uuid_outlet: resolved_uuid_outlet,
+        active_key: build_active_bulanan_key(
+          resolved_uuid_outlet,
+          parsed_from,
+          parsed_to,
+        ),
+        from_date: parsed_from,
+        to_date: parsed_to,
+        value: parsed_value,
+      },
+      select: {
+        uuid: true,
+        uuid_outlet: true,
+        value: true,
+        from_date: true,
+        to_date: true,
+        outlet: {
+          select: {
+            name: true,
+            category: true,
+          },
+        },
+      },
+    });
+  });
+
+  return {
+    success: true,
+    data: format_kunjungan_bulanan_row(updated),
+    message: "Kunjungan bulanan berhasil diperbarui.",
+  };
+}
+
+export async function deleteKunjunganBulanan({ uuid_kunjungan_bulanan }) {
+  const normalized_uuid = String(uuid_kunjungan_bulanan ?? "").trim();
+
+  if (!normalized_uuid) {
+    throw new Error("UUID kunjungan bulanan wajib diisi.");
+  }
+
+  const existing = await prisma.tbl_dilayani_bulanan.findUnique({
+    where: {
+      uuid: normalized_uuid,
+    },
+    select: {
+      uuid: true,
+      deleted_at: true,
+    },
+  });
+
+  if (!existing || existing.deleted_at) {
+    throw new Error("Data kunjungan bulanan tidak ditemukan.");
+  }
+
+  await prisma.tbl_dilayani_bulanan.update({
+    where: {
+      uuid: normalized_uuid,
+    },
+    data: {
+      active_key: null,
+      deleted_at: new Date(),
+    },
+  });
+
+  return {
+    success: true,
+    message: "Kunjungan bulanan berhasil dihapus.",
   };
 }

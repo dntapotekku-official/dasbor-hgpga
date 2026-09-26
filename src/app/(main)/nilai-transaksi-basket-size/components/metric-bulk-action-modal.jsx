@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 
 import OptionDropdown from "@/components/option-dropdown";
+import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 function format_date_label(value) {
   const date = new Date(`${value}T00:00:00`);
@@ -103,9 +103,11 @@ export default function MetricBulkActionModal({
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor={`${field_id}-tanggal-data`}>
-                {is_edit ? "Tanggal Lama" : "Tanggal Data"}
-              </Label>
+              <FieldLabel
+                htmlFor={`${field_id}-tanggal-data`}
+                label={is_edit ? "Tanggal Lama" : "Tanggal Data"}
+                required
+              />
               <OptionDropdown
                 id={`${field_id}-tanggal-data`}
                 value={source_date}
@@ -120,7 +122,7 @@ export default function MetricBulkActionModal({
 
             {is_edit ? (
               <div className="space-y-2">
-                <Label htmlFor={`${field_id}-tanggal-baru`}>Tanggal Baru</Label>
+                <FieldLabel htmlFor={`${field_id}-tanggal-baru`} label="Tanggal Baru" required />
                 <Input
                   id={`${field_id}-tanggal-baru`}
                   type="date"

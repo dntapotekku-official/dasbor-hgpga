@@ -5,8 +5,8 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { LoaderCircleIcon, Trash2Icon, XIcon } from "lucide-react";
 
 import OptionDropdown from "@/components/option-dropdown";
+import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 
 function get_period_key(start_date, end_date) {
   return `${start_date}|${end_date}`;
@@ -111,7 +111,7 @@ export default function TargetBulkDeleteModal({
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor={`${field_id}-periode-hapus`}>Periode Target</Label>
+              <FieldLabel htmlFor={`${field_id}-periode-hapus`} label="Periode Target" required />
               <OptionDropdown
                 id={`${field_id}-periode-hapus`}
                 value={selected_period_key}

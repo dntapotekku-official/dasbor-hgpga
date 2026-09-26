@@ -6,9 +6,9 @@ import { toast } from "sonner";
 
 import OptionDropdown from "@/components/option-dropdown";
 import CurrencyInput from "@/components/currency-input";
+import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -190,10 +190,7 @@ export default function PengaturanRowSheet({
             return (
               <div key={field.key} className="space-y-2">
               {field.type !== "checkbox" ? (
-                <Label htmlFor={field.key}>
-                  {field.label}
-                  {field.required ? <span className="text-destructive"> *</span> : null}
-                </Label>
+                <FieldLabel htmlFor={field.key} label={field.label} required={Boolean(field.required)} />
               ) : null}
               {field.type === "checkbox" ? (
                 <label

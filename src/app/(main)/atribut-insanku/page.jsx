@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
+import FilterField from "@/components/filter-field";
 import PageHeading from "@/components/page-heading";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
@@ -25,8 +26,8 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import FieldLabel from "@/components/field-label";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -1123,16 +1124,23 @@ export default function AtributInsanKuPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative w-full sm:max-w-sm">
-                  <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={handle_search_change}
-                    placeholder="Cari nama InsanKu..."
-                    className="pl-9"
-                  />
-                </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <FilterField
+                  label="Pencarian"
+                  htmlFor="filter-pencarian-atribut-insanku"
+                  className="w-full sm:max-w-sm"
+                >
+                  <div className="relative w-full">
+                    <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="filter-pencarian-atribut-insanku"
+                      value={search}
+                      onChange={handle_search_change}
+                      placeholder="Cari nama InsanKu..."
+                      className="pl-9"
+                    />
+                  </div>
+                </FilterField>
                 <Button
                   type="button"
                   variant="outline"
@@ -1358,11 +1366,11 @@ export default function AtributInsanKuPage() {
               {filterable_attribute_columns.length ? (
                 filterable_attribute_columns.map((column) => (
                   <div key={column.key} className="space-y-2">
-                    <Label
+                    <FieldLabel
                       htmlFor={`filter-${column.key}`}
-                    >
-                      {column.label}
-                    </Label>
+                      label={column.label}
+                      variant="filter"
+                    />
                     {column.type === "checkbox" ? (
                       <select
                         id={`filter-${column.key}`}
@@ -1381,7 +1389,7 @@ export default function AtributInsanKuPage() {
                     ) : column.type === "number" ? (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor={`filter-${column.key}`}>Minimum</Label>
+                          <FieldLabel htmlFor={`filter-${column.key}`} label="Minimum" variant="filter" />
                           <Input
                             id={`filter-${column.key}`}
                             type="number"
@@ -1398,7 +1406,7 @@ export default function AtributInsanKuPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={`filter-${column.key}-max`}>Maksimum</Label>
+                          <FieldLabel htmlFor={`filter-${column.key}-max`} label="Maksimum" variant="filter" />
                           <Input
                             id={`filter-${column.key}-max`}
                             type="number"
@@ -1418,7 +1426,7 @@ export default function AtributInsanKuPage() {
                     ) : (
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor={`filter-${column.key}`}>Dari</Label>
+                          <FieldLabel htmlFor={`filter-${column.key}`} label="Dari" variant="filter" />
                           <Input
                             id={`filter-${column.key}`}
                             type="date"
@@ -1434,7 +1442,7 @@ export default function AtributInsanKuPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={`filter-${column.key}-to`}>Sampai</Label>
+                          <FieldLabel htmlFor={`filter-${column.key}-to`} label="Sampai" variant="filter" />
                           <Input
                             id={`filter-${column.key}-to`}
                             type="date"

@@ -9,7 +9,10 @@ import {
   exportNilaiTransaksiBasketSizeWorkbook,
   getNilaiTransaksiBasketSize,
   importNilaiTransaksi,
+  importNilaiTransaksiBulanan,
   updateNilaiTransaksiDaily,
+  updateNilaiTransaksiMonthly,
+  updateNilaiTransaksiTotals,
 } from "@/services/nilaiTransaksiBasketSizeService";
 
 export async function GET(request) {
@@ -71,9 +74,21 @@ export async function GET(request) {
 export async function POST(request) {
   return import_outlet_report(request, {
     import_handler: importNilaiTransaksi,
+    resolve_import_handler: (form_data) => {
+      const import_scope = String(form_data.get("import_scope") ?? "daily");
+
+      if (import_scope === "monthly") {
+        return importNilaiTransaksiBulanan;
+      }
+
+      return importNilaiTransaksi;
+    },
     menu_key: "nilai-transaksi-basket-size",
     temp_prefix: "nilai-transaksi",
     fallback_roles: ["admin"],
+    handler_payload: (form_data) => ({
+      from_date: form_data.get("from_date"),
+    }),
   });
 }
 
@@ -94,6 +109,27 @@ export async function PATCH(request) {
       const data = await bulkUpdateNilaiTransaksiDate({
         source_date: body?.source_date,
         target_date: body?.target_date,
+      });
+
+      return NextResponse.json(data);
+    }
+
+    if (body?.action === "update_monthly") {
+      const data = await updateNilaiTransaksiMonthly({
+        uuid_outlet: body?.uuid_outlet,
+        selected_date: body?.selected_date,
+        total_revenue: body?.total_revenue,
+      });
+
+      return NextResponse.json(data);
+    }
+
+    if (body?.action === "update_totals") {
+      const data = await updateNilaiTransaksiTotals({
+        uuid_outlet: body?.uuid_outlet,
+        selected_date: body?.selected_date,
+        total_revenue_daily: body?.total_revenue_daily,
+        total_revenue_monthly: body?.total_revenue_monthly,
       });
 
       return NextResponse.json(data);

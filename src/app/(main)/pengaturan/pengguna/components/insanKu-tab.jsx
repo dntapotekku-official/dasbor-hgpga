@@ -5,6 +5,7 @@ import { PencilIcon, TriangleAlertIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
@@ -283,24 +284,33 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-start">
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari nama InsanKu..."
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-start">
+              <FilterField
+                label="Pencarian"
+                htmlFor="filter-pencarian-insanku"
                 className="w-full lg:max-w-sm"
-              />
-              {!is_non_slip_gaji ? (
-                <OptionDropdown
-                  value={selected_outlet}
-                  onValueChange={setSelectedOutlet}
-                  options={outlet_options}
-                  searchable
-                  ariaLabel="Filter outlet InsanKu"
-                  searchPlaceholder="Cari outlet..."
-                  emptySearchMessage="Outlet tidak ditemukan."
-                  triggerClassName="w-full lg:w-64"
+              >
+                <Input
+                  id="filter-pencarian-insanku"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Cari nama InsanKu..."
                 />
+              </FilterField>
+              {!is_non_slip_gaji ? (
+                <FilterField label="Outlet" htmlFor="filter-outlet-insanku">
+                  <OptionDropdown
+                    id="filter-outlet-insanku"
+                    value={selected_outlet}
+                    onValueChange={setSelectedOutlet}
+                    options={outlet_options}
+                    searchable
+                    ariaLabel="Filter outlet InsanKu"
+                    searchPlaceholder="Cari outlet..."
+                    emptySearchMessage="Outlet tidak ditemukan."
+                    triggerClassName="w-full lg:w-64"
+                  />
+                </FilterField>
               ) : null}
               {is_non_slip_gaji ? (
                 <Button

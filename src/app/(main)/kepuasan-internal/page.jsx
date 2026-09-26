@@ -8,6 +8,7 @@ import {
   get_kepuasan_internal_from_db,
 } from "@/lib/kepuasanInternalClient";
 import PageHeading from "@/components/page-heading";
+import FilterField from "@/components/filter-field";
 import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
 import SyncActionButton from "@/components/sync-action-button";
 import {
@@ -154,10 +155,7 @@ export default function KepuasanInternalPage() {
         <ChartBarMultiple
           title="Tren Bulanan"
           filter={
-            <div className="flex w-full flex-col gap-2 sm:w-auto">
-              <span className="text-xs font-medium text-muted-foreground">
-                Tahun
-              </span>
+            <FilterField label="Tahun" className="w-full sm:w-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -191,7 +189,7 @@ export default function KepuasanInternalPage() {
                   </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </FilterField>
           }
           action={
             <SyncActionButton

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FieldLabel from "@/components/field-label";
 
 export default function TargetBulkCreateModal({
   open,
@@ -65,7 +65,7 @@ export default function TargetBulkCreateModal({
           <form className="mt-6 space-y-5" onSubmit={handle_submit}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="bulk-create-start-date">Tanggal Mulai</Label>
+                <FieldLabel htmlFor="bulk-create-start-date" label="Tanggal Mulai" required />
                 <Input
                   id="bulk-create-start-date"
                   type="date"
@@ -76,7 +76,7 @@ export default function TargetBulkCreateModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bulk-create-end-date">Tanggal Selesai</Label>
+                <FieldLabel htmlFor="bulk-create-end-date" label="Tanggal Selesai" required />
                 <Input
                   id="bulk-create-end-date"
                   type="date"
@@ -89,7 +89,7 @@ export default function TargetBulkCreateModal({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bulk-create-target">Target</Label>
+              <FieldLabel htmlFor="bulk-create-target" label="Target" required />
               <Input
                 id="bulk-create-target"
                 type="number"

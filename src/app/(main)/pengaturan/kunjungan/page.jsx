@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FilterField from "@/components/filter-field";
 import ImportDataModal from "@/app/(main)/nilai-transaksi-basket-size/components/import-data-modal";
 import OptionDropdown from "@/components/option-dropdown";
 import PageHeading from "@/components/page-heading";
@@ -24,8 +25,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FieldLabel from "@/components/field-label";
 import {
   Sheet,
   SheetContent,
@@ -138,7 +140,7 @@ function KunjunganSheet({
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
           <div className="space-y-2">
-            <Label htmlFor="uuid_outlet">Outlet</Label>
+            <FieldLabel htmlFor="uuid_outlet" label="Outlet" required />
             <OptionDropdown
               id="uuid_outlet"
               value={draft.uuid_outlet}
@@ -157,7 +159,7 @@ function KunjunganSheet({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="date">Tanggal</Label>
+            <FieldLabel htmlFor="date" label="Tanggal" required />
             <Input
               id="date"
               type="date"
@@ -172,7 +174,7 @@ function KunjunganSheet({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="value">Dilayani</Label>
+            <FieldLabel htmlFor="value" label="Dilayani" required />
             <Input
               id="value"
               type="number"
@@ -208,7 +210,188 @@ function KunjunganSheet({
   );
 }
 
+function first_day_of_month_value() {
+  const now = new Date();
+  const first_day = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+
+  return first_day.toISOString().slice(0, 10);
+}
+
+function KunjunganBulananSheet({
+  open,
+  title,
+  item,
+  outlets,
+  on_open_change,
+  on_save,
+}) {
+  const [draft, setDraft] = useState(() => ({
+    uuid_outlet: item?.uuid_outlet ?? "",
+    from_date: item?.from_date ?? first_day_of_month_value(),
+    to_date: item?.to_date ?? new Date().toISOString().slice(0, 10),
+    value: String(item?.value ?? ""),
+  }));
+  const [is_submitting, setIsSubmitting] = useState(false);
+
+  const reset_draft = () => {
+    setDraft({
+      uuid_outlet: item?.uuid_outlet ?? "",
+      from_date: item?.from_date ?? first_day_of_month_value(),
+      to_date: item?.to_date ?? new Date().toISOString().slice(0, 10),
+      value: String(item?.value ?? ""),
+    });
+  };
+
+  const outlet_options = useMemo(
+    () => [
+      {
+        value: "",
+        label: "Pilih outlet",
+      },
+      ...outlets.map((outlet) => ({
+        value: outlet.uuid,
+        label: outlet.name,
+      })),
+    ],
+    [outlets],
+  );
+
+  const handle_save = async () => {
+    setIsSubmitting(true);
+
+    try {
+      await on_save({
+        ...item,
+        uuid_outlet: draft.uuid_outlet,
+        from_date: draft.from_date,
+        to_date: draft.to_date,
+        value: draft.value,
+      });
+      on_open_change(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal menyimpan kunjungan bulanan.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next_open) => {
+        if (is_submitting && !next_open) {
+          return;
+        }
+
+        if (!next_open) {
+          reset_draft();
+        }
+
+        on_open_change(next_open);
+      }}
+    >
+      <SheetContent className="w-full sm:max-w-lg" showCloseButton={!is_submitting}>
+        <SheetHeader className="border-b pb-4">
+          <SheetTitle>{title}</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+          <div className="space-y-2">
+            <FieldLabel htmlFor="uuid_outlet_bulanan" label="Outlet" required />
+            <OptionDropdown
+              id="uuid_outlet_bulanan"
+              value={draft.uuid_outlet}
+              options={outlet_options}
+              onValueChange={(next_value) =>
+                setDraft((current) => ({
+                  ...current,
+                  uuid_outlet: next_value,
+                }))
+              }
+              ariaLabel="Pilih outlet kunjungan bulanan"
+              searchable
+              searchPlaceholder="Cari outlet..."
+              emptyMessage="Outlet tidak ditemukan."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <FieldLabel htmlFor="from_date" label="Dari" required />
+              <Input
+                id="from_date"
+                type="date"
+                value={draft.from_date}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    from_date: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <FieldLabel htmlFor="to_date" label="Sampai" required />
+              <Input
+                id="to_date"
+                type="date"
+                value={draft.to_date}
+                min={draft.from_date}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    to_date: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Contoh: Dari 2025-09-01 sampai 2025-09-10, lalu 2025-09-01 sampai
+            2025-09-11, dan seterusnya.
+          </p>
+
+          <div className="space-y-2">
+            <FieldLabel htmlFor="value_bulanan" label="Dilayani" required />
+            <Input
+              id="value_bulanan"
+              type="number"
+              min="1"
+              step="1"
+              value={draft.value}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  value: event.target.value,
+                }))
+              }
+              placeholder="Masukkan jumlah dilayani 1 - 10, 1 - 11, dst."
+            />
+          </div>
+        </div>
+        <div className="border-t p-4">
+          <Button
+            type="button"
+            onClick={handle_save}
+            className="w-full"
+            disabled={is_submitting}
+            aria-busy={is_submitting}
+          >
+            {is_submitting ? "Menyimpan..." : "Simpan Perubahan"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function KunjunganPage() {
+  const [active_tab, setActiveTab] = useState("harian");
   const [kunjungan, setKunjungan] = useState([]);
   const [outlets, setOutlets] = useState([]);
   const [selected_kunjungan, setSelectedKunjungan] = useState(null);
@@ -222,6 +405,17 @@ export default function KunjunganPage() {
   const [sort_direction, setSortDirection] = useState("desc");
   const [selected_outlet, setSelectedOutlet] = useState("all");
   const [selected_date, setSelectedDate] = useState("");
+  const [kunjungan_bulanan, setKunjunganBulanan] = useState([]);
+  const [selected_kunjungan_bulanan, setSelectedKunjunganBulanan] = useState(null);
+  const [is_bulanan_sheet_open, setIsBulananSheetOpen] = useState(false);
+  const [is_bulanan_create_open, setIsBulananCreateOpen] = useState(false);
+  const [kunjungan_bulanan_to_delete, setKunjunganBulananToDelete] = useState(null);
+  const [is_bulanan_delete_pending, setIsBulananDeletePending] = useState(false);
+  const [sort_bulanan_key, setSortBulananKey] = useState("to_date");
+  const [sort_bulanan_direction, setSortBulananDirection] = useState("desc");
+  const [selected_outlet_bulanan, setSelectedOutletBulanan] = useState("all");
+  const [filter_from_bulanan, setFilterFromBulanan] = useState("");
+  const [filter_to_bulanan, setFilterToBulanan] = useState("");
   const outlet_filter_options = useMemo(
     () => [
       { value: "all", label: "Semua outlet" },
@@ -262,6 +456,44 @@ export default function KunjunganPage() {
     previous_page,
     next_page,
   } = usePagination(sorted_items, PAGE_SIZE);
+  const filtered_bulanan_items = useMemo(
+    () =>
+      kunjungan_bulanan.filter(
+        (item) =>
+          (selected_outlet_bulanan === "all" ||
+            item.uuid_outlet === selected_outlet_bulanan) &&
+          (!filter_from_bulanan || item.to_date >= filter_from_bulanan) &&
+          (!filter_to_bulanan || item.from_date <= filter_to_bulanan),
+      ),
+    [kunjungan_bulanan, selected_outlet_bulanan, filter_from_bulanan, filter_to_bulanan],
+  );
+  const sorted_bulanan_items = useMemo(() => {
+    return [...filtered_bulanan_items].sort((a, b) => {
+      const direction = sort_bulanan_direction === "asc" ? 1 : -1;
+
+      if (sort_bulanan_key === "outlet_name") {
+        return a.outlet_name.localeCompare(b.outlet_name, "id-ID") * direction;
+      }
+
+      if (sort_bulanan_key === "value") {
+        return ((Number(a.value) || 0) - (Number(b.value) || 0)) * direction;
+      }
+
+      if (sort_bulanan_key === "from_date") {
+        return String(a.from_date ?? "").localeCompare(String(b.from_date ?? "")) * direction;
+      }
+
+      return String(a.to_date ?? "").localeCompare(String(b.to_date ?? "")) * direction;
+    });
+  }, [filtered_bulanan_items, sort_bulanan_direction, sort_bulanan_key]);
+  const {
+    current_page: current_bulanan_page,
+    setCurrentPage: setCurrentBulananPage,
+    total_pages: total_bulanan_pages,
+    paginated_rows: paginated_bulanan_rows,
+    previous_page: previous_bulanan_page,
+    next_page: next_bulanan_page,
+  } = usePagination(sorted_bulanan_items, PAGE_SIZE);
 
   const toggle_sort = (next_sort_key) => {
     if (sort_key === next_sort_key) {
@@ -273,6 +505,18 @@ export default function KunjunganPage() {
 
     setSortKey(next_sort_key);
     setSortDirection(next_sort_key === "outlet_name" ? "asc" : "desc");
+  };
+
+  const toggle_bulanan_sort = (next_sort_key) => {
+    if (sort_bulanan_key === next_sort_key) {
+      setSortBulananDirection((current_direction) =>
+        current_direction === "asc" ? "desc" : "asc",
+      );
+      return;
+    }
+
+    setSortBulananKey(next_sort_key);
+    setSortBulananDirection(next_sort_key === "outlet_name" ? "asc" : "desc");
   };
 
   const fetch_kunjungan = async () => {
@@ -289,12 +533,26 @@ export default function KunjunganPage() {
     };
   };
 
+  const fetch_kunjungan_bulanan = async () => {
+    const result = await fetch("/api/kunjungan-bulanan");
+    const payload = await result.json();
+
+    if (!result.ok || !payload.success) {
+      throw new Error(payload.message || "Gagal mengambil data kunjungan bulanan.");
+    }
+
+    return payload.data.data_kunjungan_bulanan ?? [];
+  };
+
   useEffect(() => {
     let should_ignore = false;
 
     async function load_kunjungan() {
       try {
-        const data = await fetch_kunjungan();
+        const [data, data_bulanan] = await Promise.all([
+          fetch_kunjungan(),
+          fetch_kunjungan_bulanan(),
+        ]);
 
         if (should_ignore) {
           return;
@@ -302,6 +560,7 @@ export default function KunjunganPage() {
 
         setKunjungan(data.kunjungan);
         setOutlets(data.outlets);
+        setKunjunganBulanan(data_bulanan);
       } catch (error) {
         if (!should_ignore) {
           toast.error(
@@ -323,6 +582,15 @@ export default function KunjunganPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selected_date, selected_outlet, setCurrentPage]);
+
+  useEffect(() => {
+    setCurrentBulananPage(1);
+  }, [
+    selected_outlet_bulanan,
+    filter_from_bulanan,
+    filter_to_bulanan,
+    setCurrentBulananPage,
+  ]);
 
   const handle_create = async (new_kunjungan) => {
     const result = await fetch("/api/kunjungan", {
@@ -410,6 +678,94 @@ export default function KunjunganPage() {
     }
   };
 
+  const handle_create_bulanan = async (new_kunjungan) => {
+    const result = await fetch("/api/kunjungan-bulanan", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        uuid_outlet: new_kunjungan.uuid_outlet,
+        from_date: new_kunjungan.from_date,
+        to_date: new_kunjungan.to_date,
+        value: new_kunjungan.value,
+      }),
+    });
+    const payload = await result.json();
+
+    if (!result.ok || !payload.success || !payload.data) {
+      throw new Error(payload.message || "Gagal menyimpan kunjungan bulanan.");
+    }
+
+    setKunjunganBulanan((current) => [payload.data, ...current]);
+    toast.success(payload.message || "Kunjungan bulanan berhasil ditambahkan.");
+  };
+
+  const handle_save_bulanan = async (next_kunjungan) => {
+    const result = await fetch("/api/kunjungan-bulanan", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        uuid_kunjungan_bulanan: next_kunjungan.uuid,
+        uuid_outlet: next_kunjungan.uuid_outlet,
+        from_date: next_kunjungan.from_date,
+        to_date: next_kunjungan.to_date,
+        value: next_kunjungan.value,
+      }),
+    });
+    const payload = await result.json();
+
+    if (!result.ok || !payload.success || !payload.data) {
+      throw new Error(payload.message || "Gagal menyimpan kunjungan bulanan.");
+    }
+
+    setKunjunganBulanan((current) =>
+      current.map((item) => (item.uuid === payload.data.uuid ? payload.data : item)),
+    );
+    toast.success(payload.message || "Kunjungan bulanan berhasil diperbarui.");
+  };
+
+  const handle_delete_bulanan = async () => {
+    if (!kunjungan_bulanan_to_delete) {
+      return;
+    }
+
+    setIsBulananDeletePending(true);
+
+    try {
+      const result = await fetch("/api/kunjungan-bulanan", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uuid_kunjungan_bulanan: kunjungan_bulanan_to_delete.uuid,
+        }),
+      });
+      const payload = await result.json();
+
+      if (!result.ok || !payload.success) {
+        throw new Error(payload.message || "Gagal menghapus kunjungan bulanan.");
+      }
+
+      setKunjunganBulanan((current) =>
+        current.filter((item) => item.uuid !== kunjungan_bulanan_to_delete.uuid),
+      );
+      setKunjunganBulananToDelete(null);
+      toast.success(payload.message || "Kunjungan bulanan berhasil dihapus.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal menghapus kunjungan bulanan.",
+      );
+    } finally {
+      setIsBulananDeletePending(false);
+    }
+  };
+
   const handle_import = async ({ import_date, file }) => {
     try {
       if (!import_date || !file) {
@@ -465,10 +821,21 @@ export default function KunjunganPage() {
       </div>
 
       <div className="px-4 lg:px-6">
+        <Tabs value={active_tab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="harian" className="flex-1 px-4">
+              Harian
+            </TabsTrigger>
+            <TabsTrigger value="bulanan" className="flex-1 px-4">
+              Bulanan
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="harian">
         <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-              <CardTitle className="min-w-0 flex-1">Kunjungan</CardTitle>
+              <CardTitle className="min-w-0 flex-1">Kunjungan Harian</CardTitle>
               <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
                 <Button
                   type="button"
@@ -494,25 +861,29 @@ export default function KunjunganPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <OptionDropdown
-                  value={selected_outlet}
-                  onValueChange={setSelectedOutlet}
-                  options={outlet_filter_options}
-                  searchable
-                  ariaLabel="Filter outlet kunjungan"
-                  searchPlaceholder="Cari outlet..."
-                  emptySearchMessage="Outlet tidak ditemukan."
-                  triggerClassName="w-full sm:w-64"
-                />
-                <Input
-                  type="date"
-                  value={selected_date}
-                  onChange={(event) => setSelectedDate(event.target.value)}
-                  aria-label="Filter tanggal kunjungan"
-                  className="w-full sm:w-44"
-                />
-                <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
+                <FilterField label="Outlet" className="sm:w-64">
+                  <OptionDropdown
+                    value={selected_outlet}
+                    onValueChange={setSelectedOutlet}
+                    options={outlet_filter_options}
+                    searchable
+                    ariaLabel="Filter outlet kunjungan"
+                    searchPlaceholder="Cari outlet..."
+                    emptySearchMessage="Outlet tidak ditemukan."
+                    triggerClassName="w-full"
+                  />
+                </FilterField>
+                <FilterField label="Tanggal" className="sm:w-44">
+                  <Input
+                    type="date"
+                    value={selected_date}
+                    onChange={(event) => setSelectedDate(event.target.value)}
+                    aria-label="Filter tanggal kunjungan"
+                    className="w-full"
+                  />
+                </FilterField>
+                <div className="flex w-full justify-end sm:ml-auto sm:w-auto sm:items-end">
                   <Button
                     type="button"
                     onClick={() => setIsCreateSheetOpen(true)}
@@ -623,6 +994,171 @@ export default function KunjunganPage() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="bulanan">
+            <Card className="gap-0 border-t-2 border-t-primary/70">
+              <CardHeader className="border-b">
+                <CardTitle>Kunjungan Bulanan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
+                    <FilterField label="Outlet" className="sm:w-64">
+                      <OptionDropdown
+                        value={selected_outlet_bulanan}
+                        onValueChange={setSelectedOutletBulanan}
+                        options={outlet_filter_options}
+                        searchable
+                        ariaLabel="Filter outlet kunjungan bulanan"
+                        searchPlaceholder="Cari outlet..."
+                        emptySearchMessage="Outlet tidak ditemukan."
+                        triggerClassName="w-full"
+                      />
+                    </FilterField>
+                    <FilterField label="Dari" className="sm:w-44">
+                      <Input
+                        type="date"
+                        value={filter_from_bulanan}
+                        max={filter_to_bulanan || undefined}
+                        onChange={(event) => setFilterFromBulanan(event.target.value)}
+                        aria-label="Filter dari kunjungan bulanan"
+                        className="w-full"
+                      />
+                    </FilterField>
+                    <FilterField label="Sampai" className="sm:w-44">
+                      <Input
+                        type="date"
+                        value={filter_to_bulanan}
+                        min={filter_from_bulanan || undefined}
+                        onChange={(event) => setFilterToBulanan(event.target.value)}
+                        aria-label="Filter sampai kunjungan bulanan"
+                        className="w-full"
+                      />
+                    </FilterField>
+                    <div className="flex w-full justify-end sm:ml-auto sm:w-auto sm:items-end">
+                      <Button
+                        type="button"
+                        onClick={() => setIsBulananCreateOpen(true)}
+                        className="w-full sm:w-auto"
+                      >
+                        <PlusIcon className="size-4" />
+                        Tambah Kunjungan
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-lg border">
+                    <div className="max-h-[560px] overflow-auto">
+                      <Table className="table-fixed">
+                        <TableHeader className="sticky top-0 z-10 bg-card">
+                          <TableRow>
+                            <TableHead className="w-20">#</TableHead>
+                            <TableHead>
+                              <SortableTableHead
+                                label="Outlet"
+                                sortKey="outlet_name"
+                                currentSortKey={sort_bulanan_key}
+                                sortDirection={sort_bulanan_direction}
+                                onSort={toggle_bulanan_sort}
+                              />
+                            </TableHead>
+                            <TableHead className="w-[160px]">
+                              <SortableTableHead
+                                label="Dilayani"
+                                sortKey="value"
+                                currentSortKey={sort_bulanan_key}
+                                sortDirection={sort_bulanan_direction}
+                                onSort={toggle_bulanan_sort}
+                              />
+                            </TableHead>
+                            <TableHead className="w-[200px]">
+                              <SortableTableHead
+                                label="Dari"
+                                sortKey="from_date"
+                                currentSortKey={sort_bulanan_key}
+                                sortDirection={sort_bulanan_direction}
+                                onSort={toggle_bulanan_sort}
+                              />
+                            </TableHead>
+                            <TableHead className="w-[200px]">
+                              <SortableTableHead
+                                label="Sampai"
+                                sortKey="to_date"
+                                currentSortKey={sort_bulanan_key}
+                                sortDirection={sort_bulanan_direction}
+                                onSort={toggle_bulanan_sort}
+                              />
+                            </TableHead>
+                            <TableHead className="w-[180px]">Aksi</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginated_bulanan_rows.map((row, index) => (
+                            <TableRow key={row.uuid}>
+                              <TableCell>
+                                {(current_bulanan_page - 1) * PAGE_SIZE + index + 1}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {row.outlet_name}
+                              </TableCell>
+                              <TableCell className="tabular-nums">
+                                {Number(row.value ?? 0).toLocaleString("id-ID")}
+                              </TableCell>
+                              <TableCell>{format_date_label(row.from_date)}</TableCell>
+                              <TableCell>{format_date_label(row.to_date)}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedKunjunganBulanan(row);
+                                      setIsBulananSheetOpen(true);
+                                    }}
+                                  >
+                                    <PencilIcon className="size-4" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="delete"
+                                    size="sm"
+                                    onClick={() => setKunjunganBulananToDelete(row)}
+                                  >
+                                    <Trash2Icon className="size-4" />
+                                    Hapus
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {filtered_bulanan_items.length === 0 ? (
+                      <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
+                        Data tidak tersedia.
+                      </div>
+                    ) : (
+                      <Pagination
+                        current_page={current_bulanan_page}
+                        page_size={PAGE_SIZE}
+                        total_items={filtered_bulanan_items.length}
+                        total_pages={total_bulanan_pages}
+                        item_label="kunjungan"
+                        on_previous={previous_bulanan_page}
+                        on_next={next_bulanan_page}
+                      />
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <KunjunganSheet
@@ -678,6 +1214,52 @@ export default function KunjunganPage() {
         confirmVariant="delete"
         isPending={is_delete_pending}
         onConfirm={handle_delete}
+      />
+
+      <KunjunganBulananSheet
+        key={`kunjungan-bulanan-edit-${selected_kunjungan_bulanan?.uuid ?? "closed"}`}
+        open={is_bulanan_sheet_open}
+        title="Edit Kunjungan Bulanan"
+        item={selected_kunjungan_bulanan}
+        outlets={outlets}
+        on_open_change={(open) => {
+          setIsBulananSheetOpen(open);
+
+          if (!open) {
+            setSelectedKunjunganBulanan(null);
+          }
+        }}
+        on_save={handle_save_bulanan}
+      />
+
+      <KunjunganBulananSheet
+        key={`kunjungan-bulanan-create-${is_bulanan_create_open ? "open" : "closed"}`}
+        open={is_bulanan_create_open}
+        title="Tambah Kunjungan Bulanan"
+        item={{
+          uuid_outlet: "",
+          from_date: first_day_of_month_value(),
+          to_date: new Date().toISOString().slice(0, 10),
+          value: "",
+        }}
+        outlets={outlets}
+        on_open_change={setIsBulananCreateOpen}
+        on_save={handle_create_bulanan}
+      />
+
+      <ConfirmActionDialog
+        open={Boolean(kunjungan_bulanan_to_delete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setKunjunganBulananToDelete(null);
+          }
+        }}
+        title="Hapus kunjungan bulanan"
+        description={`Kunjungan bulanan "${kunjungan_bulanan_to_delete?.outlet_name ?? "-"}" ${kunjungan_bulanan_to_delete?.from_date ?? "-"} sampai ${kunjungan_bulanan_to_delete?.to_date ?? "-"} akan disembunyikan dari data aktif.`}
+        confirmLabel="Ya, hapus"
+        confirmVariant="delete"
+        isPending={is_bulanan_delete_pending}
+        onConfirm={handle_delete_bulanan}
       />
     </>
   );

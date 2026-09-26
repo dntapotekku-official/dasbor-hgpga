@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
@@ -243,23 +244,32 @@ export default function AdminTab() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari nama admin..."
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <FilterField
+              label="Pencarian"
+              htmlFor="filter-pencarian-admin"
               className="w-full sm:max-w-sm"
-            />
-            <OptionDropdown
-              value={selected_role}
-              onValueChange={setSelectedRole}
-              options={[
-                { value: "all", label: "Semua role" },
-                ...admin_role_options,
-              ]}
-              ariaLabel="Filter role akun"
-              triggerClassName="w-full sm:w-48"
-            />
+            >
+              <Input
+                id="filter-pencarian-admin"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Cari nama admin..."
+              />
+            </FilterField>
+            <FilterField label="Role" htmlFor="filter-role-admin">
+              <OptionDropdown
+                id="filter-role-admin"
+                value={selected_role}
+                onValueChange={setSelectedRole}
+                options={[
+                  { value: "all", label: "Semua role" },
+                  ...admin_role_options,
+                ]}
+                ariaLabel="Filter role akun"
+                triggerClassName="w-full sm:w-48"
+              />
+            </FilterField>
             <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
               <Button
                 type="button"

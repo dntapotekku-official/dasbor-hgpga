@@ -13,6 +13,7 @@ import { ChartBarLabel } from "@/components/charts/chart-bar-label";
 import RingkasanTab from "./components/ringkasan-tab-content";
 import { useAuth } from "@/components/auth-provider";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 import PageHeading from "@/components/page-heading";
@@ -758,10 +759,11 @@ export default function PenjualanGoFitKuPage() {
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                   {is_admin ? (
                     <>
-                      <div className="flex min-w-0 flex-col gap-2 sm:w-[220px]">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Kategori
-                        </span>
+                      <FilterField
+                        label="Kategori"
+                        htmlFor="filter-kategori-penjualan-gofitku"
+                        className="sm:w-[220px]"
+                      >
                         <OptionDropdown
                           id="filter-kategori-penjualan-gofitku"
                           value={selected_kategori_filter}
@@ -772,12 +774,13 @@ export default function PenjualanGoFitKuPage() {
                           }}
                           ariaLabel="Filter kategori penjualan GoFitKu"
                         />
-                      </div>
+                      </FilterField>
 
-                      <div className="flex min-w-0 flex-col gap-2 sm:w-[320px]">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Outlet
-                        </span>
+                      <FilterField
+                        label="Outlet"
+                        htmlFor="filter-outlet-penjualan-gofitku"
+                        className="sm:w-[320px]"
+                      >
                         <OptionDropdown
                           id="filter-outlet-penjualan-gofitku"
                           value={resolved_outlet_filter}
@@ -788,14 +791,11 @@ export default function PenjualanGoFitKuPage() {
                           searchPlaceholder="Cari outlet..."
                           emptyMessage="Outlet tidak ditemukan."
                         />
-                      </div>
+                      </FilterField>
                     </>
                   ) : null}
 
-                  <div className="flex min-w-0 flex-col gap-2 sm:w-[180px]">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Tanggal
-                    </span>
+                  <FilterField label="Tanggal" className="sm:w-[180px]">
                     <Input
                       type="date"
                       value={selected_date}
@@ -803,7 +803,7 @@ export default function PenjualanGoFitKuPage() {
                       className="bg-card"
                       aria-label="Tanggal penjualan GoFitKu"
                     />
-                  </div>
+                  </FilterField>
                 </div>
 
                 {!is_admin ? (

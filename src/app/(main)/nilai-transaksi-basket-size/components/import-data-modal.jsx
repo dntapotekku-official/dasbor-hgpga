@@ -10,9 +10,9 @@ import {
   XIcon,
 } from "lucide-react";
 
+import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export default function ImportDataModal({
   default_date,
@@ -21,7 +21,11 @@ export default function ImportDataModal({
   on_open_change,
   on_submit,
 }) {
+  const default_from_date = /^\d{4}-\d{2}-\d{2}$/.test(String(default_date ?? ""))
+    ? `${String(default_date).slice(0, 8)}01`
+    : default_date;
   const [import_date, setImportDate] = useState(default_date);
+  const [import_from_date, setImportFromDate] = useState(default_from_date);
   const [file, setFile] = useState(null);
   const [file_error, setFileError] = useState("");
   const [is_dragging, setIsDragging] = useState(false);
@@ -44,6 +48,7 @@ export default function ImportDataModal({
 
   const reset_form = () => {
     setImportDate(default_date);
+    setImportFromDate(default_from_date);
     setFile(null);
     setFileError("");
     setIsDragging(false);
@@ -52,6 +57,8 @@ export default function ImportDataModal({
   const title =
     import_type === "kunjungan"
       ? "Impor Kunjungan"
+      : import_type === "nilai-transaksi-monthly"
+      ? "Impor Nilai Transaksi Bulanan"
       : import_type === "basket-size"
         ? "Impor Basket Size"
         : "Impor Nilai Transaksi";
@@ -59,23 +66,31 @@ export default function ImportDataModal({
   const description =
     import_type === "kunjungan"
       ? "Tentukan tanggal data, lalu pilih file Excel berisi kolom Outlet dan Dilayani."
+      : import_type === "nilai-transaksi-monthly"
+      ? "Tentukan tanggal akhir periode, lalu pilih file ikhtisar outlet untuk rentang tanggal 1 sampai tanggal tersebut."
       : import_type === "basket-size"
       ? "Pilih file rekap penjualan. Tanggal Basket Size akan dibaca otomatis dari setiap baris Excel."
       : "Tentukan tanggal data, lalu pilih file ikhtisar outlet untuk mengimpor nilai transaksi.";
   const date_input_id =
     import_type === "kunjungan"
       ? "tanggal-import-kunjungan"
+      : import_type === "nilai-transaksi-monthly"
+      ? "tanggal-import-nilai-transaksi-bulanan"
       : import_type === "basket-size"
       ? "tanggal-import-basket-size"
       : "tanggal-import-nilai-transaksi";
   const file_input_id =
     import_type === "kunjungan"
       ? "file-import-kunjungan"
+      : import_type === "nilai-transaksi-monthly"
+      ? "file-import-nilai-transaksi-bulanan"
       : import_type === "basket-size"
       ? "file-import-basket-size"
       : "file-import-nilai-transaksi";
   const helper_text = import_type === "kunjungan"
     ? "Pastikan file memiliki kolom Outlet dan Dilayani."
+    : import_type === "nilai-transaksi-monthly"
+      ? "File bulanan dipakai untuk kolom bulan berjalan atau bulan lalu, termasuk koreksi canceling order."
     : import_type === "basket-size"
       ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, dan Jumlah Sku."
       : "Pastikan file memiliki sheet Laporan Penjualan dan Statistik Kunjungan.";
@@ -120,25 +135,59 @@ export default function ImportDataModal({
             className="mt-6 space-y-5"
             onSubmit={(event) => {
               event.preventDefault();
-              on_submit({ import_date: import_date, file, import_type });
+              on_submit({
+                import_date,
+                import_from_date,
+                file,
+                import_type,
+              });
             }}
           >
             {!uses_file_dates ? (
-              <div className="space-y-2">
-                <Label htmlFor={date_input_id}>Tanggal Data</Label>
-                <Input
-                  id={date_input_id}
-                  type="date"
-                  value={import_date}
-                  onChange={(event) => setImportDate(event.target.value)}
-                  disabled={is_importing}
-                  required
-                />
-              </div>
+              import_type === "nilai-transaksi-monthly" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor={`${date_input_id}-from`} label="Dari" required />
+                    <Input
+                      id={`${date_input_id}-from`}
+                      type="date"
+                      value={import_from_date}
+                      max={import_date || undefined}
+                      onChange={(event) => setImportFromDate(event.target.value)}
+                      disabled={is_importing}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel htmlFor={`${date_input_id}-to`} label="Sampai" required />
+                    <Input
+                      id={`${date_input_id}-to`}
+                      type="date"
+                      value={import_date}
+                      min={import_from_date || undefined}
+                      onChange={(event) => setImportDate(event.target.value)}
+                      disabled={is_importing}
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <FieldLabel htmlFor={date_input_id} label="Tanggal Data" required />
+                  <Input
+                    id={date_input_id}
+                    type="date"
+                    value={import_date}
+                    onChange={(event) => setImportDate(event.target.value)}
+                    disabled={is_importing}
+                    required
+                  />
+                </div>
+              )
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor={file_input_id}>File Excel</Label>
+              <FieldLabel htmlFor={file_input_id} label="File Excel" required />
               <Input
                 id={file_input_id}
                 type="file"

@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 
 import OptionDropdown from "@/components/option-dropdown";
+import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export default function SalesEntryModal({
   open,
@@ -186,7 +186,7 @@ export default function SalesEntryModal({
 
                         <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
                           <div className="space-y-2">
-                            <Label htmlFor={`tanggal-penjualan-${entry.id}`}>Tanggal</Label>
+                            <FieldLabel htmlFor={`tanggal-penjualan-${entry.id}`} label="Tanggal" required />
                             <Input
                               id={`tanggal-penjualan-${entry.id}`}
                               type="date"
@@ -198,7 +198,7 @@ export default function SalesEntryModal({
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`insanku-penjualan-${entry.id}`}>Nama</Label>
+                            <FieldLabel htmlFor={`insanku-penjualan-${entry.id}`} label="Nama" required />
                             <OptionDropdown
                               id={`insanku-penjualan-${entry.id}`}
                               value={entry.employee_uuid}
@@ -213,7 +213,7 @@ export default function SalesEntryModal({
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`produk-penjualan-${entry.id}`}>Produk</Label>
+                            <FieldLabel htmlFor={`produk-penjualan-${entry.id}`} label="Produk" required />
                             <OptionDropdown
                               id={`produk-penjualan-${entry.id}`}
                               value={entry.produk_uuid ?? ""}
@@ -225,9 +225,11 @@ export default function SalesEntryModal({
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`jumlah-penjualan-${entry.id}`}>
-                              Jumlah
-                            </Label>
+                            <FieldLabel
+                              htmlFor={`jumlah-penjualan-${entry.id}`}
+                              label="Jumlah"
+                              required
+                            />
                             <Input
                               id={`jumlah-penjualan-${entry.id}`}
                               type="number"

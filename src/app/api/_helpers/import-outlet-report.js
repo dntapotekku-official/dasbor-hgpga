@@ -10,6 +10,7 @@ const max_excel_file_size = 10 * 1024 * 1024;
 
 export async function import_outlet_report(request, {
   import_handler,
+  resolve_import_handler,
   menu_key,
   temp_prefix,
   fallback_roles = ["admin"],
@@ -27,6 +28,12 @@ export async function import_outlet_report(request, {
     const form_data = await request.formData();
     const file = form_data.get("file");
     const import_date = form_data.get("import_date");
+    const resolved_import_handler = resolve_import_handler
+      ? resolve_import_handler(form_data)
+      : import_handler;
+    const resolved_handler_payload = typeof handler_payload === "function"
+      ? handler_payload(form_data)
+      : handler_payload;
 
     if (!(file instanceof File)) {
       throw new Error("File Excel wajib dipilih.");
@@ -49,10 +56,10 @@ export async function import_outlet_report(request, {
     );
     await fs.writeFile(temp_file_path, bytes);
 
-    const result = await import_handler({
+    const result = await resolved_import_handler({
       file_path: temp_file_path,
       import_date,
-      ...handler_payload,
+      ...resolved_handler_payload,
     });
 
     return NextResponse.json(result);

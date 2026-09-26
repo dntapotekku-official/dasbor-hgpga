@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   CalendarRangeIcon,
@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import CurrencyValue from "@/components/currency-value";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
@@ -146,6 +147,8 @@ export default function TargetManagementCard({
   const [is_delete_pending, setIsDeletePending] = useState(false);
   const [sort_key, setSortKey] = useState(entity_name_key);
   const [sort_direction, setSortDirection] = useState("asc");
+  const entity_filter_id = useId();
+  const date_filter_id = useId();
   const entity_filter_options = useMemo(
     () => [{ value: "all", label: `Semua ${entity_label}` }, ...entity_options],
     [entity_label, entity_options],
@@ -608,24 +611,30 @@ export default function TargetManagementCard({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <OptionDropdown
-              value={selected_entity}
-              onValueChange={setSelectedEntity}
-              options={entity_filter_options}
-              searchable
-              ariaLabel={`Filter ${entity_label} ${target_label}`}
-              searchPlaceholder={`Cari ${entity_label}...`}
-              emptySearchMessage={`${entity_label} tidak ditemukan.`}
-              triggerClassName="w-full sm:w-64"
-            />
-            <Input
-              type="date"
-              value={selected_date}
-              onChange={(event) => setSelectedDate(event.target.value)}
-              aria-label={`Filter tanggal berlaku ${target_label}`}
-              className="w-full sm:w-44"
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <FilterField label={entity_label} htmlFor={entity_filter_id}>
+              <OptionDropdown
+                id={entity_filter_id}
+                value={selected_entity}
+                onValueChange={setSelectedEntity}
+                options={entity_filter_options}
+                searchable
+                ariaLabel={`Filter ${entity_label} ${target_label}`}
+                searchPlaceholder={`Cari ${entity_label}...`}
+                emptySearchMessage={`${entity_label} tidak ditemukan.`}
+                triggerClassName="w-full sm:w-64"
+              />
+            </FilterField>
+            <FilterField label="Tanggal" htmlFor={date_filter_id}>
+              <Input
+                id={date_filter_id}
+                type="date"
+                value={selected_date}
+                onChange={(event) => setSelectedDate(event.target.value)}
+                aria-label={`Filter tanggal berlaku ${target_label}`}
+                className="w-full sm:w-44"
+              />
+            </FilterField>
             <div className="flex w-full flex-wrap justify-end gap-2 sm:ml-auto sm:w-auto">
               <Button
                 type="button"

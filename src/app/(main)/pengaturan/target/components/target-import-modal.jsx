@@ -12,7 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import FieldLabel from "@/components/field-label";
 
 function get_today_value() {
   return new Date().toISOString().slice(0, 10);
@@ -122,7 +122,7 @@ export default function TargetImportModal({
             {is_range_mode ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="tanggal-mulai-import-target">Tanggal Mulai</Label>
+                  <FieldLabel htmlFor="tanggal-mulai-import-target" label="Tanggal Mulai" required />
                   <Input
                     id="tanggal-mulai-import-target"
                     type="date"
@@ -133,7 +133,7 @@ export default function TargetImportModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tanggal-selesai-import-target">Tanggal Selesai</Label>
+                  <FieldLabel htmlFor="tanggal-selesai-import-target" label="Tanggal Selesai" required />
                   <Input
                     id="tanggal-selesai-import-target"
                     type="date"
@@ -146,7 +146,7 @@ export default function TargetImportModal({
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="tanggal-import-target">Tanggal Data</Label>
+                <FieldLabel htmlFor="tanggal-import-target" label="Tanggal Data" required />
                 <Input
                   id="tanggal-import-target"
                   type="date"
@@ -159,7 +159,7 @@ export default function TargetImportModal({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="file-import-target">File Excel</Label>
+              <FieldLabel htmlFor="file-import-target" label="File Excel" required />
               <Input
                 id="file-import-target"
                 type="file"

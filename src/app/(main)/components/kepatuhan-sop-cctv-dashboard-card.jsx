@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
+import FilterField from "@/components/filter-field";
 import { getKepatuhanSopCctvFromDb } from "@/lib/kepatuhanSopCctvClient";
 import { Button } from "@/components/ui/button";
 import {
@@ -217,8 +218,7 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
       <CardContent className="space-y-6">
         {is_admin ? (
         <div className="w-full sm:w-auto">
-          <div className="flex min-w-0 flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Outlet</span>
+          <FilterField label="Outlet">
             <DropdownMenu
               open={is_outlet_menu_open}
               onOpenChange={(open) => {
@@ -280,7 +280,7 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
+          </FilterField>
         </div>
         ) : null}
         {has_data ? (

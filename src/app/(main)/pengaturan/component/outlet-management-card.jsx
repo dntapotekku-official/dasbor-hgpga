@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
@@ -379,31 +380,43 @@ export default function OutletManagementCard() {
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Cari outlet..."
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <FilterField
+              label="Pencarian"
+              htmlFor="filter-pencarian-outlet"
               className="w-full sm:max-w-sm"
-            />
-            <OptionDropdown
-              value={selected_category}
-              onValueChange={setSelectedCategory}
-              options={outlet_category_filter_options}
-              ariaLabel="Filter kategori outlet"
-              triggerClassName="w-full lg:w-52"
-            />
-            <OptionDropdown
-              value={selected_status}
-              onValueChange={setSelectedStatus}
-              options={[
-                { value: "all", label: "Semua status" },
-                { value: "active", label: "Aktif" },
-                { value: "excluded", label: "Dikecualikan" },
-              ]}
-              ariaLabel="Filter status outlet"
-              triggerClassName="w-full lg:w-48"
-            />
+            >
+              <Input
+                id="filter-pencarian-outlet"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Cari outlet..."
+              />
+            </FilterField>
+            <FilterField label="Kategori" htmlFor="filter-kategori-outlet">
+              <OptionDropdown
+                id="filter-kategori-outlet"
+                value={selected_category}
+                onValueChange={setSelectedCategory}
+                options={outlet_category_filter_options}
+                ariaLabel="Filter kategori outlet"
+                triggerClassName="w-full lg:w-52"
+              />
+            </FilterField>
+            <FilterField label="Status" htmlFor="filter-status-outlet">
+              <OptionDropdown
+                id="filter-status-outlet"
+                value={selected_status}
+                onValueChange={setSelectedStatus}
+                options={[
+                  { value: "all", label: "Semua status" },
+                  { value: "active", label: "Aktif" },
+                  { value: "excluded", label: "Dikecualikan" },
+                ]}
+                ariaLabel="Filter status outlet"
+                triggerClassName="w-full lg:w-48"
+              />
+            </FilterField>
             <SyncActionButton
               onConfirm={sync_outlet_handler}
               description="Sinkronisasi akan memperbarui daftar outlet dari sumber utama dan menimpa data terbaru yang tersedia."

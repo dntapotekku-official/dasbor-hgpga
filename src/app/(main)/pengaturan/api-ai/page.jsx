@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import FieldLabel from "@/components/field-label";
 import PenjualanGofitkuTab from "./components/penjualan-gofitku-tab";
 
 export default function AiApiPage() {
@@ -120,7 +121,7 @@ export default function AiApiPage() {
           <CardContent>
             <form onSubmit={handle_submit} className="max-w-3xl space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="base_url">Base URL</Label>
+                <FieldLabel htmlFor="base_url" label="Base URL" required />
                 <Input
                   id="base_url"
                   value={base_url}
@@ -130,7 +131,7 @@ export default function AiApiPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="model">Model</Label>
+                <FieldLabel htmlFor="model" label="Model" required />
                 <Input
                   id="model"
                   value={model}
@@ -140,7 +141,7 @@ export default function AiApiPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="api_key">API KEY</Label>
+                <FieldLabel htmlFor="api_key" label="API KEY" required />
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <div className="relative flex-1">
                     <Input

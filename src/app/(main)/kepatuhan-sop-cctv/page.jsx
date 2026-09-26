@@ -15,6 +15,7 @@ import {
   primeKepatuhanSopCctvCache,
 } from "@/lib/kepatuhanSopCctvClient";
 import { useAuth } from "@/components/auth-provider";
+import FilterField from "@/components/filter-field";
 import PageHeading from "@/components/page-heading";
 import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
 import SyncActionButton from "@/components/sync-action-button";
@@ -318,10 +319,7 @@ export default function KepatuhanSopCctvPage() {
                 }
               >
                 {is_admin ? (
-                  <div className="flex min-w-0 flex-col gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Outlet
-                    </span>
+                  <FilterField label="Outlet">
                     <DropdownMenu
                       open={is_outlet_menu_open}
                       onOpenChange={(open) => {
@@ -380,12 +378,9 @@ export default function KepatuhanSopCctvPage() {
                         </DropdownMenuRadioGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
+                  </FilterField>
                 ) : null}
-                <div className="flex min-w-0 flex-col gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Rentang Tanggal
-                  </span>
+                <FilterField label="Rentang Tanggal">
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
                     <Input
                       type="date"
@@ -406,7 +401,7 @@ export default function KepatuhanSopCctvPage() {
                       aria-label="Sampai tanggal"
                     />
                   </div>
-                </div>
+                </FilterField>
               </div>
               {is_admin ? (
                 <SyncActionButton

@@ -5,6 +5,7 @@ import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FilterField from "@/components/filter-field";
 import Pagination from "@/components/pagination";
 import PageHeading from "@/components/page-heading";
 import SortableTableHead from "@/components/sortable-table-head";
@@ -213,13 +214,19 @@ export default function ProdukGofitkuPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari produk..."
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <FilterField
+                  label="Pencarian"
+                  htmlFor="filter-pencarian-produk-gofitku"
                   className="w-full sm:max-w-sm"
-                />
+                >
+                  <Input
+                    id="filter-pencarian-produk-gofitku"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Cari produk..."
+                  />
+                </FilterField>
                 <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
                   <Button
                     type="button"

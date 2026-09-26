@@ -46,12 +46,14 @@ model tbl_outlet {
   updated_at         DateTime  @updatedAt
   deleted_at         DateTime?
 
-  kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
-  outlet_insanku     tbl_outlet_insanku[]
-  nilai_transaksi    tbl_nilai_transaksi[]
-  basket_size        tbl_basket_size[]
-  dilayani           tbl_dilayani[]
-  nilai_magang       tbl_nilai_magang[]
+  kepatuhan_sop_cctv          tbl_kepatuhan_sop_cctv[]
+  outlet_insanku              tbl_outlet_insanku[]
+  nilai_transaksi             tbl_nilai_transaksi[]
+  nilai_transaksi_bulanan     tbl_nilai_transaksi_bulanan[]
+  basket_size                 tbl_basket_size[]
+  dilayani                    tbl_dilayani[]
+  dilayani_bulanan            tbl_dilayani_bulanan[]
+  nilai_magang                tbl_nilai_magang[]
 }
 
 model tbl_insanku {
@@ -252,6 +254,26 @@ model tbl_nilai_transaksi {
   @@index([uuid_outlet])
   @@index([date])
 }
+
+model tbl_nilai_transaksi_bulanan {
+  id            Int       @id @default(autoincrement())
+  uuid          String    @unique @db.Char(36)
+  uuid_outlet   String?   @db.Char(36)
+  active_key    String?   @unique @db.VarChar(80)
+  from_date     DateTime
+  to_date       DateTime
+  total_revenue Decimal   @default(0) @db.Decimal(18, 2)
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_nilai_transaksi_bulanan_outlet")
+
+  @@index([uuid_outlet])
+  @@index([from_date])
+  @@index([to_date])
+}
+
 model tbl_basket_size {
   id          Int       @id @default(autoincrement())
   uuid        String    @unique @db.Char(36)
@@ -284,6 +306,25 @@ model tbl_dilayani {
 
   @@index([uuid_outlet])
   @@index([date])
+}
+
+model tbl_dilayani_bulanan {
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  active_key  String?   @unique @db.VarChar(80)
+  value       Int       @default(0)
+  from_date   DateTime
+  to_date     DateTime
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+
+  outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_dilayani_bulanan_outlet")
+
+  @@index([uuid_outlet])
+  @@index([from_date])
+  @@index([to_date])
 }
 
 model tbl_atribut_insanku {

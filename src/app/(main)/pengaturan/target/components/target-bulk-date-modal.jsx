@@ -5,9 +5,9 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { CalendarRangeIcon, LoaderCircleIcon, XIcon } from "lucide-react";
 
 import OptionDropdown from "@/components/option-dropdown";
+import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 function get_period_key(start_date, end_date) {
   return `${start_date}|${end_date}`;
@@ -165,9 +165,11 @@ export default function TargetBulkDateModal({
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor={`${field_id}-periode-lama`}>
-                {is_range_mode ? "Range Tanggal Lama" : "Tanggal Lama"}
-              </Label>
+              <FieldLabel
+                htmlFor={`${field_id}-periode-lama`}
+                label={is_range_mode ? "Range Tanggal Lama" : "Tanggal Lama"}
+                required
+              />
               <OptionDropdown
                 id={`${field_id}-periode-lama`}
                 value={selected_period_key}
@@ -189,9 +191,11 @@ export default function TargetBulkDateModal({
             {is_range_mode ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor={`${field_id}-tanggal-mulai-baru`}>
-                    Tanggal Mulai Baru
-                  </Label>
+                  <FieldLabel
+                    htmlFor={`${field_id}-tanggal-mulai-baru`}
+                    label="Tanggal Mulai Baru"
+                    required
+                  />
                   <Input
                     id={`${field_id}-tanggal-mulai-baru`}
                     type="date"
@@ -202,9 +206,11 @@ export default function TargetBulkDateModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`${field_id}-tanggal-selesai-baru`}>
-                    Tanggal Selesai Baru
-                  </Label>
+                  <FieldLabel
+                    htmlFor={`${field_id}-tanggal-selesai-baru`}
+                    label="Tanggal Selesai Baru"
+                    required
+                  />
                   <Input
                     id={`${field_id}-tanggal-selesai-baru`}
                     type="date"
@@ -217,7 +223,7 @@ export default function TargetBulkDateModal({
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor={`${field_id}-tanggal-baru`}>Tanggal Baru</Label>
+                <FieldLabel htmlFor={`${field_id}-tanggal-baru`} label="Tanggal Baru" required />
                 <Input
                   id={`${field_id}-tanggal-baru`}
                   type="date"
@@ -231,9 +237,11 @@ export default function TargetBulkDateModal({
 
             {enable_target_update ? (
               <div className="space-y-2">
-                <Label htmlFor={`${field_id}-target-baru`}>
-                  Target Baru
-                </Label>
+                <FieldLabel
+                  htmlFor={`${field_id}-target-baru`}
+                  label="Target Baru"
+                  required
+                />
                 <Input
                   id={`${field_id}-target-baru`}
                   type="number"

@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import PageHeading from "@/components/page-heading";
 import { attribute_types } from "@/lib/atributInsanKu";
@@ -350,23 +351,32 @@ export default function AtributPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari kolom atribut..."
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <FilterField
+                  label="Pencarian"
+                  htmlFor="filter-pencarian-atribut"
                   className="w-full sm:max-w-sm"
-                />
-                <OptionDropdown
-                  value={selected_type}
-                  onValueChange={setSelectedType}
-                  options={[
-                    { value: "all", label: "Semua tipe" },
-                    ...attribute_types,
-                  ]}
-                  ariaLabel="Filter tipe kolom atribut"
-                  triggerClassName="w-full sm:w-48"
-                />
+                >
+                  <Input
+                    id="filter-pencarian-atribut"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Cari kolom atribut..."
+                  />
+                </FilterField>
+                <FilterField label="Tipe" htmlFor="filter-tipe-atribut">
+                  <OptionDropdown
+                    id="filter-tipe-atribut"
+                    value={selected_type}
+                    onValueChange={setSelectedType}
+                    options={[
+                      { value: "all", label: "Semua tipe" },
+                      ...attribute_types,
+                    ]}
+                    ariaLabel="Filter tipe kolom atribut"
+                    triggerClassName="w-full sm:w-48"
+                  />
+                </FilterField>
                 <div className="flex w-full justify-end sm:ml-auto sm:w-auto">
                   <Button
                     type="button"
