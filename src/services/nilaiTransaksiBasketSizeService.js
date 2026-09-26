@@ -166,6 +166,25 @@ function build_active_monthly_key(uuid_outlet, from_date, to_date) {
   return `${uuid_outlet}:${from_date.toISOString().slice(0, 10)}:${to_date.toISOString().slice(0, 10)}`;
 }
 
+function parse_metric_date_range({
+  from_date,
+  to_date,
+  from_label = "Tanggal awal",
+  to_label = "Tanggal akhir",
+}) {
+  const parsed_from_date = parse_metric_date(from_date, from_label);
+  const parsed_to_date = parse_metric_date(to_date, to_label);
+
+  if (parsed_from_date.getTime() > parsed_to_date.getTime()) {
+    throw new Error(`${from_label} tidak boleh lebih besar dari ${to_label.toLowerCase()}.`);
+  }
+
+  return {
+    from_date: parsed_from_date,
+    to_date: parsed_to_date,
+  };
+}
+
 async function clear_daily_served_active_keys(
   transaction,
   {
@@ -245,6 +264,34 @@ function map_available_dates(rows) {
         .map((date) => date.toISOString().slice(0, 10)),
     ),
   ).sort((first_date, second_date) => second_date.localeCompare(first_date));
+}
+
+/** Mengubah daftar record bulanan menjadi daftar tanggal akhir periode unik. */
+function map_available_monthly_ranges(rows) {
+  const range_map = new Map();
+
+  for (const row of rows) {
+    if (!row.from_date || !row.to_date) {
+      continue;
+    }
+
+    const from_date = row.from_date.toISOString().slice(0, 10);
+    const to_date = row.to_date.toISOString().slice(0, 10);
+    range_map.set(`${from_date}:${to_date}`, {
+      from_date,
+      to_date,
+    });
+  }
+
+  return [...range_map.values()].sort((first_range, second_range) => {
+    const to_date_comparison = second_range.to_date.localeCompare(first_range.to_date);
+
+    if (to_date_comparison !== 0) {
+      return to_date_comparison;
+    }
+
+    return second_range.from_date.localeCompare(first_range.from_date);
+  });
 }
 
 // ============================================================================
@@ -547,19 +594,16 @@ function map_metric_rows({
 }) {
   return outlets.map((outlet) => {
     const current_nilai_transaksi_data = current_nilai_transaksi_map.get(outlet.uuid);
-    const current_month_nilai_transaksi_data =
-      current_month_nilai_transaksi_map.get(outlet.uuid);
+    const current_month_nilai_transaksi_data = current_month_nilai_transaksi_map.get(outlet.uuid);
     const last_nilai_transaksi_data = last_nilai_transaksi_map.get(outlet.uuid);
     const current_basket_size_data = current_basket_size_map.get(outlet.uuid);
     const current_month_basket_size_data = current_month_basket_size_map.get(outlet.uuid);
     const last_basket_size_data = last_basket_size_map.get(outlet.uuid);
     const current_nilai_transaksi = current_nilai_transaksi_data?.calculated_value ?? 0;
-    const current_month_nilai_transaksi =
-      current_month_nilai_transaksi_data?.calculated_value ?? 0;
+    const current_month_nilai_transaksi = current_month_nilai_transaksi_data?.calculated_value ?? 0;
     const last_nilai_transaksi = last_nilai_transaksi_data?.calculated_value ?? 0;
     const current_basket_size = current_basket_size_data?.calculated_value ?? 0;
-    const current_month_basket_size =
-      current_month_basket_size_data?.calculated_value ?? 0;
+    const current_month_basket_size = current_month_basket_size_data?.calculated_value ?? 0;
     const last_basket_size = last_basket_size_data?.calculated_value ?? 0;
     const nilai_transaksi_target = nilai_transaksi_target_map.get(outlet.uuid) ?? 0;
     const basket_size_target = basket_size_target_map.get(outlet.uuid) ?? 0;
@@ -754,6 +798,7 @@ export async function getNilaiTransaksiBasketSize({
     nilai_transaksi_target_map,
     basket_size_target_map,
     nilai_transaksi_dates,
+    nilai_transaksi_bulanan_dates,
     basket_size_dates,
     global_targets,
   ] = await Promise.all([
@@ -935,6 +980,16 @@ export async function getNilaiTransaksiBasketSize({
         date: true,
       },
     }),
+    prisma.tbl_nilai_transaksi_bulanan.findMany({
+      where: {
+        deleted_at: null,
+        ...outlet_scope,
+      },
+      select: {
+        from_date: true,
+        to_date: true,
+      },
+    }),
     prisma.tbl_basket_size.findMany({
       where: {
         deleted_at: null,
@@ -999,6 +1054,9 @@ export async function getNilaiTransaksiBasketSize({
     global_targets,
     available_dates: {
       nilai_transaksi: map_available_dates(nilai_transaksi_dates),
+      nilai_transaksi_bulanan: map_available_monthly_ranges(
+        nilai_transaksi_bulanan_dates,
+      ),
       basket_size: map_available_dates(basket_size_dates),
     },
   };
@@ -1754,6 +1812,264 @@ async function bulk_update_metric_date({
       data: {
         updated_count: source_records.length,
         target_date: parsed_target_date.toISOString().slice(0, 10),
+      },
+    };
+  });
+}
+
+/** Menghapus seluruh data Nilai Transaksi bulanan pada periode akhir tanggal tertentu. */
+export async function bulkDeleteNilaiTransaksiMonthly(payload) {
+  const { from_date, to_date } = parse_metric_date_range({
+    from_date: payload?.from_date,
+    to_date: payload?.to_date,
+    from_label: "Tanggal awal periode",
+    to_label: "Tanggal akhir periode",
+  });
+
+  return prisma.$transaction(async (transaction) => {
+    const deleted_at = new Date();
+    const result = await transaction.tbl_nilai_transaksi_bulanan.updateMany({
+      where: {
+        deleted_at: null,
+        from_date: {
+          gte: from_date,
+          lte: end_of_day(from_date),
+        },
+        to_date: {
+          gte: to_date,
+          lte: end_of_day(to_date),
+        },
+      },
+      data: {
+        active_key: null,
+        deleted_at,
+      },
+    });
+
+    await transaction.tbl_dilayani_bulanan.updateMany({
+      where: {
+        deleted_at: null,
+        from_date: {
+          gte: from_date,
+          lte: end_of_day(from_date),
+        },
+        to_date: {
+          gte: to_date,
+          lte: end_of_day(to_date),
+        },
+      },
+      data: {
+        active_key: null,
+        deleted_at,
+      },
+    });
+
+    if (!result.count) {
+      throw new Error("Data nilai transaksi bulanan pada periode ini tidak ditemukan.");
+    }
+
+    return {
+      success: true,
+      message: `${result.count} data outlet nilai transaksi bulanan berhasil dihapus.`,
+      data: {
+        deleted_count: result.count,
+      },
+    };
+  });
+}
+
+/** Memindahkan periode seluruh data Nilai Transaksi bulanan. */
+export async function bulkUpdateNilaiTransaksiMonthly(payload) {
+  const {
+    from_date: source_from_date,
+    to_date: source_to_date,
+  } = parse_metric_date_range({
+    from_date: payload?.source_from_date,
+    to_date: payload?.source_to_date,
+    from_label: "Tanggal awal periode lama",
+    to_label: "Tanggal akhir periode lama",
+  });
+  const {
+    from_date: target_from_date,
+    to_date: target_to_date,
+  } = parse_metric_date_range({
+    from_date: payload?.target_from_date,
+    to_date: payload?.target_to_date,
+    from_label: "Tanggal awal periode baru",
+    to_label: "Tanggal akhir periode baru",
+  });
+
+  if (
+    source_from_date.getTime() === target_from_date.getTime() &&
+    source_to_date.getTime() === target_to_date.getTime()
+  ) {
+    throw new Error("Rentang tanggal baru harus berbeda dari rentang tanggal lama.");
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    const source_records = await transaction.tbl_nilai_transaksi_bulanan.findMany({
+      where: {
+        deleted_at: null,
+        from_date: {
+          gte: source_from_date,
+          lte: end_of_day(source_from_date),
+        },
+        to_date: {
+          gte: source_to_date,
+          lte: end_of_day(source_to_date),
+        },
+      },
+      select: {
+        uuid: true,
+        uuid_outlet: true,
+      },
+    });
+
+    if (!source_records.length) {
+      throw new Error("Data nilai transaksi bulanan pada tanggal lama tidak ditemukan.");
+    }
+
+    const [target_metric_record, target_served_record] = await Promise.all([
+      transaction.tbl_nilai_transaksi_bulanan.findFirst({
+        where: {
+          deleted_at: null,
+          from_date: {
+            gte: target_from_date,
+            lte: end_of_day(target_from_date),
+          },
+          to_date: {
+            gte: target_to_date,
+            lte: end_of_day(target_to_date),
+          },
+        },
+        select: {
+          uuid: true,
+        },
+      }),
+      transaction.tbl_dilayani_bulanan.findFirst({
+        where: {
+          deleted_at: null,
+          from_date: {
+            gte: target_from_date,
+            lte: end_of_day(target_from_date),
+          },
+          to_date: {
+            gte: target_to_date,
+            lte: end_of_day(target_to_date),
+          },
+        },
+        select: {
+          uuid: true,
+        },
+      }),
+    ]);
+
+    if (target_metric_record || target_served_record) {
+      throw new Error(
+        "Edit massal dibatalkan karena tanggal baru sudah memiliki data nilai transaksi bulanan.",
+      );
+    }
+
+    const source_outlet_uuids = source_records
+      .map((record) => record.uuid_outlet)
+      .filter(Boolean);
+
+    await transaction.tbl_nilai_transaksi_bulanan.updateMany({
+      where: {
+        uuid: {
+          in: source_records.map((record) => record.uuid),
+        },
+      },
+      data: {
+        active_key: null,
+      },
+    });
+
+    await transaction.tbl_dilayani_bulanan.updateMany({
+      where: {
+        deleted_at: null,
+        uuid_outlet: {
+          in: source_outlet_uuids,
+        },
+        from_date: {
+          gte: source_from_date,
+          lte: end_of_day(source_from_date),
+        },
+        to_date: {
+          gte: source_to_date,
+          lte: end_of_day(source_to_date),
+        },
+      },
+      data: {
+        active_key: null,
+      },
+    });
+
+    for (const record of source_records) {
+      await transaction.tbl_nilai_transaksi_bulanan.update({
+        where: {
+          uuid: record.uuid,
+        },
+        data: {
+          from_date: target_from_date,
+          to_date: target_to_date,
+          active_key: record.uuid_outlet
+            ? build_active_monthly_key(
+                record.uuid_outlet,
+                target_from_date,
+                target_to_date,
+              )
+            : null,
+        },
+      });
+    }
+
+    const served_records = await transaction.tbl_dilayani_bulanan.findMany({
+      where: {
+        deleted_at: null,
+        uuid_outlet: {
+          in: source_outlet_uuids,
+        },
+        from_date: {
+          gte: source_from_date,
+          lte: end_of_day(source_from_date),
+        },
+        to_date: {
+          gte: source_to_date,
+          lte: end_of_day(source_to_date),
+        },
+      },
+      select: {
+        uuid: true,
+        uuid_outlet: true,
+      },
+    });
+
+    for (const record of served_records) {
+      await transaction.tbl_dilayani_bulanan.update({
+        where: {
+          uuid: record.uuid,
+        },
+        data: {
+          from_date: target_from_date,
+          to_date: target_to_date,
+          active_key: record.uuid_outlet
+            ? build_active_monthly_key(
+                record.uuid_outlet,
+                target_from_date,
+                target_to_date,
+              )
+            : null,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: `Periode nilai transaksi bulanan berhasil diperbarui untuk ${source_records.length} outlet.`,
+      data: {
+        updated_count: source_records.length,
+        target_date: target_to_date.toISOString().slice(0, 10),
       },
     };
   });

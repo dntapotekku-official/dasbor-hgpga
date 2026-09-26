@@ -4,7 +4,9 @@ import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
 import { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteNilaiTransaksiDate,
+  bulkDeleteNilaiTransaksiMonthly,
   bulkUpdateNilaiTransaksiDate,
+  bulkUpdateNilaiTransaksiMonthly,
   deleteNilaiTransaksiDaily,
   exportNilaiTransaksiBasketSizeWorkbook,
   getNilaiTransaksiBasketSize,
@@ -114,6 +116,17 @@ export async function PATCH(request) {
       return NextResponse.json(data);
     }
 
+    if (body?.action === "bulk_update_monthly") {
+      const data = await bulkUpdateNilaiTransaksiMonthly({
+        source_from_date: body?.source_from_date,
+        source_to_date: body?.source_to_date,
+        target_from_date: body?.target_from_date,
+        target_to_date: body?.target_to_date,
+      });
+
+      return NextResponse.json(data);
+    }
+
     if (body?.action === "update_monthly") {
       const data = await updateNilaiTransaksiMonthly({
         uuid_outlet: body?.uuid_outlet,
@@ -169,10 +182,15 @@ export async function DELETE(request) {
       ? await bulkDeleteNilaiTransaksiDate({
           selected_date: body?.selected_date,
         })
-      : await deleteNilaiTransaksiDaily({
-          uuid_outlet: body?.uuid_outlet,
-          selected_date: body?.selected_date,
-        });
+      : body?.action === "bulk_delete_monthly"
+        ? await bulkDeleteNilaiTransaksiMonthly({
+            from_date: body?.from_date,
+            to_date: body?.to_date,
+          })
+        : await deleteNilaiTransaksiDaily({
+            uuid_outlet: body?.uuid_outlet,
+            selected_date: body?.selected_date,
+          });
 
     return NextResponse.json(data);
   } catch (error) {

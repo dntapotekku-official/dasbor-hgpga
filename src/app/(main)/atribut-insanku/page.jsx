@@ -7,6 +7,7 @@ import {
   FilterIcon,
   InfoIcon,
   LoaderCircleIcon,
+  MoveRightIcon,
   SearchIcon,
   TriangleAlertIcon,
   XIcon,
@@ -1424,9 +1425,13 @@ export default function AtributInsanKuPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <FieldLabel htmlFor={`filter-${column.key}`} label="Dari" variant="filter" />
+                      <div className="space-y-2">
+                        <FieldLabel
+                          htmlFor={`filter-${column.key}`}
+                          label="Rentang Tanggal"
+                          variant="filter"
+                        />
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
                           <Input
                             id={`filter-${column.key}`}
                             type="date"
@@ -1440,9 +1445,10 @@ export default function AtributInsanKuPage() {
                                 },
                               }))}
                           />
-                        </div>
-                        <div className="space-y-2">
-                          <FieldLabel htmlFor={`filter-${column.key}-to`} label="Sampai" variant="filter" />
+                          <div className="flex items-center justify-center text-muted-foreground">
+                            <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                            <span className="sr-only">sampai</span>
+                          </div>
                           <Input
                             id={`filter-${column.key}-to`}
                             type="date"

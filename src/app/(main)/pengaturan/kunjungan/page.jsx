@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FileSpreadsheetIcon,
   LoaderCircleIcon,
+  MoveRightIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -320,9 +321,9 @@ function KunjunganBulananSheet({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <FieldLabel htmlFor="from_date" label="Dari" required />
+          <div className="space-y-2">
+            <FieldLabel htmlFor="from_date" label="Rentang Tanggal" required />
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
               <Input
                 id="from_date"
                 type="date"
@@ -334,9 +335,10 @@ function KunjunganBulananSheet({
                   }))
                 }
               />
-            </div>
-            <div className="space-y-2">
-              <FieldLabel htmlFor="to_date" label="Sampai" required />
+              <div className="flex items-center justify-center text-muted-foreground">
+                <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                <span className="sr-only">sampai</span>
+              </div>
               <Input
                 id="to_date"
                 type="date"
@@ -1016,25 +1018,29 @@ export default function KunjunganPage() {
                         triggerClassName="w-full"
                       />
                     </FilterField>
-                    <FilterField label="Dari" className="sm:w-44">
-                      <Input
-                        type="date"
-                        value={filter_from_bulanan}
-                        max={filter_to_bulanan || undefined}
-                        onChange={(event) => setFilterFromBulanan(event.target.value)}
-                        aria-label="Filter dari kunjungan bulanan"
-                        className="w-full"
-                      />
-                    </FilterField>
-                    <FilterField label="Sampai" className="sm:w-44">
-                      <Input
-                        type="date"
-                        value={filter_to_bulanan}
-                        min={filter_from_bulanan || undefined}
-                        onChange={(event) => setFilterToBulanan(event.target.value)}
-                        aria-label="Filter sampai kunjungan bulanan"
-                        className="w-full"
-                      />
+                    <FilterField label="Rentang Tanggal" className="sm:min-w-96">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+                        <Input
+                          type="date"
+                          value={filter_from_bulanan}
+                          max={filter_to_bulanan || undefined}
+                          onChange={(event) => setFilterFromBulanan(event.target.value)}
+                          aria-label="Filter dari kunjungan bulanan"
+                          className="w-full"
+                        />
+                        <div className="flex items-center justify-center text-muted-foreground">
+                          <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                          <span className="sr-only">sampai</span>
+                        </div>
+                        <Input
+                          type="date"
+                          value={filter_to_bulanan}
+                          min={filter_from_bulanan || undefined}
+                          onChange={(event) => setFilterToBulanan(event.target.value)}
+                          aria-label="Filter sampai kunjungan bulanan"
+                          className="w-full"
+                        />
+                      </div>
                     </FilterField>
                     <div className="flex w-full justify-end sm:ml-auto sm:w-auto sm:items-end">
                       <Button

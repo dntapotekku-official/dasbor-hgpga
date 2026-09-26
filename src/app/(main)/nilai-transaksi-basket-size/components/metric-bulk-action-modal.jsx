@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
   CalendarRangeIcon,
   LoaderCircleIcon,
+  MoveRightIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -28,11 +29,20 @@ function format_date_label(value) {
   }).format(date);
 }
 
+function format_range_label(range) {
+  if (!range?.from_date || !range?.to_date) {
+    return "";
+  }
+
+  return `${format_date_label(range.from_date)} - ${format_date_label(range.to_date)}`;
+}
+
 export default function MetricBulkActionModal({
   open,
   action,
   metric_label,
-  dates,
+  period = "daily",
+  dates = [],
   default_date,
   is_processing,
   on_open_change,
@@ -40,27 +50,48 @@ export default function MetricBulkActionModal({
 }) {
   const field_id = useId();
   const is_edit = action === "edit_date";
+  const is_monthly = period === "monthly";
+  const period_label = is_monthly ? "Bulanan" : "Harian";
+  const source_date_label = is_monthly ? "Range Periode" : "Tanggal Data";
+  const source_edit_label = is_monthly ? "Range Periode Lama" : "Tanggal Lama";
   const date_options = useMemo(
-    () =>
-      [...dates]
+    () => {
+      if (is_monthly) {
+        return dates
+          .filter((range) => range?.from_date && range?.to_date)
+          .map((range) => ({
+            value: `${range.from_date}:${range.to_date}`,
+            label: format_range_label(range),
+          }))
+          .sort((first_range, second_range) =>
+            second_range.value.localeCompare(first_range.value),
+          );
+      }
+
+      return [...dates]
         .sort((first_date, second_date) => second_date.localeCompare(first_date))
-        .map((date) => ({ value: date, label: format_date_label(date) })),
-    [dates],
+        .map((date) => ({ value: date, label: format_date_label(date) }));
+    },
+    [dates, is_monthly],
   );
   const sorted_dates = useMemo(
-    () => [...dates].sort((first_date, second_date) => second_date.localeCompare(first_date)),
-    [dates],
+    () => date_options.map((option) => option.value),
+    [date_options],
   );
   const initial_date = sorted_dates.includes(default_date)
     ? default_date
     : sorted_dates[0] ?? "";
   const [source_date, setSourceDate] = useState(initial_date);
   const [target_date, setTargetDate] = useState("");
+  const [target_from_date, setTargetFromDate] = useState("");
+  const [target_to_date, setTargetToDate] = useState("");
 
   const handle_close = (next_open) => {
     if (!next_open && !is_processing) {
       setSourceDate(initial_date);
       setTargetDate("");
+      setTargetFromDate("");
+      setTargetToDate("");
       on_open_change(false);
     }
   };
@@ -73,12 +104,14 @@ export default function MetricBulkActionModal({
           <div className="flex items-start justify-between gap-4">
             <div>
               <DialogPrimitive.Title className="font-heading text-xl font-semibold">
-                {is_edit ? "Edit Massal Tanggal" : "Hapus Massal"}
+                {is_edit
+                  ? `Edit Massal (${period_label})`
+                  : `Hapus Massal (${period_label})`}
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
                 {is_edit
-                  ? `Pindahkan seluruh data ${metric_label} dari tanggal lama ke tanggal baru.`
-                  : `Hapus seluruh data ${metric_label} pada tanggal yang dipilih.`}
+                  ? `Pindahkan seluruh data ${metric_label} ${period_label.toLowerCase()} dari tanggal lama ke tanggal baru.`
+                  : `Hapus seluruh data ${metric_label} ${period_label.toLowerCase()} pada tanggal yang dipilih.`}
               </DialogPrimitive.Description>
             </div>
             <DialogPrimitive.Close
@@ -99,13 +132,21 @@ export default function MetricBulkActionModal({
             className="mt-6 space-y-5"
             onSubmit={(event) => {
               event.preventDefault();
-              on_submit({ source_date, target_date });
+              const [source_from_date, source_to_date] = source_date.split(":");
+              on_submit({
+                source_date,
+                target_date,
+                source_from_date,
+                source_to_date,
+                target_from_date,
+                target_to_date,
+              });
             }}
           >
             <div className="space-y-2">
               <FieldLabel
                 htmlFor={`${field_id}-tanggal-data`}
-                label={is_edit ? "Tanggal Lama" : "Tanggal Data"}
+                label={is_edit ? source_edit_label : source_date_label}
                 required
               />
               <OptionDropdown
@@ -122,15 +163,54 @@ export default function MetricBulkActionModal({
 
             {is_edit ? (
               <div className="space-y-2">
-                <FieldLabel htmlFor={`${field_id}-tanggal-baru`} label="Tanggal Baru" required />
-                <Input
-                  id={`${field_id}-tanggal-baru`}
-                  type="date"
-                  value={target_date}
-                  onChange={(event) => setTargetDate(event.target.value)}
-                  disabled={is_processing}
-                  required
-                />
+                {is_monthly ? (
+                  <>
+                    <FieldLabel
+                      htmlFor={`${field_id}-tanggal-baru-dari`}
+                      label="Rentang Tanggal"
+                      required
+                    />
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
+                      <Input
+                        id={`${field_id}-tanggal-baru-dari`}
+                        type="date"
+                        value={target_from_date}
+                        onChange={(event) => setTargetFromDate(event.target.value)}
+                        disabled={is_processing}
+                        required
+                      />
+                      <div className="flex items-center justify-center text-muted-foreground">
+                        <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                        <span className="sr-only">sampai</span>
+                      </div>
+                      <Input
+                        id={`${field_id}-tanggal-baru-sampai`}
+                        type="date"
+                        value={target_to_date}
+                        onChange={(event) => setTargetToDate(event.target.value)}
+                        disabled={is_processing}
+                        min={target_from_date || undefined}
+                        required
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <FieldLabel
+                      htmlFor={`${field_id}-tanggal-baru`}
+                      label="Tanggal Baru"
+                      required
+                    />
+                    <Input
+                      id={`${field_id}-tanggal-baru`}
+                      type="date"
+                      value={target_date}
+                      onChange={(event) => setTargetDate(event.target.value)}
+                      disabled={is_processing}
+                      required
+                    />
+                  </>
+                )}
               </div>
             ) : ''}
 

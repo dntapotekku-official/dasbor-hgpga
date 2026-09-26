@@ -6,6 +6,7 @@ import {
   FileCheck2Icon,
   FileSpreadsheetIcon,
   LoaderCircleIcon,
+  MoveRightIcon,
   UploadCloudIcon,
   XIcon,
 } from "lucide-react";
@@ -145,9 +146,9 @@ export default function ImportDataModal({
           >
             {!uses_file_dates ? (
               import_type === "nilai-transaksi-monthly" ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <FieldLabel htmlFor={`${date_input_id}-from`} label="Dari" required />
+                <div className="space-y-2">
+                  <FieldLabel htmlFor={`${date_input_id}-from`} label="Rentang Tanggal" required />
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">
                     <Input
                       id={`${date_input_id}-from`}
                       type="date"
@@ -157,9 +158,10 @@ export default function ImportDataModal({
                       disabled={is_importing}
                       required
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <FieldLabel htmlFor={`${date_input_id}-to`} label="Sampai" required />
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      <MoveRightIcon className="size-4 rotate-90 sm:rotate-0" />
+                      <span className="sr-only">sampai</span>
+                    </div>
                     <Input
                       id={`${date_input_id}-to`}
                       type="date"

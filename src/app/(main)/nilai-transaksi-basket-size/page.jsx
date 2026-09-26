@@ -77,6 +77,7 @@ const default_table_labels = {
 
 const default_available_dates = {
   nilai_transaksi: [],
+  nilai_transaksi_bulanan: [],
   basket_size: [],
 };
 
@@ -670,7 +671,14 @@ export default function NilaiTransaksiPage() {
     }
   };
 
-  const handleBulkAction = async ({ source_date, target_date }) => {
+  const handleBulkAction = async ({
+    source_date,
+    target_date,
+    source_from_date,
+    source_to_date,
+    target_from_date,
+    target_to_date,
+  }) => {
     if (!bulkAction) {
       return;
     }
@@ -678,6 +686,7 @@ export default function NilaiTransaksiPage() {
     try {
       setIsMutating(true);
       const is_edit = bulkAction.action === "edit_date";
+      const is_monthly = bulkAction.period === "monthly";
       const response = await fetch(resolveMetricEndpoint(bulkAction.metric), {
         method: is_edit ? "PATCH" : "DELETE",
         headers: {
@@ -686,13 +695,29 @@ export default function NilaiTransaksiPage() {
         body: JSON.stringify(
           is_edit
             ? {
-                action: "bulk_update_date",
-                source_date,
-                target_date,
+                action: is_monthly ? "bulk_update_monthly" : "bulk_update_date",
+                ...(is_monthly
+                  ? {
+                      source_from_date,
+                      source_to_date,
+                      target_from_date,
+                      target_to_date,
+                    }
+                  : {
+                      source_date,
+                      target_date,
+                    }),
               }
             : {
-                action: "bulk_delete_date",
-                selected_date: source_date,
+                action: is_monthly ? "bulk_delete_monthly" : "bulk_delete_date",
+                ...(is_monthly
+                  ? {
+                      from_date: source_from_date,
+                      to_date: source_to_date,
+                    }
+                  : {
+                      selected_date: source_date,
+                    }),
               },
         ),
       });
@@ -709,7 +734,7 @@ export default function NilaiTransaksiPage() {
 
       setBulkAction(null);
 
-      if (is_edit && selectedDate === source_date) {
+      if (!is_monthly && is_edit && selectedDate === source_date) {
         setSelectedDate(target_date);
       } else {
         await refreshMetrics();
@@ -1089,19 +1114,36 @@ export default function NilaiTransaksiPage() {
                 {canManage ? (
                   <div className="mb-6 flex flex-wrap justify-end gap-2">
                     {activeMetric === "nilai-transaksi" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          setBulkAction({
-                            action: "edit_date",
-                            metric: "nilai-transaksi",
-                          })
-                        }
-                      >
-                        <CalendarRangeIcon className="size-4" />
-                        Edit Massal
-                      </Button>
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            setBulkAction({
+                              action: "edit_date",
+                              metric: "nilai-transaksi",
+                              period: "daily",
+                            })
+                          }
+                        >
+                          <CalendarRangeIcon className="size-4" />
+                          Edit Massal (Harian)
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            setBulkAction({
+                              action: "edit_date",
+                              metric: "nilai-transaksi",
+                              period: "monthly",
+                            })
+                          }
+                        >
+                          <CalendarRangeIcon className="size-4" />
+                          Edit Massal (Bulanan)
+                        </Button>
+                      </>
                     ) : null}
                     <Button
                       type="button"
@@ -1110,12 +1152,29 @@ export default function NilaiTransaksiPage() {
                         setBulkAction({
                           action: "delete_date",
                           metric: activeMetric,
+                          period: "daily",
                         })
                       }
                     >
                       <Trash2Icon className="size-4" />
-                      Hapus Massal
+                      Hapus Massal (Harian)
                     </Button>
+                    {activeMetric === "nilai-transaksi" ? (
+                      <Button
+                        type="button"
+                        variant="delete"
+                        onClick={() =>
+                          setBulkAction({
+                            action: "delete_date",
+                            metric: "nilai-transaksi",
+                            period: "monthly",
+                          })
+                        }
+                      >
+                        <Trash2Icon className="size-4" />
+                        Hapus Massal (Bulanan)
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
                 {isLoading ? (
@@ -1200,8 +1259,11 @@ export default function NilaiTransaksiPage() {
           metric_label={
             bulkAction.metric === "basket-size" ? "basket size" : "nilai transaksi"
           }
+          period={bulkAction.period ?? "daily"}
           dates={
-            bulkAction.metric === "basket-size"
+            bulkAction.period === "monthly"
+              ? availableDates.nilai_transaksi_bulanan
+            : bulkAction.metric === "basket-size"
               ? availableDates.basket_size
               : availableDates.nilai_transaksi
           }
