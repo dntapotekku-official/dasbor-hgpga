@@ -267,30 +267,35 @@ export async function syncKepatuhanSopCCTV({
     );
   }
 
-  await prisma.$transaction(async (tx) => {
-    for (const item of valid_rows) {
-      await tx.tbl_kepatuhan_sop_cctv.upsert({
-        where: {
-          uuid_outlet_date: {
+  await prisma.$transaction(
+    async (tx) => {
+      for (const item of valid_rows) {
+        await tx.tbl_kepatuhan_sop_cctv.upsert({
+          where: {
+            uuid_outlet_date: {
+              uuid_outlet: item.uuid_outlet,
+              date: item.date,
+            },
+          },
+          update: {
+            total: item.total,
+            total_point: item.total_point,
+            deleted_at: null,
+          },
+          create: {
+            uuid: randomUUID(),
             uuid_outlet: item.uuid_outlet,
             date: item.date,
+            total: item.total,
+            total_point: item.total_point,
           },
-        },
-        update: {
-          total: item.total,
-          total_point: item.total_point,
-          deleted_at: null,
-        },
-        create: {
-          uuid: randomUUID(),
-          uuid_outlet: item.uuid_outlet,
-          date: item.date,
-          total: item.total,
-          total_point: item.total_point,
-        },
-      });
-    }
-  });
+        });
+      }
+    },
+    {
+      timeout: 20_000,
+    },
+  );
 
   const chart_result = await getKepatuhanSopCCTVChart({
     tanggal_awal: start_date,

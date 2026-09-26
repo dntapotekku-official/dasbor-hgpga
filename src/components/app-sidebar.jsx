@@ -75,7 +75,7 @@ const data = {
     {
       title: "Nilai Transaksi & Basket Size",
       url: "/nilai-transaksi-basket-size",
-      badge: "Beta",
+      // badge: "Beta"
       icon: (
         <BadgeDollarSignIcon />
       ),

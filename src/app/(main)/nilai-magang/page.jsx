@@ -352,7 +352,7 @@ export default function NilaiMagangPage() {
                 <FilterField
                   label="Pencarian"
                   htmlFor="filter-pencarian-nilai-magang"
-                  className="w-full xl:max-w-md"
+                  className="w-full xl:w-64 xl:flex-none"
                 >
                   <div className="relative w-full">
                     <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
