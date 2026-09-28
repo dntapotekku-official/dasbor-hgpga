@@ -514,12 +514,12 @@ export default function NilaiTransaksiPage() {
         !file
         || !import_type
         || (!uses_file_dates && !import_date)
-        || (import_type === "nilai-transaksi-monthly" && !import_from_date)
+        || (import_type === "nilai-transaksi" && !import_from_date)
       ) {
         throw new Error(
           uses_file_dates
             ? "File Excel wajib dipilih."
-            : import_type === "nilai-transaksi-monthly"
+            : import_type === "nilai-transaksi"
             ? "Tanggal dari, tanggal sampai, dan file Excel wajib diisi."
             : "Tanggal data dan file Excel wajib diisi.",
         );
@@ -534,8 +534,7 @@ export default function NilaiTransaksiPage() {
         formData.append("import_date", import_date);
       }
 
-      if (import_type === "nilai-transaksi-monthly") {
-        formData.append("import_scope", "monthly");
+      if (import_type === "nilai-transaksi") {
         formData.append("from_date", import_from_date);
       }
 
@@ -1046,46 +1045,25 @@ export default function NilaiTransaksiPage() {
                 {canImportExport ? (
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                     {activeMetric === "nilai-transaksi" ? (
-                      <>
-                        <Button
-                          type="button"
-                          className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                          onClick={() => onImportButtonClick("nilai-transaksi")}
-                          disabled={isImporting}
-                          aria-busy={isImporting}
-                        >
-                          {isImporting && importModalType === "nilai-transaksi" ? (
-                            <>
-                              <LoaderCircleIcon className="size-4 animate-spin" />
-                              Mengimpor...
-                            </>
-                          ) : (
-                            <>
-                              <FileSpreadsheetIcon className="size-4" />
-                              Impor Harian
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          type="button"
-                          className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                          onClick={() => onImportButtonClick("nilai-transaksi-monthly")}
-                          disabled={isImporting}
-                          aria-busy={isImporting}
-                        >
-                          {isImporting && importModalType === "nilai-transaksi-monthly" ? (
-                            <>
-                              <LoaderCircleIcon className="size-4 animate-spin" />
-                              Mengimpor...
-                            </>
-                          ) : (
-                            <>
-                              <FileSpreadsheetIcon className="size-4" />
-                              Impor Bulanan
-                            </>
-                          )}
-                        </Button>
-                      </>
+                      <Button
+                        type="button"
+                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                        onClick={() => onImportButtonClick("nilai-transaksi")}
+                        disabled={isImporting}
+                        aria-busy={isImporting}
+                      >
+                        {isImporting && importModalType === "nilai-transaksi" ? (
+                          <>
+                            <LoaderCircleIcon className="size-4 animate-spin" />
+                            Mengimpor...
+                          </>
+                        ) : (
+                          <>
+                            <FileSpreadsheetIcon className="size-4" />
+                            Impor
+                          </>
+                        )}
+                      </Button>
                     ) : (
                       <Button
                         type="button"
@@ -1114,36 +1092,20 @@ export default function NilaiTransaksiPage() {
                 {canManage ? (
                   <div className="mb-6 flex flex-wrap justify-end gap-2">
                     {activeMetric === "nilai-transaksi" ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            setBulkAction({
-                              action: "edit_date",
-                              metric: "nilai-transaksi",
-                              period: "daily",
-                            })
-                          }
-                        >
-                          <CalendarRangeIcon className="size-4" />
-                          Edit Massal (Harian)
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            setBulkAction({
-                              action: "edit_date",
-                              metric: "nilai-transaksi",
-                              period: "monthly",
-                            })
-                          }
-                        >
-                          <CalendarRangeIcon className="size-4" />
-                          Edit Massal (Bulanan)
-                        </Button>
-                      </>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setBulkAction({
+                            action: "edit_date",
+                            metric: "nilai-transaksi",
+                            period: "monthly",
+                          })
+                        }
+                      >
+                        <CalendarRangeIcon className="size-4" />
+                        Edit Massal (Range)
+                      </Button>
                     ) : null}
                     <Button
                       type="button"
@@ -1152,29 +1114,15 @@ export default function NilaiTransaksiPage() {
                         setBulkAction({
                           action: "delete_date",
                           metric: activeMetric,
-                          period: "daily",
+                          period: activeMetric === "nilai-transaksi" ? "monthly" : "daily",
                         })
                       }
                     >
                       <Trash2Icon className="size-4" />
-                      Hapus Massal (Harian)
+                      {activeMetric === "nilai-transaksi"
+                        ? "Hapus Massal (Range)"
+                        : "Hapus Massal (Harian)"}
                     </Button>
-                    {activeMetric === "nilai-transaksi" ? (
-                      <Button
-                        type="button"
-                        variant="delete"
-                        onClick={() =>
-                          setBulkAction({
-                            action: "delete_date",
-                            metric: "nilai-transaksi",
-                            period: "monthly",
-                          })
-                        }
-                      >
-                        <Trash2Icon className="size-4" />
-                        Hapus Massal (Bulanan)
-                      </Button>
-                    ) : null}
                   </div>
                 ) : null}
                 {isLoading ? (

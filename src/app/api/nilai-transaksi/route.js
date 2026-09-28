@@ -11,7 +11,6 @@ import {
   exportNilaiTransaksiBasketSizeWorkbook,
   getNilaiTransaksiBasketSize,
   importNilaiTransaksi,
-  importNilaiTransaksiBulanan,
   updateNilaiTransaksiDaily,
   updateNilaiTransaksiMonthly,
   updateNilaiTransaksiTotals,
@@ -76,15 +75,6 @@ export async function GET(request) {
 export async function POST(request) {
   return import_outlet_report(request, {
     import_handler: importNilaiTransaksi,
-    resolve_import_handler: (form_data) => {
-      const import_scope = String(form_data.get("import_scope") ?? "daily");
-
-      if (import_scope === "monthly") {
-        return importNilaiTransaksiBulanan;
-      }
-
-      return importNilaiTransaksi;
-    },
     menu_key: "nilai-transaksi-basket-size",
     temp_prefix: "nilai-transaksi",
     fallback_roles: ["admin"],

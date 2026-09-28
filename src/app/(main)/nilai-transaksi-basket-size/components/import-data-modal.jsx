@@ -58,41 +58,42 @@ export default function ImportDataModal({
   const title =
     import_type === "kunjungan"
       ? "Impor Kunjungan"
-      : import_type === "nilai-transaksi-monthly"
-      ? "Impor Nilai Transaksi Bulanan"
+      : import_type === "nilai-transaksi"
+      ? "Impor Nilai Transaksi"
       : import_type === "basket-size"
         ? "Impor Basket Size"
         : "Impor Nilai Transaksi";
   const uses_file_dates = import_type === "basket-size";
+  const uses_date_range = import_type === "nilai-transaksi";
   const description =
     import_type === "kunjungan"
       ? "Tentukan tanggal data, lalu pilih file Excel berisi kolom Outlet dan Dilayani."
-      : import_type === "nilai-transaksi-monthly"
-      ? "Tentukan tanggal akhir periode, lalu pilih file ikhtisar outlet untuk rentang tanggal 1 sampai tanggal tersebut."
+      : import_type === "nilai-transaksi"
+      ? "Tentukan rentang tanggal, lalu pilih file ikhtisar outlet. Untuk data harian, isi tanggal mulai dan selesai dengan tanggal yang sama."
       : import_type === "basket-size"
       ? "Pilih file rekap penjualan. Tanggal Basket Size akan dibaca otomatis dari setiap baris Excel."
       : "Tentukan tanggal data, lalu pilih file ikhtisar outlet untuk mengimpor nilai transaksi.";
   const date_input_id =
     import_type === "kunjungan"
       ? "tanggal-import-kunjungan"
-      : import_type === "nilai-transaksi-monthly"
-      ? "tanggal-import-nilai-transaksi-bulanan"
+      : import_type === "nilai-transaksi"
+      ? "tanggal-import-nilai-transaksi"
       : import_type === "basket-size"
       ? "tanggal-import-basket-size"
       : "tanggal-import-nilai-transaksi";
   const file_input_id =
     import_type === "kunjungan"
       ? "file-import-kunjungan"
-      : import_type === "nilai-transaksi-monthly"
-      ? "file-import-nilai-transaksi-bulanan"
+      : import_type === "nilai-transaksi"
+      ? "file-import-nilai-transaksi"
       : import_type === "basket-size"
       ? "file-import-basket-size"
       : "file-import-nilai-transaksi";
   const helper_text = import_type === "kunjungan"
     ? "Pastikan file memiliki kolom Outlet dan Dilayani."
-    : import_type === "nilai-transaksi-monthly"
-      ? "File bulanan dipakai untuk kolom bulan berjalan atau bulan lalu, termasuk koreksi canceling order."
-    : import_type === "basket-size"
+    : import_type === "nilai-transaksi"
+      ? "File dipakai untuk kolom harian atau periode berjalan sesuai rentang tanggal yang dipilih."
+      : import_type === "basket-size"
       ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, dan Jumlah Sku."
       : "Pastikan file memiliki sheet Laporan Penjualan dan Statistik Kunjungan.";
 
@@ -145,7 +146,7 @@ export default function ImportDataModal({
             }}
           >
             {!uses_file_dates ? (
-              import_type === "nilai-transaksi-monthly" ? (
+              uses_date_range ? (
                 <div className="space-y-2">
                   <FieldLabel htmlFor={`${date_input_id}-from`} label="Rentang Tanggal" required />
                   <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center">

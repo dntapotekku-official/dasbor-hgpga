@@ -52,6 +52,19 @@ function build_active_bulanan_key(uuid_outlet, from_date, to_date) {
   return `${uuid_outlet}:${to_date_key(from_date)}:${to_date_key(to_date)}`;
 }
 
+function build_exact_range_where(start_date, end_date = start_date) {
+  return {
+    start_date: {
+      gte: start_date,
+      lte: end_of_day(start_date),
+    },
+    end_date: {
+      gte: end_date,
+      lte: end_of_day(end_date),
+    },
+  };
+}
+
 async function clear_daily_visit_active_keys(
   transaction,
   {
@@ -60,7 +73,7 @@ async function clear_daily_visit_active_keys(
     exclude_uuid,
   },
 ) {
-  await transaction.tbl_dilayani.updateMany({
+  await transaction.tbl_kunjungan.updateMany({
     where: {
       uuid_outlet,
       ...(exclude_uuid
@@ -70,10 +83,7 @@ async function clear_daily_visit_active_keys(
             },
           }
         : {}),
-      date: {
-        gte: date,
-        lte: end_of_day(date),
-      },
+      ...build_exact_range_where(date),
       active_key: {
         not: null,
       },
@@ -93,7 +103,7 @@ async function clear_bulanan_active_keys(
     exclude_uuid,
   },
 ) {
-  await transaction.tbl_dilayani_bulanan.updateMany({
+  await transaction.tbl_kunjungan.updateMany({
     where: {
       uuid_outlet,
       ...(exclude_uuid
@@ -103,14 +113,7 @@ async function clear_bulanan_active_keys(
             },
           }
         : {}),
-      from_date: {
-        gte: from_date,
-        lte: end_of_day(from_date),
-      },
-      to_date: {
-        gte: to_date,
-        lte: end_of_day(to_date),
-      },
+      ...build_exact_range_where(from_date, to_date),
       active_key: {
         not: null,
       },
@@ -167,7 +170,7 @@ function format_kunjungan_row(item) {
     uuid_outlet: item.uuid_outlet ?? "",
     outlet_name: item.outlet?.name ?? "Outlet tidak diketahui",
     kategori: item.outlet?.category ?? "",
-    date: item.date.toISOString().slice(0, 10),
+    date: item.start_date.toISOString().slice(0, 10),
     value: item.value,
     nilai_transaksi_count: item._count?.nilai_transaksi ?? 0,
     basket_size_count: item._count?.basket_size ?? 0,
@@ -180,8 +183,8 @@ function format_kunjungan_bulanan_row(item) {
     uuid_outlet: item.uuid_outlet ?? "",
     outlet_name: item.outlet?.name ?? "Outlet tidak diketahui",
     kategori: item.outlet?.category ?? "",
-    from_date: item.from_date.toISOString().slice(0, 10),
-    to_date: item.to_date.toISOString().slice(0, 10),
+    from_date: item.start_date.toISOString().slice(0, 10),
+    to_date: (item.end_date ?? item.start_date).toISOString().slice(0, 10),
     value: item.value,
   };
 }
@@ -191,7 +194,7 @@ async function find_duplicate_kunjungan({
   date,
   exclude_uuid,
 }) {
-  return prisma.tbl_dilayani.findFirst({
+  return prisma.tbl_kunjungan.findFirst({
     where: {
       uuid_outlet,
       deleted_at: null,
@@ -202,10 +205,7 @@ async function find_duplicate_kunjungan({
             },
           }
         : {}),
-      date: {
-        gte: date,
-        lte: end_of_day(date),
-      },
+      ...build_exact_range_where(date),
     },
     select: {
       uuid: true,
@@ -219,7 +219,7 @@ async function find_duplicate_kunjungan_bulanan({
   to_date,
   exclude_uuid,
 }) {
-  return prisma.tbl_dilayani_bulanan.findFirst({
+  return prisma.tbl_kunjungan.findFirst({
     where: {
       uuid_outlet,
       deleted_at: null,
@@ -230,14 +230,7 @@ async function find_duplicate_kunjungan_bulanan({
             },
           }
         : {}),
-      from_date: {
-        gte: from_date,
-        lte: end_of_day(from_date),
-      },
-      to_date: {
-        gte: to_date,
-        lte: end_of_day(to_date),
-      },
+      ...build_exact_range_where(from_date, to_date),
     },
     select: {
       uuid: true,
@@ -308,7 +301,7 @@ async function parse_kunjungan_workbook(file_path) {
 
 export async function getKunjungan() {
   const [data_kunjungan, data_outlet] = await Promise.all([
-    prisma.tbl_dilayani.findMany({
+    prisma.tbl_kunjungan.findMany({
       where: {
         deleted_at: null,
         outlet: {
@@ -318,7 +311,7 @@ export async function getKunjungan() {
       },
       orderBy: [
         {
-          date: "desc",
+          start_date: "desc",
         },
         {
           outlet: {
@@ -330,7 +323,8 @@ export async function getKunjungan() {
         uuid: true,
         uuid_outlet: true,
         value: true,
-        date: true,
+        start_date: true,
+        end_date: true,
         outlet: {
           select: {
             name: true,
@@ -356,7 +350,11 @@ export async function getKunjungan() {
   ]);
 
   return {
-    data_kunjungan: data_kunjungan.map(format_kunjungan_row),
+    data_kunjungan: data_kunjungan
+      .filter((item) =>
+        to_date_key(item.start_date) === to_date_key(item.end_date ?? item.start_date),
+      )
+      .map(format_kunjungan_row),
     data_outlet,
   };
 }
@@ -384,19 +382,21 @@ export async function createKunjungan({
       date: parsed_date,
     });
 
-    return transaction.tbl_dilayani.create({
+    return transaction.tbl_kunjungan.create({
       data: {
         uuid: randomUUID(),
         uuid_outlet: resolved_uuid_outlet,
-        active_key: build_active_daily_key(resolved_uuid_outlet, parsed_date),
-        date: parsed_date,
+        active_key: build_active_bulanan_key(resolved_uuid_outlet, parsed_date, parsed_date),
+        start_date: parsed_date,
+        end_date: parsed_date,
         value: parsed_value,
       },
       select: {
         uuid: true,
         uuid_outlet: true,
         value: true,
-        date: true,
+        start_date: true,
+        end_date: true,
         outlet: {
           select: {
             name: true,
@@ -429,7 +429,7 @@ export async function updateKunjungan({
   const parsed_date = parse_visit_date(date);
   const parsed_value = parse_visit_value(value);
   const resolved_uuid_outlet = await assert_active_outlet(uuid_outlet);
-  const existing_kunjungan = await prisma.tbl_dilayani.findUnique({
+  const existing_kunjungan = await prisma.tbl_kunjungan.findUnique({
     where: {
       uuid: normalized_uuid_kunjungan,
     },
@@ -460,21 +460,23 @@ export async function updateKunjungan({
       exclude_uuid: normalized_uuid_kunjungan,
     });
 
-    return transaction.tbl_dilayani.update({
+    return transaction.tbl_kunjungan.update({
       where: {
         uuid: normalized_uuid_kunjungan,
       },
       data: {
         uuid_outlet: resolved_uuid_outlet,
-        active_key: build_active_daily_key(resolved_uuid_outlet, parsed_date),
-        date: parsed_date,
+        active_key: build_active_bulanan_key(resolved_uuid_outlet, parsed_date, parsed_date),
+        start_date: parsed_date,
+        end_date: parsed_date,
         value: parsed_value,
       },
       select: {
         uuid: true,
         uuid_outlet: true,
         value: true,
-        date: true,
+        start_date: true,
+        end_date: true,
         outlet: {
           select: {
             name: true,
@@ -499,7 +501,7 @@ export async function deleteKunjungan({ uuid_kunjungan }) {
     throw new Error("UUID kunjungan wajib diisi.");
   }
 
-  const existing_kunjungan = await prisma.tbl_dilayani.findUnique({
+  const existing_kunjungan = await prisma.tbl_kunjungan.findUnique({
     where: {
       uuid: normalized_uuid_kunjungan,
     },
@@ -513,7 +515,7 @@ export async function deleteKunjungan({ uuid_kunjungan }) {
     throw new Error("Data kunjungan tidak ditemukan.");
   }
 
-  await prisma.tbl_dilayani.update({
+  await prisma.tbl_kunjungan.update({
     where: {
       uuid: normalized_uuid_kunjungan,
     },
@@ -594,13 +596,10 @@ export async function importKunjungan({
     const saved_rows = [];
 
     for (const row of imported_rows) {
-      const existing_kunjungan = await transaction.tbl_dilayani.findFirst({
+      const existing_kunjungan = await transaction.tbl_kunjungan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
-          date: {
-            gte: parsed_date,
-            lte: end_of_day(parsed_date),
-          },
+          ...build_exact_range_where(parsed_date),
         },
         orderBy: {
           updated_at: "desc",
@@ -617,12 +616,12 @@ export async function importKunjungan({
       });
 
       const saved_kunjungan = existing_kunjungan
-        ? await transaction.tbl_dilayani.update({
+        ? await transaction.tbl_kunjungan.update({
             where: {
               uuid: existing_kunjungan.uuid,
             },
             data: {
-              active_key: build_active_daily_key(row.uuid_outlet, parsed_date),
+              active_key: build_active_bulanan_key(row.uuid_outlet, parsed_date, parsed_date),
               value: row.value,
               deleted_at: null,
             },
@@ -630,7 +629,8 @@ export async function importKunjungan({
               uuid: true,
               uuid_outlet: true,
               value: true,
-              date: true,
+              start_date: true,
+              end_date: true,
               outlet: {
                 select: {
                   name: true,
@@ -639,19 +639,21 @@ export async function importKunjungan({
               },
             },
           })
-        : await transaction.tbl_dilayani.create({
+        : await transaction.tbl_kunjungan.create({
             data: {
               uuid: randomUUID(),
               uuid_outlet: row.uuid_outlet,
-              active_key: build_active_daily_key(row.uuid_outlet, parsed_date),
+              active_key: build_active_bulanan_key(row.uuid_outlet, parsed_date, parsed_date),
               value: row.value,
-              date: parsed_date,
+              start_date: parsed_date,
+              end_date: parsed_date,
             },
             select: {
               uuid: true,
               uuid_outlet: true,
               value: true,
-              date: true,
+              start_date: true,
+              end_date: true,
               outlet: {
                 select: {
                   name: true,
@@ -662,17 +664,14 @@ export async function importKunjungan({
           });
 
       if (existing_kunjungan) {
-        await transaction.tbl_dilayani.updateMany({
+        await transaction.tbl_kunjungan.updateMany({
           where: {
             uuid_outlet: row.uuid_outlet,
             uuid: {
               not: existing_kunjungan.uuid,
             },
             deleted_at: null,
-            date: {
-              gte: parsed_date,
-              lte: end_of_day(parsed_date),
-            },
+            ...build_exact_range_where(parsed_date),
           },
           data: {
             active_key: null,
@@ -700,7 +699,7 @@ export async function importKunjungan({
 }
 
 export async function getKunjunganBulanan() {
-  const data_kunjungan_bulanan = await prisma.tbl_dilayani_bulanan.findMany({
+  const data_kunjungan_bulanan = await prisma.tbl_kunjungan.findMany({
     where: {
       deleted_at: null,
       outlet: {
@@ -710,10 +709,10 @@ export async function getKunjunganBulanan() {
     },
     orderBy: [
       {
-        to_date: "desc",
+        end_date: "desc",
       },
       {
-        from_date: "desc",
+        start_date: "desc",
       },
       {
         outlet: {
@@ -725,8 +724,8 @@ export async function getKunjunganBulanan() {
       uuid: true,
       uuid_outlet: true,
       value: true,
-      from_date: true,
-      to_date: true,
+      start_date: true,
+      end_date: true,
       outlet: {
         select: {
           name: true,
@@ -767,7 +766,7 @@ export async function createKunjunganBulanan({
       to_date: parsed_to,
     });
 
-    return transaction.tbl_dilayani_bulanan.create({
+    return transaction.tbl_kunjungan.create({
       data: {
         uuid: randomUUID(),
         uuid_outlet: resolved_uuid_outlet,
@@ -776,16 +775,16 @@ export async function createKunjunganBulanan({
           parsed_from,
           parsed_to,
         ),
-        from_date: parsed_from,
-        to_date: parsed_to,
+        start_date: parsed_from,
+        end_date: parsed_to,
         value: parsed_value,
       },
       select: {
         uuid: true,
         uuid_outlet: true,
         value: true,
-        from_date: true,
-        to_date: true,
+        start_date: true,
+        end_date: true,
         outlet: {
           select: {
             name: true,
@@ -819,7 +818,7 @@ export async function updateKunjunganBulanan({
   const { parsed_from, parsed_to } = parse_range_dates(from_date, to_date);
   const parsed_value = parse_visit_value(value);
   const resolved_uuid_outlet = await assert_active_outlet(uuid_outlet);
-  const existing = await prisma.tbl_dilayani_bulanan.findUnique({
+  const existing = await prisma.tbl_kunjungan.findUnique({
     where: {
       uuid: normalized_uuid,
     },
@@ -852,7 +851,7 @@ export async function updateKunjunganBulanan({
       exclude_uuid: normalized_uuid,
     });
 
-    return transaction.tbl_dilayani_bulanan.update({
+    return transaction.tbl_kunjungan.update({
       where: {
         uuid: normalized_uuid,
       },
@@ -863,16 +862,16 @@ export async function updateKunjunganBulanan({
           parsed_from,
           parsed_to,
         ),
-        from_date: parsed_from,
-        to_date: parsed_to,
+        start_date: parsed_from,
+        end_date: parsed_to,
         value: parsed_value,
       },
       select: {
         uuid: true,
         uuid_outlet: true,
         value: true,
-        from_date: true,
-        to_date: true,
+        start_date: true,
+        end_date: true,
         outlet: {
           select: {
             name: true,
@@ -897,7 +896,7 @@ export async function deleteKunjunganBulanan({ uuid_kunjungan_bulanan }) {
     throw new Error("UUID kunjungan bulanan wajib diisi.");
   }
 
-  const existing = await prisma.tbl_dilayani_bulanan.findUnique({
+  const existing = await prisma.tbl_kunjungan.findUnique({
     where: {
       uuid: normalized_uuid,
     },
@@ -911,7 +910,7 @@ export async function deleteKunjunganBulanan({ uuid_kunjungan_bulanan }) {
     throw new Error("Data kunjungan bulanan tidak ditemukan.");
   }
 
-  await prisma.tbl_dilayani_bulanan.update({
+  await prisma.tbl_kunjungan.update({
     where: {
       uuid: normalized_uuid,
     },

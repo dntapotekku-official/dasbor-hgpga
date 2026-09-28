@@ -51,7 +51,7 @@ export default function MetricBulkActionModal({
   const field_id = useId();
   const is_edit = action === "edit_date";
   const is_monthly = period === "monthly";
-  const period_label = is_monthly ? "Bulanan" : "Harian";
+  const period_label = is_monthly ? "Range" : "Harian";
   const source_date_label = is_monthly ? "Range Periode" : "Tanggal Data";
   const source_edit_label = is_monthly ? "Range Periode Lama" : "Tanggal Lama";
   const date_options = useMemo(

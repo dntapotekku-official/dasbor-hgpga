@@ -289,7 +289,7 @@ export async function syncOutlet() {
             deleted_at,
           },
         }),
-        tx.tbl_nilai_transaksi.updateMany({
+        tx.tbl_total_penerimaan_pendapatan.updateMany({
           where: {
             uuid_outlet: {
               in: deleted_outlet_uuids,
@@ -300,7 +300,7 @@ export async function syncOutlet() {
             deleted_at,
           },
         }),
-        tx.tbl_basket_size.updateMany({
+        tx.tbl_jumlah_sku.updateMany({
           where: {
             uuid_outlet: {
               in: deleted_outlet_uuids,
@@ -311,7 +311,7 @@ export async function syncOutlet() {
             deleted_at,
           },
         }),
-        tx.tbl_dilayani.updateMany({
+        tx.tbl_kunjungan.updateMany({
           where: {
             uuid_outlet: {
               in: deleted_outlet_uuids,

@@ -157,12 +157,12 @@ function end_of_day(date) {
   return new Date(date.getTime() + 86_400_000 - 1);
 }
 
-/** Key unik untuk memastikan hanya ada satu record aktif per outlet dan tanggal. */
+/** Key unik untuk memastikan hanya ada satu record aktif per outlet dan rentang tanggal. */
 function build_active_daily_key(uuid_outlet, date) {
   return `${uuid_outlet}:${date.toISOString().slice(0, 10)}`;
 }
 
-function build_active_monthly_key(uuid_outlet, from_date, to_date) {
+function build_active_range_key(uuid_outlet, from_date, to_date) {
   return `${uuid_outlet}:${from_date.toISOString().slice(0, 10)}:${to_date.toISOString().slice(0, 10)}`;
 }
 
@@ -193,7 +193,7 @@ async function clear_daily_served_active_keys(
     exclude_uuid,
   },
 ) {
-  await transaction.tbl_dilayani.updateMany({
+  await transaction.tbl_kunjungan.updateMany({
     where: {
       uuid_outlet,
       ...(exclude_uuid
@@ -203,10 +203,19 @@ async function clear_daily_served_active_keys(
             },
           }
         : {}),
-      date: {
+      start_date: {
         gte: date,
         lte: end_of_day(date),
       },
+      OR: [
+        { end_date: null },
+        {
+          end_date: {
+            gte: date,
+            lte: end_of_day(date),
+          },
+        },
+      ],
       active_key: {
         not: null,
       },
@@ -226,7 +235,7 @@ async function clear_monthly_served_active_keys(
     exclude_uuid,
   },
 ) {
-  await transaction.tbl_dilayani_bulanan.updateMany({
+  await transaction.tbl_kunjungan.updateMany({
     where: {
       uuid_outlet,
       ...(exclude_uuid
@@ -236,11 +245,11 @@ async function clear_monthly_served_active_keys(
             },
           }
         : {}),
-      from_date: {
+      start_date: {
         gte: from_date,
         lte: end_of_day(from_date),
       },
-      to_date: {
+      end_date: {
         gte: to_date,
         lte: end_of_day(to_date),
       },
@@ -266,17 +275,19 @@ function map_available_dates(rows) {
   ).sort((first_date, second_date) => second_date.localeCompare(first_date));
 }
 
-/** Mengubah daftar record bulanan menjadi daftar tanggal akhir periode unik. */
-function map_available_monthly_ranges(rows) {
+/** Mengubah daftar record range menjadi daftar rentang tanggal unik. */
+function map_available_ranges(rows) {
   const range_map = new Map();
 
   for (const row of rows) {
-    if (!row.from_date || !row.to_date) {
+    if (!row.start_date && !row.from_date) {
       continue;
     }
 
-    const from_date = row.from_date.toISOString().slice(0, 10);
-    const to_date = row.to_date.toISOString().slice(0, 10);
+    const start_date = row.start_date ?? row.from_date;
+    const end_date = row.end_date ?? row.to_date ?? start_date;
+    const from_date = start_date.toISOString().slice(0, 10);
+    const to_date = end_date.toISOString().slice(0, 10);
     range_map.set(`${from_date}:${to_date}`, {
       from_date,
       to_date,
@@ -693,7 +704,7 @@ function build_nilai_transaksi_map(rows, visit_rows = []) {
       served: visits_by_outlet.get(uuid_outlet) ?? 0,
     };
 
-    current.total_revenue += to_number(item.total_revenue);
+    current.total_revenue += to_number(item.value);
     totals_by_outlet.set(uuid_outlet, current);
   });
 
@@ -725,7 +736,7 @@ function build_basket_size_map(rows, visit_rows = []) {
       served: visits_by_outlet.get(uuid_outlet) ?? 0,
     };
 
-    current.sku_qty += to_number(item.sku_qty);
+    current.sku_qty += to_number(item.value);
     totals_by_outlet.set(uuid_outlet, current);
   });
 
@@ -738,6 +749,19 @@ function build_basket_size_map(rows, visit_rows = []) {
       },
     ]),
   );
+}
+
+function build_exact_range_where(start_date, end_date = start_date) {
+  return {
+    start_date: {
+      gte: start_date,
+      lte: end_of_day(start_date),
+    },
+    end_date: {
+      gte: end_date,
+      lte: end_of_day(end_date),
+    },
+  };
 }
 
 /** Mengambil dashboard gabungan NS/BS beserta target, ringkasan kategori, dan tanggal tersedia. */
@@ -797,8 +821,7 @@ export async function getNilaiTransaksiBasketSize({
     last_served,
     nilai_transaksi_target_map,
     basket_size_target_map,
-    nilai_transaksi_dates,
-    nilai_transaksi_bulanan_dates,
+    nilai_transaksi_ranges,
     basket_size_dates,
     global_targets,
   ] = await Promise.all([
@@ -817,99 +840,40 @@ export async function getNilaiTransaksiBasketSize({
         category: true,
       },
     }),
-    prisma.tbl_nilai_transaksi.findMany({
+    prisma.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
-        date: {
-          gte: current_day_start,
-          lte: current_day_end,
-        },
+        ...build_exact_range_where(current_day_start),
       },
       select: {
         uuid_outlet: true,
-        total_revenue: true,
+        value: true,
       },
     }),
-    prisma.tbl_nilai_transaksi_bulanan.findMany({
+    prisma.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
-        from_date: {
-          gte: current_month_start,
-          lte: end_of_day(current_month_start),
-        },
-        to_date: {
-          gte: current_day_start,
-          lte: current_month_end,
-        },
+        ...build_exact_range_where(current_month_start, current_day_start),
       },
       select: {
         uuid_outlet: true,
-        total_revenue: true,
+        value: true,
       },
     }),
-    prisma.tbl_nilai_transaksi_bulanan.findMany({
+    prisma.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
-        from_date: {
-          gte: previous_month_start,
-          lte: end_of_day(previous_month_start),
-        },
-        to_date: {
-          gte: previous_month_end_start,
-          lte: previous_month_end,
-        },
+        ...build_exact_range_where(previous_month_start, previous_month_end_start),
       },
       select: {
         uuid_outlet: true,
-        total_revenue: true,
+        value: true,
       },
     }),
-    prisma.tbl_basket_size.findMany({
-      where: {
-        deleted_at: null,
-        ...outlet_scope,
-        date: {
-          gte: current_day_start,
-          lte: current_day_end,
-        },
-      },
-      select: {
-        uuid_outlet: true,
-        sku_qty: true,
-      },
-    }),
-    prisma.tbl_basket_size.findMany({
-      where: {
-        deleted_at: null,
-        ...outlet_scope,
-        date: {
-          gte: current_month_start,
-          lte: current_month_end,
-        },
-      },
-      select: {
-        uuid_outlet: true,
-        sku_qty: true,
-      },
-    }),
-    prisma.tbl_basket_size.findMany({
-      where: {
-        deleted_at: null,
-        ...outlet_scope,
-        date: {
-          gte: previous_month_start,
-          lte: previous_month_end,
-        },
-      },
-      select: {
-        uuid_outlet: true,
-        sku_qty: true,
-      },
-    }),
-    prisma.tbl_dilayani.findMany({
+    prisma.tbl_jumlah_sku.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
@@ -923,16 +887,12 @@ export async function getNilaiTransaksiBasketSize({
         value: true,
       },
     }),
-    prisma.tbl_dilayani_bulanan.findMany({
+    prisma.tbl_jumlah_sku.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
-        from_date: {
+        date: {
           gte: current_month_start,
-          lte: end_of_day(current_month_start),
-        },
-        to_date: {
-          gte: current_day_start,
           lte: current_month_end,
         },
       },
@@ -941,18 +901,47 @@ export async function getNilaiTransaksiBasketSize({
         value: true,
       },
     }),
-    prisma.tbl_dilayani_bulanan.findMany({
+    prisma.tbl_jumlah_sku.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
-        from_date: {
+        date: {
           gte: previous_month_start,
-          lte: end_of_day(previous_month_start),
-        },
-        to_date: {
-          gte: previous_month_end_start,
           lte: previous_month_end,
         },
+      },
+      select: {
+        uuid_outlet: true,
+        value: true,
+      },
+    }),
+    prisma.tbl_kunjungan.findMany({
+      where: {
+        deleted_at: null,
+        ...outlet_scope,
+        ...build_exact_range_where(current_day_start),
+      },
+      select: {
+        uuid_outlet: true,
+        value: true,
+      },
+    }),
+    prisma.tbl_kunjungan.findMany({
+      where: {
+        deleted_at: null,
+        ...outlet_scope,
+        ...build_exact_range_where(current_month_start, current_day_start),
+      },
+      select: {
+        uuid_outlet: true,
+        value: true,
+      },
+    }),
+    prisma.tbl_kunjungan.findMany({
+      where: {
+        deleted_at: null,
+        ...outlet_scope,
+        ...build_exact_range_where(previous_month_start, previous_month_end_start),
       },
       select: {
         uuid_outlet: true,
@@ -971,26 +960,17 @@ export async function getNilaiTransaksiBasketSize({
       selected_day_end: current_day_end,
       outlet_uuid: member_outlet_uuid,
     }),
-    prisma.tbl_nilai_transaksi.findMany({
+    prisma.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
       },
       select: {
-        date: true,
+        start_date: true,
+        end_date: true,
       },
     }),
-    prisma.tbl_nilai_transaksi_bulanan.findMany({
-      where: {
-        deleted_at: null,
-        ...outlet_scope,
-      },
-      select: {
-        from_date: true,
-        to_date: true,
-      },
-    }),
-    prisma.tbl_basket_size.findMany({
+    prisma.tbl_jumlah_sku.findMany({
       where: {
         deleted_at: null,
         ...outlet_scope,
@@ -1053,10 +1033,10 @@ export async function getNilaiTransaksiBasketSize({
     overall_metrics,
     global_targets,
     available_dates: {
-      nilai_transaksi: map_available_dates(nilai_transaksi_dates),
-      nilai_transaksi_bulanan: map_available_monthly_ranges(
-        nilai_transaksi_bulanan_dates,
-      ),
+      nilai_transaksi: map_available_ranges(nilai_transaksi_ranges)
+        .filter((range) => range.from_date === range.to_date)
+        .map((range) => range.from_date),
+      nilai_transaksi_bulanan: map_available_ranges(nilai_transaksi_ranges),
       basket_size: map_available_dates(basket_size_dates),
     },
   };
@@ -1516,14 +1496,11 @@ export async function updateNilaiTransaksiDaily({
   }
 
   return prisma.$transaction(async (transaction) => {
-    const records = await transaction.tbl_nilai_transaksi.findMany({
+    const records = await transaction.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         uuid_outlet: normalized_uuid_outlet,
         deleted_at: null,
-        date: {
-          gte: date,
-          lte: end_of_day(date),
-        },
+        ...build_exact_range_where(date),
       },
       select: {
         uuid: true,
@@ -1534,18 +1511,18 @@ export async function updateNilaiTransaksiDaily({
       throw new Error("Data nilai transaksi harian outlet ini tidak ditemukan.");
     }
 
-    await transaction.tbl_nilai_transaksi.update({
+    await transaction.tbl_total_penerimaan_pendapatan.update({
       where: {
         uuid: records[0].uuid,
       },
       data: {
-        active_key: build_active_daily_key(normalized_uuid_outlet, date),
-        total_revenue: parsed_total_revenue,
+        active_key: build_active_range_key(normalized_uuid_outlet, date, date),
+        value: parsed_total_revenue,
       },
     });
 
     if (records.length > 1) {
-      await transaction.tbl_nilai_transaksi.updateMany({
+      await transaction.tbl_total_penerimaan_pendapatan.updateMany({
         where: {
           uuid: {
             in: records.slice(1).map((item) => item.uuid),
@@ -1592,18 +1569,11 @@ export async function updateNilaiTransaksiMonthly({
   }
 
   return prisma.$transaction(async (transaction) => {
-    const records = await transaction.tbl_nilai_transaksi_bulanan.findMany({
+    const records = await transaction.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         uuid_outlet: normalized_uuid_outlet,
         deleted_at: null,
-        from_date: {
-          gte: from_date,
-          lte: end_of_day(from_date),
-        },
-        to_date: {
-          gte: to_date,
-          lte: end_of_day(to_date),
-        },
+        ...build_exact_range_where(from_date, to_date),
       },
       select: {
         uuid: true,
@@ -1614,22 +1584,22 @@ export async function updateNilaiTransaksiMonthly({
       throw new Error("Data nilai transaksi bulanan outlet ini tidak ditemukan.");
     }
 
-    await transaction.tbl_nilai_transaksi_bulanan.update({
+    await transaction.tbl_total_penerimaan_pendapatan.update({
       where: {
         uuid: records[0].uuid,
       },
       data: {
-        active_key: build_active_monthly_key(
+        active_key: build_active_range_key(
           normalized_uuid_outlet,
           from_date,
           to_date,
         ),
-        total_revenue: parsed_total_revenue,
+        value: parsed_total_revenue,
       },
     });
 
     if (records.length > 1) {
-      await transaction.tbl_nilai_transaksi_bulanan.updateMany({
+      await transaction.tbl_total_penerimaan_pendapatan.updateMany({
         where: {
           uuid: {
             in: records.slice(1).map((item) => item.uuid),
@@ -1817,7 +1787,7 @@ async function bulk_update_metric_date({
   });
 }
 
-/** Menghapus seluruh data Nilai Transaksi bulanan pada periode akhir tanggal tertentu. */
+/** Menghapus seluruh data Nilai Transaksi pada rentang tanggal tertentu. */
 export async function bulkDeleteNilaiTransaksiMonthly(payload) {
   const { from_date, to_date } = parse_metric_date_range({
     from_date: payload?.from_date,
@@ -1828,17 +1798,10 @@ export async function bulkDeleteNilaiTransaksiMonthly(payload) {
 
   return prisma.$transaction(async (transaction) => {
     const deleted_at = new Date();
-    const result = await transaction.tbl_nilai_transaksi_bulanan.updateMany({
+    const result = await transaction.tbl_total_penerimaan_pendapatan.updateMany({
       where: {
         deleted_at: null,
-        from_date: {
-          gte: from_date,
-          lte: end_of_day(from_date),
-        },
-        to_date: {
-          gte: to_date,
-          lte: end_of_day(to_date),
-        },
+        ...build_exact_range_where(from_date, to_date),
       },
       data: {
         active_key: null,
@@ -1846,17 +1809,10 @@ export async function bulkDeleteNilaiTransaksiMonthly(payload) {
       },
     });
 
-    await transaction.tbl_dilayani_bulanan.updateMany({
+    await transaction.tbl_kunjungan.updateMany({
       where: {
         deleted_at: null,
-        from_date: {
-          gte: from_date,
-          lte: end_of_day(from_date),
-        },
-        to_date: {
-          gte: to_date,
-          lte: end_of_day(to_date),
-        },
+        ...build_exact_range_where(from_date, to_date),
       },
       data: {
         active_key: null,
@@ -1865,12 +1821,12 @@ export async function bulkDeleteNilaiTransaksiMonthly(payload) {
     });
 
     if (!result.count) {
-      throw new Error("Data nilai transaksi bulanan pada periode ini tidak ditemukan.");
+      throw new Error("Data nilai transaksi pada rentang tanggal ini tidak ditemukan.");
     }
 
     return {
       success: true,
-      message: `${result.count} data outlet nilai transaksi bulanan berhasil dihapus.`,
+      message: `${result.count} data outlet nilai transaksi berhasil dihapus.`,
       data: {
         deleted_count: result.count,
       },
@@ -1878,7 +1834,7 @@ export async function bulkDeleteNilaiTransaksiMonthly(payload) {
   });
 }
 
-/** Memindahkan periode seluruh data Nilai Transaksi bulanan. */
+/** Memindahkan periode seluruh data Nilai Transaksi. */
 export async function bulkUpdateNilaiTransaksiMonthly(payload) {
   const {
     from_date: source_from_date,
@@ -1907,17 +1863,10 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
   }
 
   return prisma.$transaction(async (transaction) => {
-    const source_records = await transaction.tbl_nilai_transaksi_bulanan.findMany({
+    const source_records = await transaction.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         deleted_at: null,
-        from_date: {
-          gte: source_from_date,
-          lte: end_of_day(source_from_date),
-        },
-        to_date: {
-          gte: source_to_date,
-          lte: end_of_day(source_to_date),
-        },
+        ...build_exact_range_where(source_from_date, source_to_date),
       },
       select: {
         uuid: true,
@@ -1926,37 +1875,23 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
     });
 
     if (!source_records.length) {
-      throw new Error("Data nilai transaksi bulanan pada tanggal lama tidak ditemukan.");
+      throw new Error("Data nilai transaksi pada rentang tanggal lama tidak ditemukan.");
     }
 
     const [target_metric_record, target_served_record] = await Promise.all([
-      transaction.tbl_nilai_transaksi_bulanan.findFirst({
+      transaction.tbl_total_penerimaan_pendapatan.findFirst({
         where: {
           deleted_at: null,
-          from_date: {
-            gte: target_from_date,
-            lte: end_of_day(target_from_date),
-          },
-          to_date: {
-            gte: target_to_date,
-            lte: end_of_day(target_to_date),
-          },
+          ...build_exact_range_where(target_from_date, target_to_date),
         },
         select: {
           uuid: true,
         },
       }),
-      transaction.tbl_dilayani_bulanan.findFirst({
+      transaction.tbl_kunjungan.findFirst({
         where: {
           deleted_at: null,
-          from_date: {
-            gte: target_from_date,
-            lte: end_of_day(target_from_date),
-          },
-          to_date: {
-            gte: target_to_date,
-            lte: end_of_day(target_to_date),
-          },
+          ...build_exact_range_where(target_from_date, target_to_date),
         },
         select: {
           uuid: true,
@@ -1966,7 +1901,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
 
     if (target_metric_record || target_served_record) {
       throw new Error(
-        "Edit massal dibatalkan karena tanggal baru sudah memiliki data nilai transaksi bulanan.",
+        "Edit massal dibatalkan karena rentang tanggal baru sudah memiliki data nilai transaksi.",
       );
     }
 
@@ -1974,7 +1909,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       .map((record) => record.uuid_outlet)
       .filter(Boolean);
 
-    await transaction.tbl_nilai_transaksi_bulanan.updateMany({
+    await transaction.tbl_total_penerimaan_pendapatan.updateMany({
       where: {
         uuid: {
           in: source_records.map((record) => record.uuid),
@@ -1985,20 +1920,13 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       },
     });
 
-    await transaction.tbl_dilayani_bulanan.updateMany({
+    await transaction.tbl_kunjungan.updateMany({
       where: {
         deleted_at: null,
         uuid_outlet: {
           in: source_outlet_uuids,
         },
-        from_date: {
-          gte: source_from_date,
-          lte: end_of_day(source_from_date),
-        },
-        to_date: {
-          gte: source_to_date,
-          lte: end_of_day(source_to_date),
-        },
+        ...build_exact_range_where(source_from_date, source_to_date),
       },
       data: {
         active_key: null,
@@ -2006,15 +1934,15 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
     });
 
     for (const record of source_records) {
-      await transaction.tbl_nilai_transaksi_bulanan.update({
+      await transaction.tbl_total_penerimaan_pendapatan.update({
         where: {
           uuid: record.uuid,
         },
         data: {
-          from_date: target_from_date,
-          to_date: target_to_date,
+          start_date: target_from_date,
+          end_date: target_to_date,
           active_key: record.uuid_outlet
-            ? build_active_monthly_key(
+            ? build_active_range_key(
                 record.uuid_outlet,
                 target_from_date,
                 target_to_date,
@@ -2024,20 +1952,13 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       });
     }
 
-    const served_records = await transaction.tbl_dilayani_bulanan.findMany({
+    const served_records = await transaction.tbl_kunjungan.findMany({
       where: {
         deleted_at: null,
         uuid_outlet: {
           in: source_outlet_uuids,
         },
-        from_date: {
-          gte: source_from_date,
-          lte: end_of_day(source_from_date),
-        },
-        to_date: {
-          gte: source_to_date,
-          lte: end_of_day(source_to_date),
-        },
+        ...build_exact_range_where(source_from_date, source_to_date),
       },
       select: {
         uuid: true,
@@ -2046,15 +1967,15 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
     });
 
     for (const record of served_records) {
-      await transaction.tbl_dilayani_bulanan.update({
+      await transaction.tbl_kunjungan.update({
         where: {
           uuid: record.uuid,
         },
         data: {
-          from_date: target_from_date,
-          to_date: target_to_date,
+          start_date: target_from_date,
+          end_date: target_to_date,
           active_key: record.uuid_outlet
-            ? build_active_monthly_key(
+            ? build_active_range_key(
                 record.uuid_outlet,
                 target_from_date,
                 target_to_date,
@@ -2066,7 +1987,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
 
     return {
       success: true,
-      message: `Periode nilai transaksi bulanan berhasil diperbarui untuk ${source_records.length} outlet.`,
+      message: `Periode nilai transaksi berhasil diperbarui untuk ${source_records.length} outlet.`,
       data: {
         updated_count: source_records.length,
         target_date: target_to_date.toISOString().slice(0, 10),
@@ -2077,10 +1998,11 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
 
 /** Memindahkan tanggal seluruh data Nilai Transaksi dari satu hari ke hari lain. */
 export function bulkUpdateNilaiTransaksiDate(payload) {
-  return bulk_update_metric_date({
-    ...payload,
-    model: "tbl_nilai_transaksi",
-    metric_label: "nilai transaksi",
+  return bulkUpdateNilaiTransaksiMonthly({
+    source_from_date: payload?.source_date,
+    source_to_date: payload?.source_date,
+    target_from_date: payload?.target_date,
+    target_to_date: payload?.target_date,
   });
 }
 
@@ -2088,26 +2010,24 @@ export function bulkUpdateNilaiTransaksiDate(payload) {
 export function bulkUpdateBasketSizeDate(payload) {
   return bulk_update_metric_date({
     ...payload,
-    model: "tbl_basket_size",
+    model: "tbl_jumlah_sku",
     metric_label: "basket size",
   });
 }
 
 /** Menghapus data Nilai Transaksi harian untuk satu outlet. */
 export function deleteNilaiTransaksiDaily(payload) {
-  return delete_metric_daily({
-    ...payload,
-    model: "tbl_nilai_transaksi",
-    metric_label: "Nilai transaksi",
+  return bulkDeleteNilaiTransaksiMonthly({
+    from_date: payload?.selected_date,
+    to_date: payload?.selected_date,
   });
 }
 
 /** Menghapus seluruh data Nilai Transaksi pada tanggal terpilih. */
 export function bulkDeleteNilaiTransaksiDate(payload) {
-  return bulk_delete_metric_date({
-    ...payload,
-    model: "tbl_nilai_transaksi",
-    metric_label: "nilai transaksi",
+  return bulkDeleteNilaiTransaksiMonthly({
+    from_date: payload?.selected_date,
+    to_date: payload?.selected_date,
   });
 }
 
@@ -2115,7 +2035,7 @@ export function bulkDeleteNilaiTransaksiDate(payload) {
 export function deleteBasketSizeDaily(payload) {
   return delete_metric_daily({
     ...payload,
-    model: "tbl_basket_size",
+    model: "tbl_jumlah_sku",
     metric_label: "Basket size",
   });
 }
@@ -2124,7 +2044,7 @@ export function deleteBasketSizeDaily(payload) {
 export function bulkDeleteBasketSizeDate(payload) {
   return bulk_delete_metric_date({
     ...payload,
-    model: "tbl_basket_size",
+    model: "tbl_jumlah_sku",
     metric_label: "basket size",
   });
 }
@@ -2256,24 +2176,33 @@ async function importOutletReportMetric({
     if (use_existing_served && use_file_dates) {
       const first_import_date = parse_metric_date(imported_dates[0]);
       const last_import_date = parse_metric_date(imported_dates.at(-1));
-      const visit_rows = await tx.tbl_dilayani.findMany({
+      const visit_rows = await tx.tbl_kunjungan.findMany({
         where: {
           deleted_at: null,
           uuid_outlet: {
             in: imported_outlet_uuids,
           },
-          date: {
+          start_date: {
             gte: first_import_date,
             lte: end_of_day(last_import_date),
           },
+          OR: [
+            { end_date: null },
+            {
+              end_date: {
+                gte: first_import_date,
+                lte: end_of_day(last_import_date),
+              },
+            },
+          ],
         },
         select: {
           uuid_outlet: true,
-          date: true,
+          start_date: true,
         },
       });
       const visit_keys = new Set(
-        visit_rows.map((row) => build_active_daily_key(row.uuid_outlet, row.date)),
+        visit_rows.map((row) => build_active_daily_key(row.uuid_outlet, row.start_date)),
       );
       const missing_visit_row = aggregated_rows.find(
         (row) => !visit_keys.has(build_active_daily_key(row.uuid_outlet, row.report_date)),
@@ -2323,13 +2252,10 @@ async function importOutletReportMetric({
     for (const row of aggregated_rows) {
       const report_date = row.report_date;
       const report_day_end = end_of_day(report_date);
-      let served_record = await tx.tbl_dilayani.findFirst({
+      let served_record = await tx.tbl_kunjungan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
-          date: {
-            gte: report_date,
-            lte: report_day_end,
-          },
+          ...build_exact_range_where(report_date),
         },
         orderBy: {
           updated_at: "desc",
@@ -2355,7 +2281,7 @@ async function importOutletReportMetric({
         });
 
         served_record = served_record
-          ? await tx.tbl_dilayani.update({
+          ? await tx.tbl_kunjungan.update({
               where: {
                 uuid: served_record.uuid,
               },
@@ -2370,13 +2296,14 @@ async function importOutletReportMetric({
                 deleted_at: true,
               },
             })
-          : await tx.tbl_dilayani.create({
+          : await tx.tbl_kunjungan.create({
               data: {
                 uuid: randomUUID(),
                 uuid_outlet: row.uuid_outlet,
-                active_key: build_active_daily_key(row.uuid_outlet, report_date),
+                active_key: build_active_range_key(row.uuid_outlet, report_date, report_date),
                 value: row.served,
-                date: report_date,
+                start_date: report_date,
+                end_date: report_date,
               },
               select: {
                 uuid: true,
@@ -2387,17 +2314,14 @@ async function importOutletReportMetric({
       }
 
       if (served_record) {
-        await tx.tbl_dilayani.updateMany({
+        await tx.tbl_kunjungan.updateMany({
           where: {
             uuid_outlet: row.uuid_outlet,
             uuid: {
               not: served_record.uuid,
             },
             deleted_at: null,
-            date: {
-              gte: report_date,
-              lte: report_day_end,
-            },
+            ...build_exact_range_where(report_date),
           },
           data: {
             active_key: null,
@@ -2490,23 +2414,18 @@ async function importOutletReportMetric({
 export function importNilaiTransaksi({
   file_path,
   import_date,
+  from_date,
   member_outlet_uuid,
 }) {
-  return importOutletReportMetric({
+  return importNilaiTransaksiBulanan({
     file_path,
     import_date,
+    from_date: from_date || import_date,
     member_outlet_uuid,
-    model: "tbl_nilai_transaksi",
-    metric_label: "nilai transaksi",
-    resolve_served: (row) => row.served_nilai_transaksi ?? row.served,
-    validate_row: (row) => row.total_revenue > 0,
-    build_record: (row) => ({
-      total_revenue: row.total_revenue,
-    }),
   });
 }
 
-/** Mengimpor data Nilai Transaksi bulanan dari laporan range tanggal outlet. */
+/** Mengimpor data Nilai Transaksi dari laporan range tanggal outlet. */
 export async function importNilaiTransaksiBulanan({
   file_path,
   import_date,
@@ -2589,22 +2508,15 @@ export async function importNilaiTransaksiBulanan({
 
   await prisma.$transaction(async (tx) => {
     for (const row of aggregated_rows) {
-      const monthly_key = build_active_monthly_key(
+      const monthly_key = build_active_range_key(
         row.uuid_outlet,
         parsed_from_date,
         to_date,
       );
-      const existing_served = await tx.tbl_dilayani_bulanan.findFirst({
+      const existing_served = await tx.tbl_kunjungan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
-          from_date: {
-            gte: parsed_from_date,
-            lte: end_of_day(parsed_from_date),
-          },
-          to_date: {
-            gte: to_date,
-            lte: end_of_day(to_date),
-          },
+          ...build_exact_range_where(parsed_from_date, to_date),
         },
         orderBy: {
           updated_at: "desc",
@@ -2622,7 +2534,7 @@ export async function importNilaiTransaksiBulanan({
       });
 
       const served_record = existing_served
-        ? await tx.tbl_dilayani_bulanan.update({
+        ? await tx.tbl_kunjungan.update({
             where: {
               uuid: existing_served.uuid,
             },
@@ -2635,35 +2547,28 @@ export async function importNilaiTransaksiBulanan({
               uuid: true,
             },
           })
-        : await tx.tbl_dilayani_bulanan.create({
+        : await tx.tbl_kunjungan.create({
             data: {
               uuid: randomUUID(),
               uuid_outlet: row.uuid_outlet,
               active_key: monthly_key,
               value: row.served,
-              from_date: parsed_from_date,
-              to_date,
+              start_date: parsed_from_date,
+              end_date: to_date,
             },
             select: {
               uuid: true,
             },
           });
 
-      await tx.tbl_dilayani_bulanan.updateMany({
+      await tx.tbl_kunjungan.updateMany({
         where: {
           uuid_outlet: row.uuid_outlet,
           uuid: {
             not: served_record.uuid,
           },
           deleted_at: null,
-          from_date: {
-            gte: parsed_from_date,
-            lte: end_of_day(parsed_from_date),
-          },
-          to_date: {
-            gte: to_date,
-            lte: end_of_day(to_date),
-          },
+          ...build_exact_range_where(parsed_from_date, to_date),
         },
         data: {
           active_key: null,
@@ -2671,17 +2576,10 @@ export async function importNilaiTransaksiBulanan({
         },
       });
 
-      const existing_metric = await tx.tbl_nilai_transaksi_bulanan.findFirst({
+      const existing_metric = await tx.tbl_total_penerimaan_pendapatan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
-          from_date: {
-            gte: parsed_from_date,
-            lte: end_of_day(parsed_from_date),
-          },
-          to_date: {
-            gte: to_date,
-            lte: end_of_day(to_date),
-          },
+          ...build_exact_range_where(parsed_from_date, to_date),
         },
         orderBy: {
           updated_at: "desc",
@@ -2692,12 +2590,12 @@ export async function importNilaiTransaksiBulanan({
       });
 
       const metric_record = existing_metric
-        ? await tx.tbl_nilai_transaksi_bulanan.update({
+        ? await tx.tbl_total_penerimaan_pendapatan.update({
           where: {
             uuid: existing_metric.uuid,
           },
           data: {
-            total_revenue: row.total_revenue,
+            value: row.total_revenue,
             active_key: monthly_key,
             deleted_at: null,
           },
@@ -2705,35 +2603,28 @@ export async function importNilaiTransaksiBulanan({
             uuid: true,
           },
         })
-        : await tx.tbl_nilai_transaksi_bulanan.create({
+        : await tx.tbl_total_penerimaan_pendapatan.create({
           data: {
             uuid: randomUUID(),
             uuid_outlet: row.uuid_outlet,
             active_key: monthly_key,
-            from_date: parsed_from_date,
-            to_date,
-            total_revenue: row.total_revenue,
+            start_date: parsed_from_date,
+            end_date: to_date,
+            value: row.total_revenue,
           },
           select: {
             uuid: true,
           },
         });
 
-      await tx.tbl_nilai_transaksi_bulanan.updateMany({
+      await tx.tbl_total_penerimaan_pendapatan.updateMany({
         where: {
           uuid_outlet: row.uuid_outlet,
           uuid: {
             not: metric_record.uuid,
           },
           deleted_at: null,
-          from_date: {
-            gte: parsed_from_date,
-            lte: end_of_day(parsed_from_date),
-          },
-          to_date: {
-            gte: to_date,
-            lte: end_of_day(to_date),
-          },
+          ...build_exact_range_where(parsed_from_date, to_date),
         },
         data: {
           active_key: null,
@@ -2748,7 +2639,7 @@ export async function importNilaiTransaksiBulanan({
 
   return {
     success: true,
-    message: `Impor nilai transaksi bulanan berhasil untuk ${aggregated_rows.length} outlet pada periode ${period_key}.`,
+    message: `Impor nilai transaksi berhasil untuk ${aggregated_rows.length} outlet pada periode ${period_key}.`,
     data: {
       imported_count: aggregated_rows.length,
       imported_outlet_count: aggregated_rows.length,
@@ -2768,14 +2659,14 @@ export function importBasketSize({
   return importOutletReportMetric({
     file_path,
     member_outlet_uuid,
-    model: "tbl_basket_size",
+    model: "tbl_jumlah_sku",
     metric_label: "basket size",
     resolve_served: (row) => row.served_basket_size ?? row.served,
     use_existing_served: true,
     use_file_dates: true,
     validate_row: (row) => Number.isInteger(row.sku_qty) && row.sku_qty > 0,
     build_record: (row) => ({
-      sku_qty: row.sku_qty,
+      value: row.sku_qty,
     }),
   });
 }
