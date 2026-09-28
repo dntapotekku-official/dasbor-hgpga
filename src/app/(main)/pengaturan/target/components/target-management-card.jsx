@@ -692,7 +692,7 @@ export default function TargetManagementCard({
                     </TableHead>
                     <TableHead>
                       <SortableTableHead
-                        label="Range Tanggal"
+                        label="Rentang Tanggal"
                         sortKey="start_date"
                         currentSortKey={sort_key}
                         sortDirection={sort_direction}

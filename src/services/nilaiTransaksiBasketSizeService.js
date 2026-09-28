@@ -2425,7 +2425,7 @@ export function importNilaiTransaksi({
   });
 }
 
-/** Mengimpor data Nilai Transaksi dari laporan range tanggal outlet. */
+/** Mengimpor data Nilai Transaksi dari laporan rentang tanggal outlet. */
 export async function importNilaiTransaksiBulanan({
   file_path,
   import_date,
@@ -3097,7 +3097,7 @@ export async function createTargetGlobal({ key, target, start_date, end_date }) 
     start_date: parsed_start_date,
     end_date: parsed_end_date,
   })) {
-    throw new Error(`Range ${config.label.toLowerCase()} global bentrok dengan data yang sudah ada.`);
+    throw new Error(`Rentang ${config.label.toLowerCase()} global bentrok dengan data yang sudah ada.`);
   }
 
   const created_target = await prisma.tbl_target_global.create({
@@ -3162,7 +3162,7 @@ export async function updateTargetGlobal({
     end_date: parsed_end_date,
     exclude_uuid: uuid_target_global,
   })) {
-    throw new Error(`Range ${config.label.toLowerCase()} global bentrok dengan data yang sudah ada.`);
+    throw new Error(`Rentang ${config.label.toLowerCase()} global bentrok dengan data yang sudah ada.`);
   }
 
   const updated_target = await prisma.tbl_target_global.update({
@@ -3347,7 +3347,7 @@ async function create_target_metric(metric_type, {
   });
 
   if (overlapping_target) {
-    throw new Error("Range target bentrok dengan data target outlet ini yang sudah ada.");
+    throw new Error("Rentang target bentrok dengan data target outlet ini yang sudah ada.");
   }
 
   const created_target = await prisma[config.model].create({
@@ -3417,7 +3417,7 @@ async function update_target_metric(metric_type, {
   });
 
   if (overlapping_target) {
-    throw new Error("Range target bentrok dengan data target outlet ini yang sudah ada.");
+    throw new Error("Rentang target bentrok dengan data target outlet ini yang sudah ada.");
   }
 
   const updated_target = await prisma[config.model].update({
@@ -3582,7 +3582,7 @@ async function import_target_metric(metric_type, {
     ).sort((a, b) => a.localeCompare(b, "id-ID"));
 
     throw new Error(
-      `Impor dibatalkan karena range target bentrok untuk outlet: ${overlapping_outlet_names.join(", ")}.`,
+      `Impor dibatalkan karena rentang target bentrok untuk outlet: ${overlapping_outlet_names.join(", ")}.`,
     );
   }
 

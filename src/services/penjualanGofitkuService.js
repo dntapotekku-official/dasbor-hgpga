@@ -1434,7 +1434,7 @@ export async function createTargetGofitku({
   });
 
   if (overlapping_target) {
-    throw new Error("Range target bentrok dengan data target lain yang sudah ada.");
+    throw new Error("Rentang target bentrok dengan data target lain yang sudah ada.");
   }
 
   const created_target = await prisma.tbl_target_gofitku.create({
@@ -1585,7 +1585,7 @@ export async function updateTargetGofitku({
   });
 
   if (overlapping_target) {
-    throw new Error("Range target bentrok dengan data target lain yang sudah ada.");
+    throw new Error("Rentang target bentrok dengan data target lain yang sudah ada.");
   }
 
   const updated_target = await prisma.tbl_target_gofitku.update({

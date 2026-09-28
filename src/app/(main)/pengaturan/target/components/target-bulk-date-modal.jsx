@@ -167,7 +167,7 @@ export default function TargetBulkDateModal({
             <div className="space-y-2">
               <FieldLabel
                 htmlFor={`${field_id}-periode-lama`}
-                label={is_range_mode ? "Range Tanggal Lama" : "Tanggal Lama"}
+                label={is_range_mode ? "Rentang Tanggal Lama" : "Tanggal Lama"}
                 required
               />
               <OptionDropdown
@@ -175,14 +175,14 @@ export default function TargetBulkDateModal({
                 value={selected_period_key}
                 options={period_options}
                 onValueChange={handle_period_change}
-                ariaLabel={`Pilih ${is_range_mode ? "range tanggal" : "tanggal"} lama ${target_label}`}
+                ariaLabel={`Pilih ${is_range_mode ? "rentang tanggal" : "tanggal"} lama ${target_label}`}
                 searchable
                 searchPlaceholder={
-                  is_range_mode ? "Cari range tanggal..." : "Cari tanggal..."
+                  is_range_mode ? "Cari rentang tanggal..." : "Cari tanggal..."
                 }
                 emptyMessage={
                   is_range_mode
-                    ? "Range tanggal tidak ditemukan."
+                    ? "Rentang tanggal tidak ditemukan."
                     : "Tanggal tidak ditemukan."
                 }
               />

@@ -1104,7 +1104,7 @@ export default function NilaiTransaksiPage() {
                         }
                       >
                         <CalendarRangeIcon className="size-4" />
-                        Edit Massal (Range)
+                        Edit Massal (Rentang)
                       </Button>
                     ) : null}
                     <Button
@@ -1120,7 +1120,7 @@ export default function NilaiTransaksiPage() {
                     >
                       <Trash2Icon className="size-4" />
                       {activeMetric === "nilai-transaksi"
-                        ? "Hapus Massal (Range)"
+                        ? "Hapus Massal (Rentang)"
                         : "Hapus Massal (Harian)"}
                     </Button>
                   </div>

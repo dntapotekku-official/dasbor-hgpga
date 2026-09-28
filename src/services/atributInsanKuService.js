@@ -33,7 +33,7 @@ async function resolve_range_with(transaction, { range_with, uuid, type }) {
   }
 
   if (normalize_attribute_type(type) !== "date") {
-    throw new Error("Range hanya dapat dibuat untuk kolom bertipe tanggal.");
+    throw new Error("Rentang hanya dapat dibuat untuk kolom bertipe tanggal.");
   }
 
   if (normalized_range_with === uuid) {

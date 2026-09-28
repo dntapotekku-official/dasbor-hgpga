@@ -23,7 +23,7 @@ export default function TargetBulkCreateModal({
     event.preventDefault();
 
     if (!start_date || !end_date || target === "") {
-      toast.error("Range tanggal dan nilai target wajib diisi.");
+      toast.error("Rentang tanggal dan nilai target wajib diisi.");
       return;
     }
 

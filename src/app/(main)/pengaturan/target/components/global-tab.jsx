@@ -264,7 +264,7 @@ function GlobalTargetTable({ metric_key }) {
               <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
                   <TableHead className="w-20">#</TableHead>
-                  <TableHead>Range Tanggal</TableHead>
+                  <TableHead>Rentang Tanggal</TableHead>
                   <TableHead>Target</TableHead>
                   <TableHead className="w-[180px]">Aksi</TableHead>
                 </TableRow>
