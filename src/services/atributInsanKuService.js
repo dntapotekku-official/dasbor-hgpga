@@ -15,13 +15,19 @@ function normalize_attribute_type(type) {
   return String(type ?? "").trim().toLowerCase();
 }
 
-function normalize_attribute_flags({ is_attribute, is_edit, is_view }) {
+function normalize_attribute_flags({
+  is_attribute,
+  is_edit,
+  is_view,
+  is_summary_visible = true,
+}) {
   const can_view = Boolean(is_view);
 
   return {
     is_attribute: Boolean(is_attribute),
     is_view: can_view,
     is_edit: can_view ? Boolean(is_edit) : false,
+    is_summary_visible: Boolean(is_summary_visible),
   };
 }
 
@@ -183,6 +189,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         range_with: true,
         is_edit: true,
         is_view: true,
+        is_summary_visible: true,
         order: true,
       },
     }),
@@ -239,6 +246,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
       range_with: attribute.range_with,
       is_edit: attribute.is_edit,
       is_view: attribute.is_view,
+      is_summary_visible: attribute.is_summary_visible,
       order: attribute.order,
     })),
     rows: employees.map((employee) => {
@@ -714,6 +722,7 @@ export async function getAtributMaster() {
       range_with: true,
       is_edit: true,
       is_view: true,
+      is_summary_visible: true,
       order: true,
     },
   });
@@ -730,6 +739,7 @@ export async function createAtribut({
   range_with,
   is_edit,
   is_view,
+  is_summary_visible,
 }) {
   const trimmed_name = normalize_name(name);
   const normalized_type = normalize_attribute_type(type);
@@ -737,6 +747,7 @@ export async function createAtribut({
     is_attribute,
     is_edit,
     is_view,
+    is_summary_visible,
   });
 
   if (!trimmed_name) {
@@ -789,6 +800,7 @@ export async function createAtribut({
         range_with: range_with_uuid,
         is_view: normalized_flags.is_view,
         is_edit: normalized_flags.is_edit,
+        is_summary_visible: normalized_flags.is_summary_visible,
         order: (last_attribute?.order ?? 0) + 1,
       },
       select: {
@@ -799,6 +811,7 @@ export async function createAtribut({
         range_with: true,
         is_edit: true,
         is_view: true,
+        is_summary_visible: true,
         order: true,
       },
     });
@@ -826,6 +839,7 @@ export async function updateAtribut({
   range_with,
   is_edit,
   is_view,
+  is_summary_visible,
 }) {
   if (!uuid_atribut) {
     throw new Error("UUID kolom atribut wajib diisi.");
@@ -837,6 +851,7 @@ export async function updateAtribut({
     is_attribute,
     is_edit,
     is_view,
+    is_summary_visible,
   });
 
   if (!trimmed_name) {
@@ -918,6 +933,7 @@ export async function updateAtribut({
         range_with: range_with_uuid,
         is_view: normalized_flags.is_view,
         is_edit: normalized_flags.is_edit,
+        is_summary_visible: normalized_flags.is_summary_visible,
       },
       select: {
         uuid: true,
@@ -927,6 +943,7 @@ export async function updateAtribut({
         range_with: true,
         is_edit: true,
         is_view: true,
+        is_summary_visible: true,
         order: true,
       },
     });

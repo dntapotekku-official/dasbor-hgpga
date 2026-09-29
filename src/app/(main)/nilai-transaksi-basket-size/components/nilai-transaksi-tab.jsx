@@ -68,10 +68,10 @@ export default function NilaiTransaksiTab({
           </TableHead>
           {[
             ["Target", "min-w-[140px]"],
-            ["Total Pendapatan (Harian)", "min-w-[180px]"],
-            ["Dilayani (Harian)", "min-w-[140px]"],
-            [`Total Pendapatan ${selected_period_range_label}`, "min-w-[180px]"],
-            [`Dilayani ${selected_period_range_label}`, "min-w-[150px]"],
+            ["Total Penerimaan Pendapatan (Harian)", "min-w-[180px]"],
+            ["Kunjungan (Harian)", "min-w-[140px]"],
+            [`Total Penerimaan Pendapatan ${selected_period_range_label}`, "min-w-[180px]"],
+            [`Kunjungan ${selected_period_range_label}`, "min-w-[150px]"],
             [`Harian (${selected_date_label})`, "min-w-[140px]"],
             [selected_period_label, "min-w-[180px]"],
             [previous_period_label, "min-w-[180px]"],
@@ -118,13 +118,13 @@ export default function NilaiTransaksiTab({
               <CurrencyValue value={row.nt_daily_total_revenue} align="right" />
             </TableCell>
             <TableCell className="text-right">
-              {formatDecimal(row.nt_daily_served, 0)}
+              {formatDecimal(row.nt_daily_kunjungan, 0)}
             </TableCell>
             <TableCell className="text-right">
               <CurrencyValue value={row.nt_current_month_total_revenue} align="right" />
             </TableCell>
             <TableCell className="text-right">
-              {formatDecimal(row.nt_current_month_served, 0)}
+              {formatDecimal(row.nt_current_month_kunjungan, 0)}
             </TableCell>
             <TableCell
               className={
@@ -195,7 +195,7 @@ export default function NilaiTransaksiTab({
             />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
-            {formatDecimal(category_metrics.nt_daily_served, 0)}
+            {formatDecimal(category_metrics.nt_daily_kunjungan, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
             <CurrencyValue
@@ -204,7 +204,7 @@ export default function NilaiTransaksiTab({
             />
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
-            {formatDecimal(category_metrics.nt_current_month_served, 0)}
+            {formatDecimal(category_metrics.nt_current_month_kunjungan, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted">
             <CurrencyValue value={category_metrics.nt_daily} align="split" />

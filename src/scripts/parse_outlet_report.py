@@ -15,7 +15,8 @@ target_sheet_1 = "Laporan Penjualan"
 target_col_1 = "Total Penerimaan Pendapatan"
 
 target_sheet_2 = "Statistik Kunjungan"
-target_col_2 = "Dilayani"
+target_col_2 = "Kunjungan"
+fallback_target_col_2 = "Dilayani"
 
 target_sheet_3 = "BASKET SIZE"
 target_col_3 = "Sum of sku_hari"
@@ -112,6 +113,16 @@ def findColumnIndex(header_row, target_column):
     raise ValueError(f"Kolom wajib tidak ditemukan: {target_column}")
 
 
+def findFirstColumnIndex(header_row, target_columns):
+    for target_column in target_columns:
+        try:
+            return findColumnIndex(header_row, target_column)
+        except ValueError:
+            continue
+
+    raise ValueError(f"Kolom wajib tidak ditemukan: {' atau '.join(target_columns)}")
+
+
 def normalizeDate(value):
     normalized_value = str(value or "").strip()
 
@@ -173,7 +184,10 @@ def main(file_path, import_date=None):
         outlet_col_penjualan = 0
         outlet_col_kunjungan = 0
         target_col_penjualan_index = findColumnIndex(penjualan_header, target_col_1)
-        target_col_kunjungan_index = findColumnIndex(kunjungan_header, target_col_2)
+        target_col_kunjungan_index = findFirstColumnIndex(
+            kunjungan_header,
+            [target_col_2, fallback_target_col_2],
+        )
 
         penjualan_map = {}
         for row in penjualan_rows[1:]:
@@ -216,6 +230,8 @@ def main(file_path, import_date=None):
             output_map.setdefault(outlet_name, {"outlet_name": outlet_name}).update(
                 {
                     "total_penerimaan_pendapatan": penjualan["total_penerimaan_pendapatan"],
+                    "kunjungan": toNumber(row[target_col_kunjungan_index]),
+                    "kunjungan_nilai_transaksi": toNumber(row[target_col_kunjungan_index]),
                     "served": toNumber(row[target_col_kunjungan_index]),
                     "served_nilai_transaksi": toNumber(row[target_col_kunjungan_index]),
                 }
@@ -272,13 +288,13 @@ def main(file_path, import_date=None):
         basket_header = basket_size_rows[0]
         outlet_col_basket = 0
         sku_qty_col_index = findColumnIndex(basket_header, target_col_3)
-        served_col_index = findColumnIndex(basket_header, target_col_4)
+        kunjungan_col_index = findColumnIndex(basket_header, target_col_4)
 
         for row in basket_size_rows[1:]:
             if not row:
                 continue
 
-            if len(row) <= max(outlet_col_basket, sku_qty_col_index, served_col_index):
+            if len(row) <= max(outlet_col_basket, sku_qty_col_index, kunjungan_col_index):
                 continue
 
             outlet_name = str(row[outlet_col_basket]).strip()
@@ -292,7 +308,9 @@ def main(file_path, import_date=None):
                 {
                     "date": normalized_import_date,
                     "sku_qty": toNumber(row[sku_qty_col_index]),
-                    "served_basket_size": toNumber(row[served_col_index]),
+                    "kunjungan": toNumber(row[kunjungan_col_index]),
+                    "kunjungan_basket_size": toNumber(row[kunjungan_col_index]),
+                    "served_basket_size": toNumber(row[kunjungan_col_index]),
                 }
             )
 

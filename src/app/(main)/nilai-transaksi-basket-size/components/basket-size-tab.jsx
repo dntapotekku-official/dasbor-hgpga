@@ -68,8 +68,7 @@ export default function BasketSizeTab({
           {[
             { key: "target", label: "Target" },
             { key: "sku-qty", label: "Jumlah SKU" },
-            { key: "served", label: "Dilayani" },
-            { key: "previous-period", label: <PeriodHeader label={previous_period_label} /> },
+            { key: "kunjungan", label: "Kunjungan" },
             {
               key: "selected-period",
               label: (
@@ -80,6 +79,7 @@ export default function BasketSizeTab({
                 />
               ),
             },
+            { key: "previous-period", label: <PeriodHeader label={previous_period_label} /> },
             {
               key: "growth",
               label: (
@@ -128,10 +128,7 @@ export default function BasketSizeTab({
               {formatDecimal(row.bs_current_month_sku_qty, 0)}
             </TableCell>
             <TableCell className="text-right">
-              {formatDecimal(row.bs_current_month_served, 0)}
-            </TableCell>
-            <TableCell className="text-center">
-              {formatDecimal(row.bs_last_month)}
+              {formatDecimal(row.bs_current_month_kunjungan, 0)}
             </TableCell>
             <TableCell
               className={
@@ -141,6 +138,9 @@ export default function BasketSizeTab({
               }
             >
               {formatDecimal(row.bs_current_month)}
+            </TableCell>
+            <TableCell className="text-center">
+              {formatDecimal(row.bs_last_month)}
             </TableCell>
             <TableCell className="text-center">{formatPercentage(row.bs_growth)}</TableCell>
             <TableCell className={`text-center ${gapClassName(row.bs_gap_growth)}`}>
@@ -182,13 +182,13 @@ export default function BasketSizeTab({
             {formatDecimal(category_metrics.bs_current_month_sku_qty, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
-            {formatDecimal(category_metrics.bs_current_month_served, 0)}
-          </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.bs_last_month)}
+            {formatDecimal(category_metrics.bs_current_month_kunjungan, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatDecimal(category_metrics.bs_current_month)}
+          </TableCell>
+          <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
+            {formatDecimal(category_metrics.bs_last_month)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatPercentage(category_metrics.bs_growth)}

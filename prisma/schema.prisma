@@ -46,12 +46,12 @@ model tbl_outlet {
   updated_at         DateTime  @updatedAt
   deleted_at         DateTime?
 
-  kepatuhan_sop_cctv          tbl_kepatuhan_sop_cctv[]
-  outlet_insanku              tbl_outlet_insanku[]
-  nilai_transaksi             tbl_total_penerimaan_pendapatan[]
-  basket_size                 tbl_jumlah_sku[]
-  dilayani                    tbl_kunjungan[]
-  nilai_magang                tbl_nilai_magang[]
+  kepatuhan_sop_cctv tbl_kepatuhan_sop_cctv[]
+  outlet_insanku     tbl_outlet_insanku[]
+  nilai_transaksi    tbl_total_penerimaan_pendapatan[]
+  basket_size        tbl_jumlah_sku[]
+  kunjungan          tbl_kunjungan[]
+  nilai_magang       tbl_nilai_magang[]
 }
 
 model tbl_insanku {
@@ -237,16 +237,16 @@ model tbl_target_basket_size {
 }
 
 model tbl_total_penerimaan_pendapatan {
-  id            Int       @id @default(autoincrement())
-  uuid          String    @unique @db.Char(36)
-  uuid_outlet   String?   @db.Char(36)
-  active_key    String?   @unique @db.VarChar(80)
-  start_date    DateTime
-  end_date      DateTime?
-  value         Decimal   @default(0) @db.Decimal(18, 2)
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  deleted_at    DateTime?
+  id          Int       @id @default(autoincrement())
+  uuid        String    @unique @db.Char(36)
+  uuid_outlet String?   @db.Char(36)
+  active_key  String?   @unique @db.VarChar(80)
+  start_date  DateTime
+  end_date    DateTime?
+  value       Decimal   @default(0) @db.Decimal(18, 2)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
 
   outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_nilai_transaksi_outlet")
 
@@ -348,18 +348,19 @@ model tbl_atribut_insanku {
 }
 
 model tbl_kolom_atribut {
-  id           Int           @id @default(autoincrement())
-  uuid         String        @unique @db.Char(36)
-  name         String        @db.VarChar(100)
-  type         AttributeType
-  is_attribute Boolean       @default(false)
-  range_with   String?       @unique @db.Char(36)
-  is_edit      Boolean       @default(false)
-  is_view      Boolean       @default(false)
-  order        Int           @default(0)
-  created_at   DateTime      @default(now())
-  updated_at   DateTime      @updatedAt
-  deleted_at   DateTime?
+  id                 Int           @id @default(autoincrement())
+  uuid               String        @unique @db.Char(36)
+  name               String        @db.VarChar(100)
+  type               AttributeType
+  is_attribute       Boolean       @default(false)
+  range_with         String?       @unique @db.Char(36)
+  is_edit            Boolean       @default(false)
+  is_view            Boolean       @default(false)
+  is_summary_visible Boolean       @default(true)
+  order              Int           @default(0)
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+  deleted_at         DateTime?
 
   atribut_insanku tbl_atribut_insanku[]
 }

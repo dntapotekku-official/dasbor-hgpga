@@ -133,7 +133,7 @@ function parse_visit_value(value) {
     !Number.isInteger(parsed_value) ||
     parsed_value <= 0
   ) {
-    throw new Error("Jumlah dilayani harus berupa bilangan bulat lebih dari nol.");
+    throw new Error("Jumlah kunjungan harus berupa bilangan bulat lebih dari nol.");
   }
 
   return parsed_value;
@@ -259,6 +259,18 @@ function find_header_index(headers, target_header) {
   return headers.findIndex((header) => normalize_header(header) === normalized_target);
 }
 
+function find_first_header_index(headers, target_headers) {
+  for (const target_header of target_headers) {
+    const index = find_header_index(headers, target_header);
+
+    if (index >= 0) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 async function parse_kunjungan_workbook(file_path) {
   const workbook = new ExcelJS.Workbook();
 
@@ -280,9 +292,9 @@ async function parse_kunjungan_workbook(file_path) {
     for (let row_index = 0; row_index < rows.length; row_index += 1) {
       const headers = rows[row_index];
       const outlet_index = find_header_index(headers, "outlet");
-      const served_index = find_header_index(headers, "dilayani");
+      const kunjungan_index = find_first_header_index(headers, ["kunjungan", "dilayani"]);
 
-      if (outlet_index < 0 || served_index < 0) {
+      if (outlet_index < 0 || kunjungan_index < 0) {
         continue;
       }
 
@@ -290,13 +302,14 @@ async function parse_kunjungan_workbook(file_path) {
         .slice(row_index + 1)
         .map((row) => ({
           outlet_name: String(row[outlet_index] ?? "").trim(),
-          served: row[served_index],
+          kunjungan: row[kunjungan_index],
+          served: row[kunjungan_index],
         }))
         .filter((row) => row.outlet_name);
     }
   }
 
-  throw new Error("Format Excel tidak sesuai. Pastikan file memiliki kolom Outlet dan Dilayani.");
+  throw new Error("Format Excel tidak sesuai. Pastikan file memiliki kolom Outlet dan Kunjungan.");
 }
 
 export async function getKunjungan() {
@@ -576,7 +589,7 @@ export async function importKunjungan({
     imported_rows.push({
       uuid_outlet: matched_outlet.uuid,
       outlet_name: matched_outlet.name,
-      value: parse_visit_value(row.served),
+      value: parse_visit_value(row.kunjungan ?? row.served),
     });
   }
 

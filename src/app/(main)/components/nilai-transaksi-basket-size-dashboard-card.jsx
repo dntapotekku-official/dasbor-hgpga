@@ -111,12 +111,12 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
               value={<CurrencyValue value={metrics.nt_target} align="split" />}
             />
             <SummaryValue
-              label="Total Pendapatan Bulan Ini"
+              label="Total Penerimaan Pendapatan Bulan Ini"
               value={<CurrencyValue value={metrics.nt_current_month_total_revenue} align="split" />}
             />
             <SummaryValue
-              label="Pelanggan Dilayani Bulan Ini"
-              value={formatDecimal(metrics.nt_current_month_served, 0)}
+              label="Kunjungan Bulan Ini"
+              value={formatDecimal(metrics.nt_current_month_kunjungan, 0)}
             />
             <SummaryValue
               label="Rata-rata Harian"

@@ -175,7 +175,7 @@ function KunjunganSheet({
           </div>
 
           <div className="space-y-2">
-            <FieldLabel htmlFor="value" label="Dilayani" required />
+            <FieldLabel htmlFor="value" label="Kunjungan" required />
             <Input
               id="value"
               type="number"
@@ -188,7 +188,7 @@ function KunjunganSheet({
                   value: event.target.value,
                 }))
               }
-              placeholder="Masukkan jumlah dilayani"
+              placeholder="Masukkan jumlah kunjungan"
             />
             <p className="text-xs text-muted-foreground">
               Nilai ini menjadi penyebut bersama untuk Nilai Transaksi dan Basket Size.
@@ -359,7 +359,7 @@ function KunjunganBulananSheet({
           </p>
 
           <div className="space-y-2">
-            <FieldLabel htmlFor="value_bulanan" label="Dilayani" required />
+            <FieldLabel htmlFor="value_bulanan" label="Kunjungan" required />
             <Input
               id="value_bulanan"
               type="number"
@@ -372,7 +372,7 @@ function KunjunganBulananSheet({
                   value: event.target.value,
                 }))
               }
-              placeholder="Masukkan jumlah dilayani 1 - 10, 1 - 11, dst."
+              placeholder="Masukkan jumlah kunjungan 1 - 10, 1 - 11, dst."
             />
           </div>
         </div>
@@ -818,7 +818,7 @@ export default function KunjunganPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola data kunjungan dilayani yang dipakai oleh Nilai Transaksi dan Basket Size."
+          description="Kelola data kunjungan kunjungan yang dipakai oleh Nilai Transaksi dan Basket Size."
         />
       </div>
 
@@ -914,7 +914,7 @@ export default function KunjunganPage() {
                         </TableHead>
                         <TableHead className="w-[180px]">
                           <SortableTableHead
-                            label="Dilayani"
+                            label="Kunjungan"
                             sortKey="value"
                             currentSortKey={sort_key}
                             sortDirection={sort_direction}
@@ -1071,7 +1071,7 @@ export default function KunjunganPage() {
                             </TableHead>
                             <TableHead className="w-[160px]">
                               <SortableTableHead
-                                label="Dilayani"
+                                label="Kunjungan"
                                 sortKey="value"
                                 currentSortKey={sort_bulanan_key}
                                 sortDirection={sort_bulanan_direction}

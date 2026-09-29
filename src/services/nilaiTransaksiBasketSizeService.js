@@ -185,7 +185,7 @@ function parse_metric_date_range({
   };
 }
 
-async function clear_daily_served_active_keys(
+async function clear_daily_kunjungan_active_keys(
   transaction,
   {
     uuid_outlet,
@@ -226,7 +226,7 @@ async function clear_daily_served_active_keys(
   });
 }
 
-async function clear_monthly_served_active_keys(
+async function clear_monthly_kunjungan_active_keys(
   transaction,
   {
     uuid_outlet,
@@ -390,57 +390,57 @@ function summarize_metric_rows(rows, target_override = {}) {
     (current, row) => ({
       nt_target: current.nt_target + row.nt_target,
       nt_daily_total_revenue: current.nt_daily_total_revenue + row.nt_daily_total_revenue,
-      nt_daily_served: current.nt_daily_served + row.nt_daily_served,
+      nt_daily_kunjungan: current.nt_daily_kunjungan + row.nt_daily_kunjungan,
       nt_last_month_total_revenue: current.nt_last_month_total_revenue + row.nt_last_month_total_revenue,
-      nt_last_month_served: current.nt_last_month_served + row.nt_last_month_served,
+      nt_last_month_kunjungan: current.nt_last_month_kunjungan + row.nt_last_month_kunjungan,
       nt_current_month_total_revenue: current.nt_current_month_total_revenue + row.nt_current_month_total_revenue,
-      nt_current_month_served: current.nt_current_month_served + row.nt_current_month_served,
+      nt_current_month_kunjungan: current.nt_current_month_kunjungan + row.nt_current_month_kunjungan,
       bs_target: current.bs_target + row.bs_target,
       bs_daily_sku_qty: current.bs_daily_sku_qty + row.bs_daily_sku_qty,
-      bs_daily_served: current.bs_daily_served + row.bs_daily_served,
+      bs_daily_kunjungan: current.bs_daily_kunjungan + row.bs_daily_kunjungan,
       bs_last_month_sku_qty: current.bs_last_month_sku_qty + row.bs_last_month_sku_qty,
-      bs_last_month_served: current.bs_last_month_served + row.bs_last_month_served,
+      bs_last_month_kunjungan: current.bs_last_month_kunjungan + row.bs_last_month_kunjungan,
       bs_current_month_sku_qty: current.bs_current_month_sku_qty + row.bs_current_month_sku_qty,
-      bs_current_month_served: current.bs_current_month_served + row.bs_current_month_served,
+      bs_current_month_kunjungan: current.bs_current_month_kunjungan + row.bs_current_month_kunjungan,
     }),
     {
       nt_target: 0,
       nt_daily_total_revenue: 0,
-      nt_daily_served: 0,
+      nt_daily_kunjungan: 0,
       nt_last_month_total_revenue: 0,
-      nt_last_month_served: 0,
+      nt_last_month_kunjungan: 0,
       nt_current_month_total_revenue: 0,
-      nt_current_month_served: 0,
+      nt_current_month_kunjungan: 0,
       bs_target: 0,
       bs_daily_sku_qty: 0,
-      bs_daily_served: 0,
+      bs_daily_kunjungan: 0,
       bs_last_month_sku_qty: 0,
-      bs_last_month_served: 0,
+      bs_last_month_kunjungan: 0,
       bs_current_month_sku_qty: 0,
-      bs_current_month_served: 0,
+      bs_current_month_kunjungan: 0,
     },
   );
 
   const row_count = rows.length || 1;
-  const nt_daily = summary.nt_daily_served ? summary.nt_daily_total_revenue / summary.nt_daily_served : 0;
-  const nt_last_month = summary.nt_last_month_served ? summary.nt_last_month_total_revenue / summary.nt_last_month_served : 0;
-  const nt_current_month = summary.nt_current_month_served ? summary.nt_current_month_total_revenue / summary.nt_current_month_served : 0;
-  const bs_last_month = summary.bs_last_month_served ? summary.bs_last_month_sku_qty / summary.bs_last_month_served : 0;
-  const bs_current_month = summary.bs_current_month_served ? summary.bs_current_month_sku_qty / summary.bs_current_month_served : 0;
+  const nt_daily = summary.nt_daily_kunjungan ? summary.nt_daily_total_revenue / summary.nt_daily_kunjungan : 0;
+  const nt_last_month = summary.nt_last_month_kunjungan ? summary.nt_last_month_total_revenue / summary.nt_last_month_kunjungan : 0;
+  const nt_current_month = summary.nt_current_month_kunjungan ? summary.nt_current_month_total_revenue / summary.nt_current_month_kunjungan : 0;
+  const bs_last_month = summary.bs_last_month_kunjungan ? summary.bs_last_month_sku_qty / summary.bs_last_month_kunjungan : 0;
+  const bs_current_month = summary.bs_current_month_kunjungan ? summary.bs_current_month_sku_qty / summary.bs_current_month_kunjungan : 0;
 
   return {
     nt_daily_total_revenue: summary.nt_daily_total_revenue,
-    nt_daily_served: summary.nt_daily_served,
+    nt_daily_kunjungan: summary.nt_daily_kunjungan,
     nt_last_month_total_revenue: summary.nt_last_month_total_revenue,
-    nt_last_month_served: summary.nt_last_month_served,
+    nt_last_month_kunjungan: summary.nt_last_month_kunjungan,
     nt_current_month_total_revenue: summary.nt_current_month_total_revenue,
-    nt_current_month_served: summary.nt_current_month_served,
+    nt_current_month_kunjungan: summary.nt_current_month_kunjungan,
     bs_daily_sku_qty: summary.bs_daily_sku_qty,
-    bs_daily_served: summary.bs_daily_served,
+    bs_daily_kunjungan: summary.bs_daily_kunjungan,
     bs_last_month_sku_qty: summary.bs_last_month_sku_qty,
-    bs_last_month_served: summary.bs_last_month_served,
+    bs_last_month_kunjungan: summary.bs_last_month_kunjungan,
     bs_current_month_sku_qty: summary.bs_current_month_sku_qty,
-    bs_current_month_served: summary.bs_current_month_served,
+    bs_current_month_kunjungan: summary.bs_current_month_kunjungan,
     ...build_nilai_transaksi_metrics({
       target: Object.hasOwn(target_override, "nilai_transaksi")
         ? target_override.nilai_transaksi
@@ -624,20 +624,20 @@ function map_metric_rows({
       outlet_name: outlet.name,
       kategori: outlet.category,
       total_revenue: current_nilai_transaksi_data?.total_revenue ?? 0,
-      served: current_nilai_transaksi_data?.served ?? 0,
+      kunjungan: current_nilai_transaksi_data?.kunjungan ?? 0,
       nt_daily_total_revenue: current_nilai_transaksi_data?.total_revenue ?? 0,
-      nt_daily_served: current_nilai_transaksi_data?.served ?? 0,
+      nt_daily_kunjungan: current_nilai_transaksi_data?.kunjungan ?? 0,
       nt_last_month_total_revenue: last_nilai_transaksi_data?.total_revenue ?? 0,
-      nt_last_month_served: last_nilai_transaksi_data?.served ?? 0,
+      nt_last_month_kunjungan: last_nilai_transaksi_data?.kunjungan ?? 0,
       nt_current_month_total_revenue:
         current_month_nilai_transaksi_data?.total_revenue ?? 0,
-      nt_current_month_served: current_month_nilai_transaksi_data?.served ?? 0,
+      nt_current_month_kunjungan: current_month_nilai_transaksi_data?.kunjungan ?? 0,
       bs_daily_sku_qty: current_basket_size_data?.sku_qty ?? 0,
-      bs_daily_served: current_basket_size_data?.served ?? 0,
+      bs_daily_kunjungan: current_basket_size_data?.kunjungan ?? 0,
       bs_last_month_sku_qty: last_basket_size_data?.sku_qty ?? 0,
-      bs_last_month_served: last_basket_size_data?.served ?? 0,
+      bs_last_month_kunjungan: last_basket_size_data?.kunjungan ?? 0,
       bs_current_month_sku_qty: current_month_basket_size_data?.sku_qty ?? 0,
-      bs_current_month_served: current_month_basket_size_data?.served ?? 0,
+      bs_current_month_kunjungan: current_month_basket_size_data?.kunjungan ?? 0,
       category_key: String(outlet.category ?? "")
         .trim()
         .toLowerCase()
@@ -669,7 +669,7 @@ function filter_outlets_by_nilai_transaksi_period(outlets, nilai_transaksi_rows)
   return outlets.filter((outlet) => nilai_transaksi_outlet_uuids.has(outlet.uuid));
 }
 
-/** Menjumlahkan data kunjungan dari tabel dilayani per outlet. */
+/** Menjumlahkan data kunjungan per outlet. */
 function build_visit_map(rows) {
   const visits_by_outlet = new Map();
 
@@ -687,7 +687,7 @@ function build_visit_map(rows) {
   return visits_by_outlet;
 }
 
-/** Menghitung Nilai Transaksi dari total pendapatan dibagi served count per outlet. */
+/** Menghitung Nilai Transaksi dari total penerimaan pendapatan dibagi kunjungan per outlet. */
 function build_nilai_transaksi_map(rows, visit_rows = []) {
   const totals_by_outlet = new Map();
   const visits_by_outlet = build_visit_map(visit_rows);
@@ -701,7 +701,7 @@ function build_nilai_transaksi_map(rows, visit_rows = []) {
 
     const current = totals_by_outlet.get(uuid_outlet) ?? {
       total_revenue: 0,
-      served: visits_by_outlet.get(uuid_outlet) ?? 0,
+      kunjungan: visits_by_outlet.get(uuid_outlet) ?? 0,
     };
 
     current.total_revenue += to_number(item.value);
@@ -713,13 +713,14 @@ function build_nilai_transaksi_map(rows, visit_rows = []) {
       uuid_outlet,
       {
         ...totals,
-        calculated_value: totals.served ? totals.total_revenue / totals.served : 0,
+        served: totals.kunjungan,
+        calculated_value: totals.kunjungan ? totals.total_revenue / totals.kunjungan : 0,
       },
     ]),
   );
 }
 
-/** Menghitung Basket Size dari jumlah SKU dibagi served count per outlet. */
+/** Menghitung Basket Size dari jumlah SKU dibagi kunjungan per outlet. */
 function build_basket_size_map(rows, visit_rows = []) {
   const totals_by_outlet = new Map();
   const visits_by_outlet = build_visit_map(visit_rows);
@@ -733,7 +734,7 @@ function build_basket_size_map(rows, visit_rows = []) {
 
     const current = totals_by_outlet.get(uuid_outlet) ?? {
       sku_qty: 0,
-      served: visits_by_outlet.get(uuid_outlet) ?? 0,
+      kunjungan: visits_by_outlet.get(uuid_outlet) ?? 0,
     };
 
     current.sku_qty += to_number(item.value);
@@ -745,7 +746,8 @@ function build_basket_size_map(rows, visit_rows = []) {
       uuid_outlet,
       {
         ...totals,
-        calculated_value: totals.served ? totals.sku_qty / totals.served : 0,
+        served: totals.kunjungan,
+        calculated_value: totals.kunjungan ? totals.sku_qty / totals.kunjungan : 0,
       },
     ]),
   );
@@ -816,9 +818,9 @@ export async function getNilaiTransaksiBasketSize({
     current_basket_size,
     current_month_basket_size,
     last_basket_size,
-    current_served,
-    current_month_served,
-    last_served,
+    current_kunjungan,
+    current_month_kunjungan,
+    last_kunjungan,
     nilai_transaksi_target_map,
     basket_size_target_map,
     nilai_transaksi_ranges,
@@ -985,12 +987,12 @@ export async function getNilaiTransaksiBasketSize({
     }),
   ]);
 
-  const current_nilai_transaksi_map = build_nilai_transaksi_map(current_nilai_transaksi, current_served);
-  const current_month_nilai_transaksi_map = build_nilai_transaksi_map(current_month_nilai_transaksi, current_month_served);
-  const last_nilai_transaksi_map = build_nilai_transaksi_map(last_nilai_transaksi, last_served);
-  const current_basket_size_map = build_basket_size_map(current_basket_size, current_served);
-  const current_month_basket_size_map = build_basket_size_map(current_month_basket_size, current_month_served);
-  const last_basket_size_map = build_basket_size_map(last_basket_size, last_served);
+  const current_nilai_transaksi_map = build_nilai_transaksi_map(current_nilai_transaksi, current_kunjungan);
+  const current_month_nilai_transaksi_map = build_nilai_transaksi_map(current_month_nilai_transaksi, current_month_kunjungan);
+  const last_nilai_transaksi_map = build_nilai_transaksi_map(last_nilai_transaksi, last_kunjungan);
+  const current_basket_size_map = build_basket_size_map(current_basket_size, current_kunjungan);
+  const current_month_basket_size_map = build_basket_size_map(current_month_basket_size, current_month_kunjungan);
+  const last_basket_size_map = build_basket_size_map(last_basket_size, last_kunjungan);
   const metric_outlets = filter_outlets_by_nilai_transaksi_period(
     outlets,
     [...current_nilai_transaksi, ...current_month_nilai_transaksi],
@@ -1878,7 +1880,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       throw new Error("Data nilai transaksi pada rentang tanggal lama tidak ditemukan.");
     }
 
-    const [target_metric_record, target_served_record] = await Promise.all([
+    const [target_metric_record, target_kunjungan_record] = await Promise.all([
       transaction.tbl_total_penerimaan_pendapatan.findFirst({
         where: {
           deleted_at: null,
@@ -1899,7 +1901,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       }),
     ]);
 
-    if (target_metric_record || target_served_record) {
+    if (target_metric_record || target_kunjungan_record) {
       throw new Error(
         "Edit massal dibatalkan karena rentang tanggal baru sudah memiliki data nilai transaksi.",
       );
@@ -1952,7 +1954,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       });
     }
 
-    const served_records = await transaction.tbl_kunjungan.findMany({
+    const kunjungan_records = await transaction.tbl_kunjungan.findMany({
       where: {
         deleted_at: null,
         uuid_outlet: {
@@ -1966,7 +1968,7 @@ export async function bulkUpdateNilaiTransaksiMonthly(payload) {
       },
     });
 
-    for (const record of served_records) {
+    for (const record of kunjungan_records) {
       await transaction.tbl_kunjungan.update({
         where: {
           uuid: record.uuid,
@@ -2062,8 +2064,8 @@ async function importOutletReportMetric({
   metric_label,
   build_record,
   validate_row,
-  resolve_served,
-  use_existing_served = false,
+  resolve_kunjungan,
+  use_existing_kunjungan = false,
   use_file_dates = false,
   member_outlet_uuid,
 }) {
@@ -2106,7 +2108,7 @@ async function importOutletReportMetric({
     }
 
     const total_penerimaan_pendapatan = to_number(row.total_penerimaan_pendapatan);
-    const served = use_existing_served ? 0 : to_number(resolve_served(row));
+    const kunjungan = use_existing_kunjungan ? 0 : to_number(resolve_kunjungan(row));
     const sku_qty = to_number(row.sku_qty);
     const row_date_value = use_file_dates ? row.date : normalized_import_date;
     let report_date;
@@ -2119,7 +2121,7 @@ async function importOutletReportMetric({
       return;
     }
 
-    if (!use_existing_served && (!Number.isInteger(served) || served <= 0)) {
+    if (!use_existing_kunjungan && (!Number.isInteger(kunjungan) || kunjungan <= 0)) {
       return;
     }
 
@@ -2127,7 +2129,8 @@ async function importOutletReportMetric({
       uuid_outlet: matched_outlet.uuid,
       outlet_name: matched_outlet.name,
       total_revenue: total_penerimaan_pendapatan,
-      served,
+      kunjungan,
+      served: kunjungan,
       sku_qty,
       report_date,
       report_date_key: report_date.toISOString().slice(0, 10),
@@ -2150,12 +2153,14 @@ async function importOutletReportMetric({
       const current_row = rows_by_outlet_and_date.get(aggregate_key) ?? {
         ...row,
         total_revenue: 0,
+        kunjungan: 0,
         served: 0,
         sku_qty: 0,
       };
 
       current_row.total_revenue += row.total_revenue;
-      current_row.served += row.served;
+      current_row.kunjungan += row.kunjungan;
+      current_row.served = current_row.kunjungan;
       current_row.sku_qty += row.sku_qty;
       rows_by_outlet_and_date.set(aggregate_key, current_row);
 
@@ -2173,7 +2178,7 @@ async function importOutletReportMetric({
   );
 
   await prisma.$transaction(async (tx) => {
-    if (use_existing_served && use_file_dates) {
+    if (use_existing_kunjungan && use_file_dates) {
       const first_import_date = parse_metric_date(imported_dates[0]);
       const last_import_date = parse_metric_date(imported_dates.at(-1));
       const visit_rows = await tx.tbl_kunjungan.findMany({
@@ -2236,7 +2241,7 @@ async function importOutletReportMetric({
       });
     }
 
-    if (use_existing_served && use_file_dates) {
+    if (use_existing_kunjungan && use_file_dates) {
       await tx[model].createMany({
         data: aggregated_rows.map((row) => ({
           uuid: randomUUID(),
@@ -2252,7 +2257,7 @@ async function importOutletReportMetric({
     for (const row of aggregated_rows) {
       const report_date = row.report_date;
       const report_day_end = end_of_day(report_date);
-      let served_record = await tx.tbl_kunjungan.findFirst({
+      let kunjungan_record = await tx.tbl_kunjungan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
           ...build_exact_range_where(report_date),
@@ -2267,26 +2272,26 @@ async function importOutletReportMetric({
         },
       });
 
-      if (use_existing_served && (!served_record || served_record.deleted_at)) {
+      if (use_existing_kunjungan && (!kunjungan_record || kunjungan_record.deleted_at)) {
         throw new Error(
           `Impor dibatalkan karena data kunjungan outlet ${row.outlet_name} pada tanggal ${row.report_date_key} belum tersedia.`,
         );
       }
 
-      if (!use_existing_served) {
-        await clear_daily_served_active_keys(tx, {
+      if (!use_existing_kunjungan) {
+        await clear_daily_kunjungan_active_keys(tx, {
           uuid_outlet: row.uuid_outlet,
           date: report_date,
-          exclude_uuid: served_record?.uuid,
+          exclude_uuid: kunjungan_record?.uuid,
         });
 
-        served_record = served_record
+        kunjungan_record = kunjungan_record
           ? await tx.tbl_kunjungan.update({
               where: {
-                uuid: served_record.uuid,
+                uuid: kunjungan_record.uuid,
               },
               data: {
-                value: row.served,
+                value: row.kunjungan,
                 active_key: build_active_daily_key(row.uuid_outlet, report_date),
                 deleted_at: null,
               },
@@ -2301,7 +2306,7 @@ async function importOutletReportMetric({
                 uuid: randomUUID(),
                 uuid_outlet: row.uuid_outlet,
                 active_key: build_active_range_key(row.uuid_outlet, report_date, report_date),
-                value: row.served,
+                value: row.kunjungan,
                 start_date: report_date,
                 end_date: report_date,
               },
@@ -2313,12 +2318,12 @@ async function importOutletReportMetric({
             });
       }
 
-      if (served_record) {
+      if (kunjungan_record) {
         await tx.tbl_kunjungan.updateMany({
           where: {
             uuid_outlet: row.uuid_outlet,
             uuid: {
-              not: served_record.uuid,
+              not: kunjungan_record.uuid,
             },
             deleted_at: null,
             ...build_exact_range_where(report_date),
@@ -2330,7 +2335,7 @@ async function importOutletReportMetric({
         });
       }
 
-      if (!served_record) {
+      if (!kunjungan_record) {
         throw new Error("Data kunjungan tidak ditemukan.");
       }
 
@@ -2472,9 +2477,11 @@ export async function importNilaiTransaksiBulanan({
     }
 
     const total_revenue = to_number(row.total_penerimaan_pendapatan);
-    const served = to_number(row.served_nilai_transaksi ?? row.served);
+    const kunjungan = to_number(
+      row.kunjungan_nilai_transaksi ?? row.kunjungan ?? row.served_nilai_transaksi ?? row.served,
+    );
 
-    if (total_revenue <= 0 || !Number.isInteger(served) || served <= 0) {
+    if (total_revenue <= 0 || !Number.isInteger(kunjungan) || kunjungan <= 0) {
       return;
     }
 
@@ -2482,7 +2489,8 @@ export async function importNilaiTransaksiBulanan({
       uuid_outlet: matched_outlet.uuid,
       outlet_name: matched_outlet.name,
       total_revenue,
-      served,
+      kunjungan,
+      served: kunjungan,
     });
   });
 
@@ -2495,11 +2503,13 @@ export async function importNilaiTransaksiBulanan({
       const current_row = rows_by_outlet.get(row.uuid_outlet) ?? {
         ...row,
         total_revenue: 0,
+        kunjungan: 0,
         served: 0,
       };
 
       current_row.total_revenue += row.total_revenue;
-      current_row.served += row.served;
+      current_row.kunjungan += row.kunjungan;
+      current_row.served = current_row.kunjungan;
       rows_by_outlet.set(row.uuid_outlet, current_row);
 
       return rows_by_outlet;
@@ -2513,7 +2523,7 @@ export async function importNilaiTransaksiBulanan({
         parsed_from_date,
         to_date,
       );
-      const existing_served = await tx.tbl_kunjungan.findFirst({
+      const existing_kunjungan = await tx.tbl_kunjungan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
           ...build_exact_range_where(parsed_from_date, to_date),
@@ -2526,20 +2536,20 @@ export async function importNilaiTransaksiBulanan({
         },
       });
 
-      await clear_monthly_served_active_keys(tx, {
+      await clear_monthly_kunjungan_active_keys(tx, {
         uuid_outlet: row.uuid_outlet,
         from_date: parsed_from_date,
         to_date,
-        exclude_uuid: existing_served?.uuid,
+        exclude_uuid: existing_kunjungan?.uuid,
       });
 
-      const served_record = existing_served
+      const kunjungan_record = existing_kunjungan
         ? await tx.tbl_kunjungan.update({
             where: {
-              uuid: existing_served.uuid,
+              uuid: existing_kunjungan.uuid,
             },
             data: {
-              value: row.served,
+              value: row.kunjungan,
               active_key: monthly_key,
               deleted_at: null,
             },
@@ -2552,7 +2562,7 @@ export async function importNilaiTransaksiBulanan({
               uuid: randomUUID(),
               uuid_outlet: row.uuid_outlet,
               active_key: monthly_key,
-              value: row.served,
+              value: row.kunjungan,
               start_date: parsed_from_date,
               end_date: to_date,
             },
@@ -2565,7 +2575,7 @@ export async function importNilaiTransaksiBulanan({
         where: {
           uuid_outlet: row.uuid_outlet,
           uuid: {
-            not: served_record.uuid,
+            not: kunjungan_record.uuid,
           },
           deleted_at: null,
           ...build_exact_range_where(parsed_from_date, to_date),
@@ -2661,8 +2671,8 @@ export function importBasketSize({
     member_outlet_uuid,
     model: "tbl_jumlah_sku",
     metric_label: "basket size",
-    resolve_served: (row) => row.served_basket_size ?? row.served,
-    use_existing_served: true,
+    resolve_kunjungan: (row) => row.kunjungan_basket_size ?? row.kunjungan ?? row.served_basket_size ?? row.served,
+    use_existing_kunjungan: true,
     use_file_dates: true,
     validate_row: (row) => Number.isInteger(row.sku_qty) && row.sku_qty > 0,
     build_record: (row) => ({

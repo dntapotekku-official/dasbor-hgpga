@@ -177,56 +177,56 @@ function summarizeVisibleRows(rows) {
       nt_target: current.nt_target + toNumber(row.nt_target),
       nt_daily_total_revenue:
         current.nt_daily_total_revenue + toNumber(row.nt_daily_total_revenue),
-      nt_daily_served: current.nt_daily_served + toNumber(row.nt_daily_served),
+      nt_daily_kunjungan: current.nt_daily_kunjungan + toNumber(row.nt_daily_kunjungan),
       nt_last_month_total_revenue:
         current.nt_last_month_total_revenue + toNumber(row.nt_last_month_total_revenue),
-      nt_last_month_served:
-        current.nt_last_month_served + toNumber(row.nt_last_month_served),
+      nt_last_month_kunjungan:
+        current.nt_last_month_kunjungan + toNumber(row.nt_last_month_kunjungan),
       nt_current_month_total_revenue:
         current.nt_current_month_total_revenue
         + toNumber(row.nt_current_month_total_revenue),
-      nt_current_month_served:
-        current.nt_current_month_served + toNumber(row.nt_current_month_served),
+      nt_current_month_kunjungan:
+        current.nt_current_month_kunjungan + toNumber(row.nt_current_month_kunjungan),
       bs_target: current.bs_target + toNumber(row.bs_target),
       bs_current_month_sku_qty:
         current.bs_current_month_sku_qty + toNumber(row.bs_current_month_sku_qty),
-      bs_current_month_served:
-        current.bs_current_month_served + toNumber(row.bs_current_month_served),
+      bs_current_month_kunjungan:
+        current.bs_current_month_kunjungan + toNumber(row.bs_current_month_kunjungan),
       bs_last_month_sku_qty:
         current.bs_last_month_sku_qty + toNumber(row.bs_last_month_sku_qty),
-      bs_last_month_served:
-        current.bs_last_month_served + toNumber(row.bs_last_month_served),
+      bs_last_month_kunjungan:
+        current.bs_last_month_kunjungan + toNumber(row.bs_last_month_kunjungan),
     }),
     {
       nt_target: 0,
       nt_daily_total_revenue: 0,
-      nt_daily_served: 0,
+      nt_daily_kunjungan: 0,
       nt_last_month_total_revenue: 0,
-      nt_last_month_served: 0,
+      nt_last_month_kunjungan: 0,
       nt_current_month_total_revenue: 0,
-      nt_current_month_served: 0,
+      nt_current_month_kunjungan: 0,
       bs_target: 0,
       bs_current_month_sku_qty: 0,
-      bs_current_month_served: 0,
+      bs_current_month_kunjungan: 0,
       bs_last_month_sku_qty: 0,
-      bs_last_month_served: 0,
+      bs_last_month_kunjungan: 0,
     },
   );
   const row_count = rows.length;
-  const nt_daily = summary.nt_daily_served
-    ? summary.nt_daily_total_revenue / summary.nt_daily_served
+  const nt_daily = summary.nt_daily_kunjungan
+    ? summary.nt_daily_total_revenue / summary.nt_daily_kunjungan
     : 0;
-  const nt_last_month = summary.nt_last_month_served
-    ? summary.nt_last_month_total_revenue / summary.nt_last_month_served
+  const nt_last_month = summary.nt_last_month_kunjungan
+    ? summary.nt_last_month_total_revenue / summary.nt_last_month_kunjungan
     : 0;
-  const nt_current_month = summary.nt_current_month_served
-    ? summary.nt_current_month_total_revenue / summary.nt_current_month_served
+  const nt_current_month = summary.nt_current_month_kunjungan
+    ? summary.nt_current_month_total_revenue / summary.nt_current_month_kunjungan
     : 0;
-  const bs_last_month = summary.bs_last_month_served
-    ? summary.bs_last_month_sku_qty / summary.bs_last_month_served
+  const bs_last_month = summary.bs_last_month_kunjungan
+    ? summary.bs_last_month_sku_qty / summary.bs_last_month_kunjungan
     : 0;
-  const bs_current_month = summary.bs_current_month_served
-    ? summary.bs_current_month_sku_qty / summary.bs_current_month_served
+  const bs_current_month = summary.bs_current_month_kunjungan
+    ? summary.bs_current_month_sku_qty / summary.bs_current_month_kunjungan
     : 0;
   const nt_target = summary.nt_target / row_count;
   const bs_target = summary.bs_target / row_count;
@@ -809,20 +809,20 @@ export default function NilaiTransaksiPage() {
                       value={formatCurrency(overallMetrics.nt_target)}
                     />
                     <SummaryMetric
-                      label="Total Pendapatan (Harian)"
+                      label="Total Penerimaan Pendapatan (Harian)"
                       value={formatCurrency(overallMetrics.nt_daily_total_revenue)}
                     />
                     <SummaryMetric
-                      label="Dilayani (Harian)"
-                      value={formatDecimal(overallMetrics.nt_daily_served, 0)}
+                      label="Kunjungan (Harian)"
+                      value={formatDecimal(overallMetrics.nt_daily_kunjungan, 0)}
                     />
                     <SummaryMetric
-                      label={`Total Pendapatan ${selectedPeriodRangeLabel || "(periode ini)"}`}
+                      label={`Total Penerimaan Pendapatan ${selectedPeriodRangeLabel || "(periode ini)"}`}
                       value={formatCurrency(overallMetrics.nt_current_month_total_revenue)}
                     />
                     <SummaryMetric
-                      label={`Dilayani ${selectedPeriodRangeLabel || "(periode berjalan)"}`}
-                      value={formatDecimal(overallMetrics.nt_current_month_served, 0)}
+                      label={`Kunjungan ${selectedPeriodRangeLabel || "(periode berjalan)"}`}
+                      value={formatDecimal(overallMetrics.nt_current_month_kunjungan, 0)}
                     />
                     <SummaryMetric
                       label={`Harian (${tableLabels.selected_date_label || "tanggal terpilih"})`}
@@ -920,8 +920,8 @@ export default function NilaiTransaksiPage() {
                       value={formatDecimal(overallMetrics.bs_current_month_sku_qty, 0)}
                     />
                     <SummaryMetric
-                      label="Dilayani"
-                      value={formatDecimal(overallMetrics.bs_current_month_served, 0)}
+                      label="Kunjungan"
+                      value={formatDecimal(overallMetrics.bs_current_month_kunjungan, 0)}
                     />
                     <SummaryMetric
                       label={tableLabels.previous_period_label || "Periode sebelumnya"}

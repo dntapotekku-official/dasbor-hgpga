@@ -54,6 +54,7 @@ export const PUT = async (request) => {
       range_with: body?.range_with,
       is_view: body?.is_view,
       is_edit: body?.is_edit,
+      is_summary_visible: body?.is_summary_visible,
     });
 
     return NextResponse.json(data);
@@ -110,6 +111,7 @@ export const PATCH = async (request) => {
       range_with: body?.range_with,
       is_view: body?.is_view,
       is_edit: body?.is_edit,
+      is_summary_visible: body?.is_summary_visible,
     });
 
     return NextResponse.json(data);

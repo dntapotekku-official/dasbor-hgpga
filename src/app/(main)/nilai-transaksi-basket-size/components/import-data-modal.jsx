@@ -67,7 +67,7 @@ export default function ImportDataModal({
   const uses_date_range = import_type === "nilai-transaksi";
   const description =
     import_type === "kunjungan"
-      ? "Tentukan tanggal data, lalu pilih file Excel berisi kolom Outlet dan Dilayani."
+      ? "Tentukan tanggal data, lalu pilih file Excel berisi kolom Outlet dan Kunjungan."
       : import_type === "nilai-transaksi"
       ? "Tentukan rentang tanggal, lalu pilih file ikhtisar outlet. Untuk data harian, isi tanggal mulai dan selesai dengan tanggal yang sama."
       : import_type === "basket-size"
@@ -90,7 +90,7 @@ export default function ImportDataModal({
       ? "file-import-basket-size"
       : "file-import-nilai-transaksi";
   const helper_text = import_type === "kunjungan"
-    ? "Pastikan file memiliki kolom Outlet dan Dilayani."
+    ? "Pastikan file memiliki kolom Outlet dan Kunjungan."
     : import_type === "nilai-transaksi"
       ? "File dipakai untuk kolom harian atau periode berjalan sesuai rentang tanggal yang dipilih."
       : import_type === "basket-size"

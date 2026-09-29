@@ -166,6 +166,7 @@ export default function AtributPage() {
         range_with: new_attribute.range_with,
         is_view: new_attribute.is_view,
         is_edit: new_attribute.is_edit,
+        is_summary_visible: new_attribute.is_summary_visible,
       }),
     });
     const payload = await result.json();
@@ -192,6 +193,7 @@ export default function AtributPage() {
         range_with: next_attribute.range_with,
         is_view: next_attribute.is_view,
         is_edit: next_attribute.is_edit,
+        is_summary_visible: next_attribute.is_summary_visible,
       }),
     });
     const payload = await result.json();
@@ -498,6 +500,22 @@ export default function AtributPage() {
                                   </span>
                                   {row.is_edit ? "Bisa diedit" : "Tidak bisa diedit"}
                                 </span>
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium ${
+                                    row.is_summary_visible
+                                      ? "bg-cyan-50 text-cyan-700"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {row.is_summary_visible ? (
+                                    <EyeIcon className="size-4" />
+                                  ) : (
+                                    <EyeOffIcon className="size-4" />
+                                  )}
+                                  {row.is_summary_visible
+                                    ? "Panel dinamis tampil"
+                                    : "Panel dinamis disembunyikan"}
+                                </span>
                               </div>
                             </div>
 
@@ -597,6 +615,17 @@ export default function AtributPage() {
                         ? null
                         : "Aktifkan tampil di InsanKu terlebih dahulu untuk mengizinkan edit.",
                   },
+                  {
+                    key: "is_summary_visible",
+                    label: "Panel Dinamis",
+                    type: "checkbox",
+                    placeholder: "Tampilkan atribut ini di panel dinamis",
+                    disabled: (draft) => !draft.is_attribute,
+                    helper: (draft) =>
+                      draft.is_attribute
+                        ? "Matikan untuk menyembunyikan kartu ringkasan atribut ini."
+                        : "Aktifkan sebagai atribut InsanKu terlebih dahulu untuk menampilkan panel dinamis.",
+                  },
                 ]}
                 on_save={handle_save}
               />
@@ -613,6 +642,7 @@ export default function AtributPage() {
                   is_attribute: false,
                   range_with: "",
                   is_edit: false,
+                  is_summary_visible: true,
                 }}
                 fields={[
                   {
@@ -666,6 +696,17 @@ export default function AtributPage() {
                       draft.is_view
                         ? null
                         : "Aktifkan tampil di InsanKu terlebih dahulu untuk mengizinkan edit.",
+                  },
+                  {
+                    key: "is_summary_visible",
+                    label: "Panel Dinamis",
+                    type: "checkbox",
+                    placeholder: "Tampilkan atribut ini di panel dinamis",
+                    disabled: (draft) => !draft.is_attribute,
+                    helper: (draft) =>
+                      draft.is_attribute
+                        ? "Matikan untuk menyembunyikan kartu ringkasan atribut ini."
+                        : "Aktifkan sebagai atribut InsanKu terlebih dahulu untuk menampilkan panel dinamis.",
                   },
                 ]}
                 on_save={handle_create}

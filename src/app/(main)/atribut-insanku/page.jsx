@@ -431,18 +431,20 @@ export default function AtributInsanKuPage() {
 
   const attribute_summary_cards = useMemo(
     () =>
-      required_attribute_columns.map((column) => {
-        const filled_count = export_employees.filter((employee) =>
-          employee_has_attribute_value(employee, column),
-        ).length;
+      required_attribute_columns
+        .filter((column) => column.is_summary_visible)
+        .map((column) => {
+          const filled_count = export_employees.filter((employee) =>
+            employee_has_attribute_value(employee, column),
+          ).length;
 
-        return {
-          key: column.key,
-          label: column.label,
-          filled_count,
-          total_count: export_employees.length,
-        };
-      }),
+          return {
+            key: column.key,
+            label: column.label,
+            filled_count,
+            total_count: export_employees.length,
+          };
+        }),
     [export_employees, required_attribute_columns],
   );
 
