@@ -69,6 +69,324 @@ export function export_penjualan_gofitku(export_groups) {
 
     return `${month_names[month - 1] ?? ""} ${year}`.trim();
   };
+  const get_status_label = (monthly_total, target, today_input) => {
+    if (Number(today_input ?? monthly_total) <= 0) {
+      return "Belum input";
+    }
+
+    if (Number(monthly_total || 0) >= Number(target || 0)) {
+      return "Target tercapai";
+    }
+
+    return "Perlu dikejar";
+  };
+  const get_percentage_label = (monthly_total, target) => {
+    if (!Number(target || 0)) {
+      return "0%";
+    }
+
+    return `${Math.round((Number(monthly_total || 0) / Number(target)) * 100)}%`;
+  };
+  const get_ringkasan_title_cell = (value, merge_across) => {
+    const escaped_value = escape_xml_value(value);
+
+    return `<Cell ss:StyleID="Title" ss:MergeAcross="${merge_across}"><Data ss:Type="String">${escaped_value}</Data></Cell>`;
+  };
+  const get_month_keys_from_groups = (groups) => {
+    const month_keys = new Set();
+
+    for (const group of groups ?? []) {
+      for (const monthly_group of group.monthly_groups ?? []) {
+        if (monthly_group.month_key) {
+          month_keys.add(monthly_group.month_key);
+        }
+      }
+    }
+
+    return Array.from(month_keys).sort().reverse();
+  };
+  const get_monthly_group_for = (group, month_key) =>
+    (group.monthly_groups ?? []).find((item) => item.month_key === month_key) ??
+    null;
+  const get_month_data_cells = (monthly_total, target) => [
+    get_cell(monthly_total, "Number", "Cell"),
+    get_cell(target, "Number", "Cell"),
+    get_cell(get_percentage_label(monthly_total, target), "String", "Cell"),
+    get_cell(get_status_label(monthly_total, target, null), "String", "Cell"),
+  ];
+  const get_header_row = (labels) =>
+    get_row(labels.map((label) => get_cell(label, "String", "Header")));
+  const sum_month_rows = (rows) =>
+    rows.reduce(
+      (totals, row) => ({
+        monthly_total: totals.monthly_total + Number(row.monthly_total || 0),
+        target: totals.target + Number(row.target || 0),
+      }),
+      { monthly_total: 0, target: 0 },
+    );
+  const get_month_total_row = (label_cells, monthly_total, target) => {
+    const cells = [...label_cells];
+
+    cells.push(
+      get_cell(monthly_total, "Number", "BlueTotal"),
+      get_cell(target, "Number", "BlueTotal"),
+      get_cell(get_percentage_label(monthly_total, target), "String", "BlueTotal"),
+      get_cell(get_status_label(monthly_total, target, null), "String", "BlueTotal"),
+    );
+
+    return get_row(cells);
+  };
+  const get_ringkasan_outlet_insanku_sheet = (groups) => {
+    const rows = [];
+    const sorted_groups = [...(groups ?? [])].sort((a, b) =>
+      String(a.outlet_name ?? "").localeCompare(String(b.outlet_name ?? ""), "id"),
+    );
+    const month_keys = get_month_keys_from_groups(sorted_groups);
+
+    if (!month_keys.length) {
+      rows.push(get_row([get_cell("Data ringkasan belum tersedia.", "String", "")]));
+
+      return get_worksheet(
+        "Ringkasan Outlet & InsanKu",
+        rows,
+        [160, 160, 90, 70, 80, 100],
+      );
+    }
+
+    for (const month_key of month_keys) {
+      rows.push(
+        get_row([get_ringkasan_title_cell(get_month_label(month_key), 5)]),
+      );
+      rows.push(
+        get_header_row([
+          "NAMA",
+          "OUTLET",
+          "TOTAL BULAN",
+          "TARGET",
+          "PERSENTASE",
+          "STATUS",
+        ]),
+      );
+
+      const month_totals = { monthly_total: 0, target: 0 };
+
+      for (const group of sorted_groups) {
+        const monthly_group = get_monthly_group_for(group, month_key);
+        const group_rows = [...(monthly_group?.rows ?? [])].sort((a, b) =>
+          String(a.name ?? "").localeCompare(String(b.name ?? ""), "id"),
+        );
+
+        for (const row of group_rows) {
+          rows.push(
+            get_row([
+              get_cell(row.name, "String", "Cell"),
+              get_cell(group.outlet_name, "String", "Cell"),
+              ...get_month_data_cells(row.monthly_total, row.target),
+            ]),
+          );
+        }
+
+        const group_totals = sum_month_rows(group_rows);
+
+        month_totals.monthly_total += group_totals.monthly_total;
+        month_totals.target += group_totals.target;
+
+        rows.push(
+          get_row([
+            get_cell("TOTAL", "String", "BlueTotal"),
+            get_cell(group.outlet_name, "String", "BlueTotal"),
+            get_cell(group_totals.monthly_total, "Number", "BlueTotal"),
+            get_cell(group_totals.target, "Number", "BlueTotal"),
+            get_cell(
+              get_percentage_label(group_totals.monthly_total, group_totals.target),
+              "String",
+              "BlueTotal",
+            ),
+            get_cell(
+              get_status_label(group_totals.monthly_total, group_totals.target, null),
+              "String",
+              "BlueTotal",
+            ),
+          ]),
+        );
+      }
+
+      rows.push(
+        get_month_total_row(
+          [get_cell("TOTAL", "String", "BlueTotal"), get_cell("", "String", "BlueTotal")],
+          month_totals.monthly_total,
+          month_totals.target,
+        ),
+      );
+      rows.push(get_row([]));
+      rows.push(get_row([]));
+    }
+
+    return get_worksheet(
+      "Ringkasan Outlet & InsanKu",
+      rows,
+      [160, 160, 90, 70, 80, 100],
+    );
+  };
+  const get_ringkasan_outlet_sheet = (groups) => {
+    const rows = [];
+    const sorted_groups = [...(groups ?? [])].sort((a, b) =>
+      String(a.outlet_name ?? "").localeCompare(String(b.outlet_name ?? ""), "id"),
+    );
+    const month_keys = get_month_keys_from_groups(sorted_groups);
+
+    if (!month_keys.length) {
+      rows.push(get_row([get_cell("Data ringkasan belum tersedia.", "String", "")]));
+
+      return get_worksheet(
+        "Ringkasan Outlet",
+        rows,
+        [160, 90, 70, 80, 100],
+      );
+    }
+
+    for (const month_key of month_keys) {
+      rows.push(
+        get_row([get_ringkasan_title_cell(get_month_label(month_key), 4)]),
+      );
+      rows.push(
+        get_header_row([
+          "OUTLET",
+          "TOTAL BULAN",
+          "TARGET",
+          "PERSENTASE",
+          "STATUS",
+        ]),
+      );
+
+      const month_totals = { monthly_total: 0, target: 0 };
+
+      for (const group of sorted_groups) {
+        const monthly_group = get_monthly_group_for(group, month_key);
+        const group_totals = sum_month_rows(monthly_group?.rows ?? []);
+
+        month_totals.monthly_total += group_totals.monthly_total;
+        month_totals.target += group_totals.target;
+
+        rows.push(
+          get_row([
+            get_cell(group.outlet_name, "String", "Cell"),
+            ...get_month_data_cells(group_totals.monthly_total, group_totals.target),
+          ]),
+        );
+      }
+
+      rows.push(
+        get_month_total_row(
+          [get_cell("TOTAL", "String", "BlueTotal")],
+          month_totals.monthly_total,
+          month_totals.target,
+        ),
+      );
+      rows.push(get_row([]));
+      rows.push(get_row([]));
+    }
+
+    return get_worksheet(
+      "Ringkasan Outlet",
+      rows,
+      [160, 90, 70, 80, 100],
+    );
+  };
+  const get_ringkasan_insanku_sheet = (groups) => {
+    const rows = [];
+    const sorted_groups = [...(groups ?? [])].sort((a, b) =>
+      String(a.outlet_name ?? "").localeCompare(String(b.outlet_name ?? ""), "id"),
+    );
+    const month_keys = get_month_keys_from_groups(sorted_groups);
+
+    if (!month_keys.length) {
+      rows.push(get_row([get_cell("Data ringkasan belum tersedia.", "String", "")]));
+
+      return get_worksheet(
+        "Ringkasan InsanKu",
+        rows,
+        [160, 160, 90, 70, 80, 100],
+      );
+    }
+
+    for (const month_key of month_keys) {
+      rows.push(
+        get_row([get_ringkasan_title_cell(get_month_label(month_key), 5)]),
+      );
+      rows.push(
+        get_header_row([
+          "NAMA",
+          "OUTLET",
+          "TOTAL BULAN",
+          "TARGET",
+          "PERSENTASE",
+          "STATUS",
+        ]),
+      );
+
+      const aggregated = new Map();
+
+      for (const group of sorted_groups) {
+        const monthly_group = get_monthly_group_for(group, month_key);
+
+        for (const row of monthly_group?.rows ?? []) {
+          const key = String(row.uuid ?? row.name ?? "");
+          const existing = aggregated.get(key);
+
+          if (!existing) {
+            aggregated.set(key, {
+              name: row.name,
+              outlet_names: new Set([group.outlet_name]),
+              monthly_total: Number(row.monthly_total || 0),
+              target: Number(row.target || 0),
+            });
+          } else {
+            existing.outlet_names.add(group.outlet_name);
+            existing.monthly_total += Number(row.monthly_total || 0);
+            existing.target = Math.max(existing.target, Number(row.target || 0));
+          }
+        }
+      }
+
+      const month_rows = Array.from(aggregated.values())
+        .map((item) => ({
+          ...item,
+          outlet_label: Array.from(item.outlet_names)
+            .sort((a, b) => String(a).localeCompare(String(b), "id"))
+            .join(", "),
+        }))
+        .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "id"));
+
+      for (const row of month_rows) {
+        rows.push(
+          get_row([
+            get_cell(row.name, "String", "Cell"),
+            get_cell(row.outlet_label, "String", "Cell"),
+            ...get_month_data_cells(row.monthly_total, row.target),
+          ]),
+        );
+      }
+
+      const month_totals = sum_month_rows(month_rows);
+
+      rows.push(
+        get_month_total_row(
+          [get_cell("TOTAL", "String", "BlueTotal"), get_cell("", "String", "BlueTotal")],
+          month_totals.monthly_total,
+          month_totals.target,
+        ),
+      );
+      rows.push(get_row([]));
+      rows.push(get_row([]));
+    }
+
+    return get_worksheet(
+      "Ringkasan InsanKu",
+      rows,
+      [160, 160, 90, 70, 80, 100],
+    );
+  };
   const get_export_columns = (total_days) => {
     const day_columns = Array.from({ length: total_days }, (_, index) => index + 1);
 
@@ -188,7 +506,7 @@ export function export_penjualan_gofitku(export_groups) {
                 .filter((day) => day >= column.start_day && day <= column.end_day)
                 .reduce((total, day) => total + Number(daily_totals[day] || 0), 0);
 
-              return get_cell(weekly_total, "Number", "WeekTotal");
+              return get_cell(weekly_total, "Number", "Cell");
             }
 
             if (column.type === "month") {
@@ -246,6 +564,15 @@ export function export_penjualan_gofitku(export_groups) {
             return get_cell(monthly_total, "Number", "GrandTotal");
           }
 
+          if (column.type === "target") {
+            const target_total = monthly_group.rows.reduce(
+              (total, row) => total + Number(row.target || 0),
+              0,
+            );
+
+            return get_cell(target_total, "Number", "GrandTotal");
+          }
+
           return get_cell("", "String", "Total");
         }),
       ),
@@ -253,17 +580,25 @@ export function export_penjualan_gofitku(export_groups) {
       get_row([]),
     ];
   };
-  const worksheets = export_groups.map((group, index) => {
-    const monthly_groups = group.monthly_groups ?? [];
-    const rows = monthly_groups.flatMap(get_month_section_rows);
-    const column_widths = get_sheet_column_widths(monthly_groups);
+  used_sheet_names.add("Ringkasan Outlet & InsanKu");
+  used_sheet_names.add("Ringkasan Outlet");
+  used_sheet_names.add("Ringkasan InsanKu");
+  const worksheets = [
+    get_ringkasan_outlet_insanku_sheet(export_groups),
+    get_ringkasan_outlet_sheet(export_groups),
+    get_ringkasan_insanku_sheet(export_groups),
+    ...export_groups.map((group, index) => {
+      const monthly_groups = group.monthly_groups ?? [];
+      const rows = monthly_groups.flatMap(get_month_section_rows);
+      const column_widths = get_sheet_column_widths(monthly_groups);
 
-    return get_worksheet(
-      get_sheet_name(group.outlet_name, index),
-      rows,
-      column_widths,
-    );
-  });
+      return get_worksheet(
+        get_sheet_name(group.outlet_name, index),
+        rows,
+        column_widths,
+      );
+    }),
+  ];
   const workbook = `<?xml version="1.0"?>
     <?mso-application progid="Excel.Sheet"?>
     <Workbook
@@ -313,6 +648,7 @@ export function export_penjualan_gofitku(export_groups) {
         </Style>
         <Style ss:ID="Total">
           <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}" ss:Bold="1"/>
+          <Interior ss:Color="#BDD7EE" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
             <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
@@ -322,7 +658,27 @@ export function export_penjualan_gofitku(export_groups) {
         </Style>
         <Style ss:ID="GrandTotal">
           <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}" ss:Bold="1"/>
-          <Interior ss:Color="#00E5E5" ss:Pattern="Solid"/>
+          <Interior ss:Color="#BDD7EE" ss:Pattern="Solid"/>
+          <Borders>
+            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+          </Borders>
+        </Style>
+        <Style ss:ID="BlueCell">
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}"/>
+          <Interior ss:Color="#BDD7EE" ss:Pattern="Solid"/>
+          <Borders>
+            <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+            <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+            <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+            <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+          </Borders>
+        </Style>
+        <Style ss:ID="BlueTotal">
+          <Font ss:FontName="${export_font_name}" ss:Size="${export_font_size}" ss:Bold="1"/>
+          <Interior ss:Color="#BDD7EE" ss:Pattern="Solid"/>
           <Borders>
             <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
             <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>

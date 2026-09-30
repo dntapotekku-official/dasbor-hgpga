@@ -806,8 +806,19 @@ export default function PenjualanGoFitKuPage() {
                   </FilterField>
                 </div>
 
-                {!is_admin ? (
-                  <div className="flex justify-end sm:items-end">
+                {is_admin ? (
+                  <div className="flex justify-end sm:ml-auto sm:items-end">
+                    <Button
+                      type="button"
+                      onClick={handle_export_sales}
+                      className="w-full shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                    >
+                      <FileSpreadsheetIcon className="size-4" />
+                      Ekspor
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex justify-end sm:ml-auto sm:items-end">
                     <Button
                       type="button"
                       onClick={handle_open_add_modal}
@@ -818,7 +829,7 @@ export default function PenjualanGoFitKuPage() {
                       Tambah Penjualan
                     </Button>
                   </div>
-                ) : null}
+                )}
               </div>
 
               <TabsList className="w-full">
@@ -830,42 +841,30 @@ export default function PenjualanGoFitKuPage() {
                 </TabsTrigger>
               </TabsList>
 
-              <Card className="gap-0 border-t-2 border-t-primary/70">
-                <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle>
-                    {active_tab === "ringkasan" ? "Ringkasan" : "Detail"}
-                  </CardTitle>
-                  {is_admin && active_tab === "ringkasan" ? (
-                    <Button
-                      type="button"
-                      onClick={handle_export_sales}
-                      className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                    >
-                      <FileSpreadsheetIcon className="size-4" />
-                      Ekspor
-                    </Button>
-                  ) : null}
-                </CardHeader>
+              <TabsContent value="ringkasan">
+                <RingkasanTab
+                  outlet_groups={filtered_outlet_groups}
+                  is_outlet_view={!is_admin}
+                />
+              </TabsContent>
 
-                <CardContent className="space-y-5">
-                  <TabsContent value="ringkasan">
-                  <RingkasanTab
-                      outlet_groups={filtered_outlet_groups}
-                      is_outlet_view={!is_admin}
-                    />
-                  </TabsContent>
+              <TabsContent value="detail">
+                <Card className="gap-0 border-t-2 border-t-primary/70">
+                  <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+                    <CardTitle>Detail</CardTitle>
+                  </CardHeader>
 
-                  <TabsContent value="detail">
-                  <DetailTab
+                  <CardContent className="space-y-5">
+                    <DetailTab
                       outlet_groups={filtered_outlet_groups}
                       is_outlet_view={!is_admin}
                       on_add_sale={open_add_modal}
                       on_edit_row={open_edit_modal}
                       on_delete_row={open_delete_dialog}
                     />
-                  </TabsContent>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
         )}
