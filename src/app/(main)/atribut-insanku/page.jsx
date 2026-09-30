@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
+  ChevronDownIcon,
   FileSpreadsheetIcon,
   FilterIcon,
   InfoIcon,
@@ -135,6 +136,7 @@ export default function AtributInsanKuPage() {
   const [sync_status, setSyncStatus] = useState("idle");
   const [is_importing, setIsImporting] = useState(false);
   const [is_filter_modal_open, setIsFilterModalOpen] = useState(false);
+  const [is_summary_open, setIsSummaryOpen] = useState(true);
   const [is_export_modal_open, setIsExportModalOpen] = useState(false);
   const [attribute_filters, setAttributeFilters] = useState({});
   const [draft_attribute_filters, setDraftAttributeFilters] = useState({});
@@ -1058,24 +1060,44 @@ export default function AtributInsanKuPage() {
           ) : null}
 
           {attribute_summary_cards.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {attribute_summary_cards.map((summary, index) => (
-                <Card
-                  key={summary.key}
-                  className={`border px-4 py-3 ${ATTRIBUTE_CARD_STYLES[index % ATTRIBUTE_CARD_STYLES.length]}`}
-                >
-                  <p className="truncate text-sm font-medium opacity-75">
-                    {summary.label}
-                  </p>
-                  <p className="mt-1 text-xl font-bold">
-                    {summary.filled_count.toLocaleString("id-ID")} / {summary.total_count.toLocaleString("id-ID")}
-                  </p>
-                  <p className="text-xs opacity-70">
-                    InsanKu sudah memiliki atribut
-                  </p>
-                </Card>
-              ))}
-            </div>
+            <Card className="gap-0 border-t-2 border-t-primary/70">
+              <button
+                type="button"
+                onClick={() => setIsSummaryOpen((current) => !current)}
+                aria-expanded={is_summary_open}
+                aria-label={`${is_summary_open ? "Sembunyikan" : "Tampilkan"} ringkasan atribut`}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+              >
+                <span className="font-heading text-base font-semibold tracking-tight">
+                  Ringkasan Atribut
+                </span>
+                <ChevronDownIcon
+                  className={`size-4 shrink-0 text-muted-foreground transition-transform ${is_summary_open ? "rotate-180" : ""}`}
+                />
+              </button>
+              {is_summary_open ? (
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {attribute_summary_cards.map((summary, index) => (
+                      <Card
+                        key={summary.key}
+                        className={`border px-4 py-3 ${ATTRIBUTE_CARD_STYLES[index % ATTRIBUTE_CARD_STYLES.length]}`}
+                      >
+                        <p className="truncate text-sm font-medium opacity-75">
+                          {summary.label}
+                        </p>
+                        <p className="mt-1 text-xl font-bold">
+                          {summary.filled_count.toLocaleString("id-ID")} / {summary.total_count.toLocaleString("id-ID")}
+                        </p>
+                        <p className="text-xs opacity-70">
+                          InsanKu sudah memiliki atribut
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              ) : null}
+            </Card>
           ) : null}
 
           <Card className="gap-0 border-t-2 border-t-primary/70">
@@ -1174,7 +1196,7 @@ export default function AtributInsanKuPage() {
               </div>
 
               <div className="overflow-hidden rounded-lg border">
-                <div className="max-h-[560px] overflow-auto">
+                <div className="max-h-[80vh] overflow-auto">
                   <Table containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-20 bg-card">
                     <TableRow>
