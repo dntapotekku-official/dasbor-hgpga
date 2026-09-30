@@ -261,9 +261,8 @@ export async function updateOutletInsanKu({
     ),
   );
 
-  if (Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length === 0) {
-    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika InsanKu punya outlet.");
-  }
+  const should_skip_sync =
+    Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length > 0;
 
   const existing_insanku = await prisma.tbl_insanku.findUnique({
     where: { uuid: uuid_insanku },
@@ -319,13 +318,13 @@ export async function updateOutletInsanKu({
         },
         update: {
           deleted_at: null,
-          is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+          is_skip_sync: should_skip_sync,
         },
         create: {
           uuid: randomUUID(),
           uuid_outlet,
           uuid_insanku,
-          is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+          is_skip_sync: should_skip_sync,
         },
       });
     }
@@ -336,7 +335,7 @@ export async function updateOutletInsanKu({
         deleted_at: null,
       },
       data: {
-        is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+        is_skip_sync: should_skip_sync,
       },
     });
 

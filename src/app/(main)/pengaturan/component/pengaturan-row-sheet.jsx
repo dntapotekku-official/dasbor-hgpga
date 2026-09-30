@@ -83,6 +83,15 @@ function build_draft(item, fields) {
   );
 }
 
+function apply_field_change(field, next_draft, next_value) {
+  return typeof field.on_change === "function"
+    ? {
+        ...next_draft,
+        ...field.on_change(next_draft, next_value),
+      }
+    : next_draft;
+}
+
 export default function PengaturanRowSheet({
   open,
   on_open_change,
@@ -212,14 +221,7 @@ export default function PengaturanRowSheet({
                           [field.key]: checked,
                         };
 
-                        if (typeof field.on_change === "function") {
-                          return {
-                            ...next_draft,
-                            ...field.on_change(next_draft, checked),
-                          };
-                        }
-
-                        return next_draft;
+                        return apply_field_change(field, next_draft, checked);
                       })
                     }
                     className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
@@ -375,17 +377,23 @@ export default function PengaturanRowSheet({
                                 ),
                               ]}
                               onValueChange={(next_value) =>
-                                setDraft((current) => ({
-                                  ...current,
-                                  [field.key]: (current[field.key] ?? []).map((item, item_index) =>
-                                    item_index === index
-                                      ? {
-                                          ...item,
-                                          outlet_uuid: next_value,
-                                        }
-                                      : item,
-                                  ),
-                                }))
+                                setDraft((current) => {
+                                  const next_placements = (current[field.key] ?? []).map(
+                                    (item, item_index) =>
+                                      item_index === index
+                                        ? {
+                                            ...item,
+                                            outlet_uuid: next_value,
+                                          }
+                                        : item,
+                                  );
+                                  const next_draft = {
+                                    ...current,
+                                    [field.key]: next_placements,
+                                  };
+
+                                  return apply_field_change(field, next_draft, next_placements);
+                                })
                               }
                               ariaLabel={`Pilih outlet penempatan ${index + 1}`}
                               searchable
@@ -399,12 +407,17 @@ export default function PengaturanRowSheet({
                             size="icon-sm"
                             className="shrink-0"
                             onClick={() =>
-                              setDraft((current) => ({
-                                ...current,
-                                [field.key]: (current[field.key] ?? []).filter(
+                              setDraft((current) => {
+                                const next_placements = (current[field.key] ?? []).filter(
                                   (_, item_index) => item_index !== index,
-                                ),
-                              }))
+                                );
+                                const next_draft = {
+                                  ...current,
+                                  [field.key]: next_placements,
+                                };
+
+                                return apply_field_change(field, next_draft, next_placements);
+                              })
                             }
                           >
                             <Trash2Icon className="size-4" />
@@ -422,17 +435,22 @@ export default function PengaturanRowSheet({
                     type="button"
                     variant="outline"
                     onClick={() =>
-                      setDraft((current) => ({
-                        ...current,
-                        [field.key]: [
+                      setDraft((current) => {
+                        const next_placements = [
                           ...(current[field.key] ?? []),
                           {
                             uuid: "",
                             outlet_uuid: "",
                             key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                           },
-                        ],
-                      }))
+                        ];
+                        const next_draft = {
+                          ...current,
+                          [field.key]: next_placements,
+                        };
+
+                        return apply_field_change(field, next_draft, next_placements);
+                      })
                     }
                     className="w-full"
                   >
@@ -453,12 +471,7 @@ export default function PengaturanRowSheet({
                         [field.key]: next_value,
                       };
 
-                      return typeof field.on_change === "function"
-                        ? {
-                            ...next_draft,
-                            ...field.on_change(next_draft, next_value),
-                          }
-                        : next_draft;
+                      return apply_field_change(field, next_draft, next_value);
                     })
                   }
                   ariaLabel={field.aria_label ?? field.label}

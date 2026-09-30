@@ -8,7 +8,8 @@ import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelation
 const DEFAULT_INSANKU_PASSWORD = "Apotekku";
 
 function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
-  const normalized_placements = Array.isArray(outlet_placements)
+  const has_outlet_placements_input = Array.isArray(outlet_placements);
+  const normalized_placements = has_outlet_placements_input
     ? outlet_placements
         .map((placement) => ({
           uuid: String(placement?.uuid ?? "").trim(),
@@ -16,7 +17,7 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
         }))
         .filter((placement) => placement.outlet_uuid)
     : [];
-  const resolved_placements = normalized_placements.length
+  const resolved_placements = has_outlet_placements_input
     ? normalized_placements
     : Array.isArray(outlet_uuids)
       ? outlet_uuids
@@ -520,9 +521,8 @@ export async function updateInsanKu({
     throw new Error("Password baru minimal 6 karakter.");
   }
 
-  if (Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length === 0) {
-    throw new Error("Lewati sinkron penempatan hanya bisa dipakai jika InsanKu punya outlet.");
-  }
+  const should_skip_sync_outlet_insanku =
+    Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length > 0;
 
   const existing_insanku = await prisma.tbl_insanku.findUnique({
     where: { uuid: uuid_insanku },
@@ -617,7 +617,7 @@ export async function updateInsanKu({
         deleted_at: null,
       },
       data: {
-        is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+        is_skip_sync: should_skip_sync_outlet_insanku,
       },
     });
 
@@ -636,7 +636,7 @@ export async function updateInsanKu({
             },
             data: {
               deleted_at: null,
-              is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+              is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
           continue;
@@ -653,7 +653,7 @@ export async function updateInsanKu({
             },
             data: {
               deleted_at: null,
-              is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+              is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
 
@@ -676,7 +676,7 @@ export async function updateInsanKu({
           data: {
             uuid_outlet: placement.outlet_uuid,
             deleted_at: null,
-            is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+            is_skip_sync: should_skip_sync_outlet_insanku,
           },
         });
         continue;
@@ -693,7 +693,7 @@ export async function updateInsanKu({
           },
           data: {
             deleted_at: null,
-            is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+            is_skip_sync: should_skip_sync_outlet_insanku,
           },
         });
         continue;
@@ -704,7 +704,7 @@ export async function updateInsanKu({
           uuid: randomUUID(),
           uuid_outlet: placement.outlet_uuid,
           uuid_insanku,
-          is_skip_sync: Boolean(is_skip_sync_outlet_insanku),
+          is_skip_sync: should_skip_sync_outlet_insanku,
         },
       });
     }

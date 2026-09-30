@@ -26,6 +26,32 @@ import {
 
 const PAGE_SIZE = 50;
 
+function has_selected_outlet_placement(outlet_placements) {
+  return (
+    Array.isArray(outlet_placements) &&
+    outlet_placements.some((placement) =>
+      String(placement?.outlet_uuid ?? "").trim(),
+    )
+  );
+}
+
+function build_insanku_sheet_key(item) {
+  if (!item?.uuid) {
+    return "insanku-sheet";
+  }
+
+  const placement_key = (item.outlet_placements ?? [])
+    .map((placement) => `${placement.uuid ?? ""}:${placement.outlet_uuid ?? ""}`)
+    .join("|");
+
+  return [
+    item.uuid,
+    placement_key,
+    Boolean(item.is_skip_sync_insanku),
+    Boolean(item.is_skip_sync_outlet_insanku),
+  ].join(":");
+}
+
 export default function InsanKuTab({ is_non_slip_gaji = false }) {
   const [sync_status, setSyncStatus] = useState("idle");
   const [outlet, setOutlet] = useState([]);
@@ -199,6 +225,10 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       ? "/api/insanku-non-slip-gaji"
       : "/api/insanku";
     const is_new = is_non_slip_gaji && !next_insanku.uuid;
+    const outlet_placements = next_insanku.outlet_placements ?? [];
+    const outlet_uuids = outlet_placements
+      .map((placement) => String(placement?.outlet_uuid ?? "").trim())
+      .filter(Boolean);
     const response = await fetch(api_endpoint, {
       method: is_new ? "POST" : "PATCH",
       headers: {
@@ -209,8 +239,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         nik: next_insanku.nik,
         name: next_insanku.name,
         username: next_insanku.username,
-        outlet_placements: next_insanku.outlet_placements ?? [],
-        outlet_uuids: next_insanku.outlet_uuids ?? [],
+        outlet_placements,
+        outlet_uuids,
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
         is_skip_sync_outlet_insanku: next_insanku.is_skip_sync_outlet_insanku,
       }),
@@ -233,6 +263,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
             item.uuid === payload.data.uuid ? payload.data : item,
           ),
     );
+    setSelectedInsanKu(is_new ? null : payload.data);
     setIsCreating(false);
     toast.success(
       payload.message ||
@@ -445,7 +476,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
             </div>
 
             <PengaturanRowSheet
-              key={selected_insanku?.uuid ?? "insanku-sheet"}
+              key={build_insanku_sheet_key(selected_insanku)}
               open={is_sheet_open}
               on_open_change={setIsSheetOpen}
               title={
@@ -488,6 +519,10 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   value: item.uuid,
                   label: item.name,
                 })),
+                on_change: (draft) =>
+                  has_selected_outlet_placement(draft.outlet_placements)
+                    ? {}
+                    : { is_skip_sync_outlet_insanku: false },
               },
               ...(!is_non_slip_gaji
                 ? [
@@ -501,11 +536,9 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                       label: "Lewati saat sinkron (penempatan saja)",
                       type: "checkbox",
                       disabled: (draft) =>
-                        !Array.isArray(draft.outlet_placements) ||
-                        draft.outlet_placements.length === 0,
+                        !has_selected_outlet_placement(draft.outlet_placements),
                       helper: (draft) =>
-                        !Array.isArray(draft.outlet_placements) ||
-                        draft.outlet_placements.length === 0
+                        !has_selected_outlet_placement(draft.outlet_placements)
                           ? "Checkbox ini aktif setelah InsanKu memiliki minimal satu outlet."
                           : "Checkbox ini berlaku untuk semua penempatan outlet milik InsanKu ini.",
                     },
