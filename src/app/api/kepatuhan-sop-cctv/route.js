@@ -51,18 +51,23 @@ export const POST = async (request) => {
   try {
     const unauthorized_response = await requireMenuAccess(
       "kepatuhan-sop-cctv",
-      ["admin"],
+      ["member"],
     );
 
     if (unauthorized_response) {
       return unauthorized_response;
     }
 
+    const user_session = await getCurrentUser();
+    const role = normalizeRole(user_session?.role);
     const body = await request.json().catch(() => ({}));
     const result = await syncKepatuhanSopCCTV({
       tanggal_awal: body?.tanggal_awal,
       tanggal_akhir: body?.tanggal_akhir,
-      id_outlet: body?.id_outlet ?? body?.uuid_outlet,
+      id_outlet:
+        role === "member"
+          ? user_session?.uuid
+          : (body?.id_outlet ?? body?.uuid_outlet),
     });
 
     return NextResponse.json(result);

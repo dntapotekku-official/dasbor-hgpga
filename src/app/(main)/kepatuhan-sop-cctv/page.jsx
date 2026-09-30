@@ -99,7 +99,7 @@ const formatChartDate = (value) => {
 };
 
 export default function KepatuhanSopCctvPage() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const is_admin = hasRoleAccess(role, ["admin"]);
   const default_date_range = useMemo(() => {
     const today = new Date();
@@ -243,17 +243,24 @@ export default function KepatuhanSopCctvPage() {
     try {
       setSyncStatus("loading");
 
+      const member_outlet_uuid = is_admin ? undefined : user?.uuid;
       const sync_params = {
         tanggal_awal: start_date,
         tanggal_akhir: end_date,
-        id_outlet:
-          active_outlet === default_outlet.value ? undefined : selected_outlet_option?.id_outlet,
+        id_outlet: is_admin
+          ? active_outlet === default_outlet.value
+            ? undefined
+            : selected_outlet_option?.id_outlet
+          : member_outlet_uuid,
       };
       const cache_params = {
         tanggal_awal: start_date,
         tanggal_akhir: end_date,
-        uuid_outlet:
-          active_outlet === default_outlet.value ? undefined : active_outlet,
+        uuid_outlet: is_admin
+          ? active_outlet === default_outlet.value
+            ? undefined
+            : active_outlet
+          : member_outlet_uuid,
       };
       const response = await fetch("/api/kepatuhan-sop-cctv", {
         method: "POST",
@@ -403,14 +410,16 @@ export default function KepatuhanSopCctvPage() {
                   </div>
                 </FilterField>
               </div>
-              {is_admin ? (
-                <SyncActionButton
-                  onConfirm={syncKepatuhanSopCCTVHandler}
-                  description="Sinkronisasi akan memperbarui data kepatuhan SOP CCTV sesuai filter tanggal dan outlet yang sedang aktif."
-                  isPending={sync_status === "loading"}
-                  className="w-full shrink-0 lg:w-auto"
-                />
-              ) : null}
+              <SyncActionButton
+                onConfirm={syncKepatuhanSopCCTVHandler}
+                description={
+                  is_admin
+                    ? "Sinkronisasi akan memperbarui data kepatuhan SOP CCTV sesuai filter tanggal dan outlet yang sedang aktif."
+                    : "Sinkronisasi akan memperbarui data kepatuhan SOP CCTV outlet Anda sesuai rentang tanggal yang dipilih."
+                }
+                isPending={sync_status === "loading"}
+                className="w-full shrink-0 lg:w-auto"
+              />
             </div>
             {chart_data.length || !table_rows.length ? (
               <ChartBarMultiple

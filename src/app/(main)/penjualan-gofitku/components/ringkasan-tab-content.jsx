@@ -588,6 +588,65 @@ export default function RingkasanTabContent({
     );
   }
 
+  if (is_outlet_view) {
+    return (
+      <Card className="gap-0 border-t-2 border-t-primary/70">
+        <CardHeader className="border-b">
+          <CardTitle>Ringkasan</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-5">
+          <FilterField
+            label="Pencarian"
+            htmlFor="filter-pencarian-ringkasan-gofitku"
+            className="w-full sm:w-[320px]"
+          >
+            <div className="relative w-full">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="filter-pencarian-ringkasan-gofitku"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={SEARCH_PLACEHOLDERS["outlet-insanku"]}
+                className="bg-card pl-9"
+              />
+            </div>
+          </FilterField>
+
+          <Table
+            className="min-w-[980px]"
+            containerClassName="max-h-[70vh] overflow-y-auto rounded-lg border"
+          >
+            <TableHeader className="sticky top-0 z-10 bg-primary [&_th]:text-primary-foreground">
+              <PersonTableHead
+                sort_key={sort_key}
+                sort_direction={sort_direction}
+                onSort={toggle_sort}
+              />
+            </TableHeader>
+            <TableBody>
+              {flat_outlet_insanku_rows.length ? (
+                <>
+                  <PersonRows rows={flat_outlet_insanku_rows} />
+                  <TotalRow totals={sum_rows(flat_outlet_insanku_rows)} />
+                </>
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="h-24 text-center text-sm text-muted-foreground"
+                  >
+                    Tidak ada data yang cocok dengan pencarian.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Tabs value={sub_tab} onValueChange={handle_sub_tab_change} className="w-full">
       <TabsList className="w-full">
