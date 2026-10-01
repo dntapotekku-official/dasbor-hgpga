@@ -128,6 +128,11 @@ function compare_percentage(value, divisor) {
   return (value / divisor) * 100;
 }
 
+/** Membulatkan Basket Size mengikuti tampilan tabel. */
+function round_basket_size_value(value) {
+  return Math.round(to_number(value) * 10) / 10;
+}
+
 /** Mengonversi nilai menjadi angka valid dengan nilai bawaan nol. */
 function to_number(value) {
   const parsed_value = Number(value ?? 0);
@@ -313,7 +318,9 @@ function build_basket_size_metrics({
   const bs_target = bs_has_target ? to_number(target) : null;
   const bs_last_month = to_number(last_month);
   const bs_current_month = to_number(current_month);
-  const bs_growth = compare_percentage(bs_current_month, bs_last_month);
+  const rounded_bs_last_month = round_basket_size_value(bs_last_month);
+  const rounded_bs_current_month = round_basket_size_value(bs_current_month);
+  const bs_growth = compare_percentage(rounded_bs_current_month, rounded_bs_last_month);
   const bs_gap_growth = bs_growth - 100;
   const bs_target_compare = bs_has_target
     ? compare_percentage(bs_current_month, bs_target)
@@ -1083,7 +1090,7 @@ function write_export_metric_formulas(row, metrics) {
   );
   set_export_formula(
     row.getCell("O"),
-    `IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)`,
+    `IF(ROUND(M${row_number},1)=0,0,ROUND(N${row_number},1)/ROUND(M${row_number},1)*100)`,
     metrics.bs_growth,
   );
   set_export_formula(

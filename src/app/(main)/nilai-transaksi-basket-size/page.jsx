@@ -171,6 +171,10 @@ function comparePercentage(value, divisor) {
   return divisor ? (value / divisor) * 100 : 0;
 }
 
+function roundBasketSizeValue(value) {
+  return Math.round(Number(value || 0) * 10) / 10;
+}
+
 function summarizeVisibleRows(rows) {
   if (!rows.length) {
     return empty_metrics;
@@ -232,10 +236,12 @@ function summarizeVisibleRows(rows) {
   const bs_current_month = summary.bs_current_month_kunjungan
     ? summary.bs_current_month_sku_qty / summary.bs_current_month_kunjungan
     : 0;
+  const rounded_bs_last_month = roundBasketSizeValue(bs_last_month);
+  const rounded_bs_current_month = roundBasketSizeValue(bs_current_month);
   const nt_target = summary.nt_target / row_count;
   const bs_target = summary.bs_target / row_count;
   const nt_growth = comparePercentage(nt_current_month, nt_last_month);
-  const bs_growth = comparePercentage(bs_current_month, bs_last_month);
+  const bs_growth = comparePercentage(rounded_bs_current_month, rounded_bs_last_month);
   const nt_target_compare = comparePercentage(nt_current_month, nt_target);
   const bs_target_compare = comparePercentage(bs_current_month, bs_target);
 
@@ -1220,10 +1226,10 @@ export default function NilaiTransaksiPage() {
           }
           period={bulkAction.period ?? "daily"}
           dates={
-            bulkAction.period === "monthly"
-              ? availableDates.nilai_transaksi_bulanan
-            : bulkAction.metric === "basket-size"
+            bulkAction.metric === "basket-size"
               ? availableDates.basket_size
+            : bulkAction.period === "monthly"
+              ? availableDates.nilai_transaksi_bulanan
               : availableDates.nilai_transaksi
           }
           default_date={selectedDate}
