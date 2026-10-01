@@ -49,6 +49,7 @@ function build_insanku_sheet_key(item) {
     placement_key,
     Boolean(item.is_skip_sync_insanku),
     Boolean(item.is_skip_sync_outlet_insanku),
+    Boolean(item.is_exclude_penjualan_gofitku),
   ].join(":");
 }
 
@@ -243,6 +244,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         outlet_uuids,
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
         is_skip_sync_outlet_insanku: next_insanku.is_skip_sync_outlet_insanku,
+        is_exclude_penjualan_gofitku: next_insanku.is_exclude_penjualan_gofitku,
       }),
     });
     const payload = await response.json();
@@ -511,6 +513,15 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 label: "Username",
                 placeholder: "Masukkan username",
               },
+              ...(!is_non_slip_gaji
+                ? [
+                    {
+                      key: "is_skip_sync_insanku",
+                      label: "Lewati nama dan username saat sinkronisasi",
+                      type: "checkbox",
+                    },
+                  ]
+                : []),
               {
                 key: "outlet_placements",
                 label: "Outlet",
@@ -522,18 +533,16 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 on_change: (draft) =>
                   has_selected_outlet_placement(draft.outlet_placements)
                     ? {}
-                    : { is_skip_sync_outlet_insanku: false },
+                    : {
+                        is_skip_sync_outlet_insanku: false,
+                        is_exclude_penjualan_gofitku: false,
+                      },
               },
               ...(!is_non_slip_gaji
                 ? [
                     {
-                      key: "is_skip_sync_insanku",
-                      label: "Lewati saat sinkron (kecuali penempatan)",
-                      type: "checkbox",
-                    },
-                    {
                       key: "is_skip_sync_outlet_insanku",
-                      label: "Lewati saat sinkron (penempatan saja)",
+                      label: "Lewati penempatan saat sinkronisasi",
                       type: "checkbox",
                       disabled: (draft) =>
                         !has_selected_outlet_placement(draft.outlet_placements),
@@ -541,6 +550,17 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                         !has_selected_outlet_placement(draft.outlet_placements)
                           ? "Checkbox ini aktif setelah InsanKu memiliki minimal satu outlet."
                           : "Checkbox ini berlaku untuk semua penempatan outlet milik InsanKu ini.",
+                    },
+                    {
+                      key: "is_exclude_penjualan_gofitku",
+                      label: "Kecualikan dalam penjualan GoFitKu",
+                      type: "checkbox",
+                      disabled: (draft) =>
+                        !has_selected_outlet_placement(draft.outlet_placements),
+                      helper: (draft) =>
+                        !has_selected_outlet_placement(draft.outlet_placements)
+                          ? "Checkbox ini aktif setelah InsanKu memiliki minimal satu outlet."
+                          : "InsanKu ini tidak akan tampil atau dihitung pada Penjualan GoFitKu.",
                     },
                   ]
                 : []),

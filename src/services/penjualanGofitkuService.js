@@ -127,6 +127,7 @@ async function get_outlet_insanku_rows(accessible_outlet_uuids) {
       },
       insanku: {
         deleted_at: null,
+        is_exclude_penjualan_gofitku: false,
       },
     },
     orderBy: [
@@ -597,6 +598,10 @@ async function get_gofitku_chart_scope({
         deleted_at: null,
         excep: false,
       },
+      insanku: {
+        deleted_at: null,
+        is_exclude_penjualan_gofitku: false,
+      },
     },
     select: {
       uuid: true,
@@ -768,6 +773,10 @@ export async function createPenjualanGofitku({
         deleted_at: null,
         excep: false,
       },
+      insanku: {
+        deleted_at: null,
+        is_exclude_penjualan_gofitku: false,
+      },
     },
     select: {
       uuid: true,
@@ -888,6 +897,10 @@ export async function updatePenjualanGofitku({
       outlet: {
         deleted_at: null,
         excep: false,
+      },
+      insanku: {
+        deleted_at: null,
+        is_exclude_penjualan_gofitku: false,
       },
     },
     select: {

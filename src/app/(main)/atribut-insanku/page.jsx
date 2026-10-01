@@ -1101,52 +1101,54 @@ export default function AtributInsanKuPage() {
           ) : null}
 
           <Card className="gap-0 border-t-2 border-t-primary/70">
-          <CardHeader className="border-b">
-            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-              <CardTitle className="min-w-0 flex-1">
-                {is_member_view
-                  ? "Data Atribut InsanKu Outlet"
-                  : `${active_category === "non-slip-gaji"
-                      ? "Data Atribut InsanKu (Non Slip Gaji)"
-                      : "Data Atribut InsanKu (Slip Gaji)"} ${
-                      active_tab === "aktif" ? "Aktif" : "Non-Aktif"
-                    }`}
-              </CardTitle>
-              {can_import_export ? (
+            <CardHeader className="border-b">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                <CardTitle className="min-w-0 flex-1">
+                  {is_member_view
+                    ? "Data Atribut InsanKu Outlet"
+                    : `${active_category === "non-slip-gaji"
+                        ? "Data Atribut InsanKu (Non Slip Gaji)"
+                        : "Data Atribut InsanKu (Slip Gaji)"} ${
+                        active_tab === "aktif" ? "Aktif" : "Non-Aktif"
+                      }`}
+                </CardTitle>
                 <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
-                  <Button
-                    type="button"
-                    onClick={() => import_input_ref.current?.click()}
-                    disabled={is_importing}
-                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                  >
-                    {is_importing ? (
-                      <LoaderCircleIcon className="size-4 animate-spin" />
-                    ) : (
-                      <FileSpreadsheetIcon className="size-4" />
-                    )}
-                    Impor
-                  </Button>
-                  <Input
-                    ref={import_input_ref}
-                    type="file"
-                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    onChange={handle_import}
-                    className="sr-only"
-                    tabIndex={-1}
-                  />
-                  <Button
-                    type="button"
-                    onClick={() => setIsExportModalOpen(true)}
-                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                  >
-                    <FileSpreadsheetIcon className="size-4" />
-                    Ekspor
-                  </Button>
+                  {can_import_export ? (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={() => import_input_ref.current?.click()}
+                        disabled={is_importing}
+                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                      >
+                        {is_importing ? (
+                          <LoaderCircleIcon className="size-4 animate-spin" />
+                        ) : (
+                          <FileSpreadsheetIcon className="size-4" />
+                        )}
+                        Impor
+                      </Button>
+                      <Input
+                        ref={import_input_ref}
+                        type="file"
+                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        onChange={handle_import}
+                        className="sr-only"
+                        tabIndex={-1}
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                      >
+                        <FileSpreadsheetIcon className="size-4" />
+                        Ekspor
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          </CardHeader>
+              </div>
+            </CardHeader>
           <CardContent>
             <div className="space-y-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">

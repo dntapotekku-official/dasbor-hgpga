@@ -71,6 +71,7 @@ export const PATCH = async (request) => {
       outlet_uuids: body?.outlet_uuids,
       is_skip_sync_insanku: body?.is_skip_sync_insanku,
       is_skip_sync_outlet_insanku: body?.is_skip_sync_outlet_insanku,
+      is_exclude_penjualan_gofitku: body?.is_exclude_penjualan_gofitku,
     });
 
     return NextResponse.json(data);

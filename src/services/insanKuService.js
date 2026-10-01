@@ -231,6 +231,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       username: true,
       is_slip_gaji_account: true,
       is_skip_sync: true,
+      is_exclude_penjualan_gofitku: true,
       outlet_insanku: {
         where: {
           deleted_at: null,
@@ -265,6 +266,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
     is_skip_sync_outlet_insanku: item.outlet_insanku.some(
       (outlet_insanku) => outlet_insanku.is_skip_sync,
     ),
+    is_exclude_penjualan_gofitku: Boolean(item.is_exclude_penjualan_gofitku),
     outlet_uuids:
       item.outlet_insanku.length > 0
         ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.uuid)
@@ -487,6 +489,7 @@ export async function updateInsanKu({
   outlet_uuids = [],
   is_skip_sync_insanku,
   is_skip_sync_outlet_insanku,
+  is_exclude_penjualan_gofitku,
   expected_is_slip_gaji_account = true,
 }) {
   if (!uuid_insanku) {
@@ -561,6 +564,7 @@ export async function updateInsanKu({
             }
           : {}),
         is_skip_sync: Boolean(is_skip_sync_insanku),
+        is_exclude_penjualan_gofitku: Boolean(is_exclude_penjualan_gofitku),
       },
     });
 

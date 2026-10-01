@@ -63,6 +63,11 @@ export const menu_access_options = [
     label: "Pengaturan API AI",
     path: "/pengaturan/api-ai",
   },
+  {
+    value: "pengaturan-website-url",
+    label: "Pengaturan URL Website",
+    path: "/pengaturan/website-url",
+  },
 ];
 
 export const menu_access_keys = menu_access_options.map((item) => item.value);

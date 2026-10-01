@@ -11,6 +11,7 @@ import PageHeading from "@/components/page-heading";
 import FilterField from "@/components/filter-field";
 import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
 import SyncActionButton from "@/components/sync-action-button";
+import WebsiteLinkButton from "@/components/website-link-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,6 +150,12 @@ export default function KepuasanInternalPage() {
         <PageHeading
           title="Kepuasan Internal"
           description="Pantau tren jawaban puas dan tidak puas dari monthly review."
+          action={
+            <WebsiteLinkButton
+              websiteKey="lms"
+              className="w-full border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:w-auto"
+            />
+          }
         />
       </div>
       <div className="flex flex-col gap-6 px-4 lg:px-6">

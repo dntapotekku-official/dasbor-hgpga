@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronsUpDownIcon,
   ChevronDownIcon,
+  ClipboardCheckIcon,
   MoveRightIcon,
   SearchIcon,
+  StarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +21,7 @@ import FilterField from "@/components/filter-field";
 import PageHeading from "@/components/page-heading";
 import ChartBarMultiple from "@/components/charts/chart-bar-multiple";
 import SyncActionButton from "@/components/sync-action-button";
+import WebsiteLinkButton from "@/components/website-link-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -80,6 +83,10 @@ const normalizeDashboardData = (payload, fallback_outlet_options = []) => {
     rows,
     outlet_options,
     chart_data,
+    summary: {
+      total: Number(payload?.summary?.total) || 0,
+      total_point: Number(payload?.summary?.total_point) || 0,
+    },
   };
 };
 
@@ -168,6 +175,7 @@ export default function KepatuhanSopCctvPage() {
     });
   }, [sort_direction, sort_key, table_rows]);
   const chart_data = dashboard_data?.chart_data ?? [];
+  const summary = dashboard_data?.summary ?? { total: 0, total_point: 0 };
 
   const toggleSort = (next_sort_key) => {
     if (sort_key === next_sort_key) {
@@ -309,9 +317,39 @@ export default function KepatuhanSopCctvPage() {
               ? "Pantau tren kepatuhan SOP CCTV berdasarkan outlet dan rentang tanggal."
               : "Lihat tren kepatuhan SOP CCTV untuk outlet Anda."
           }
+          action={
+            <WebsiteLinkButton
+              websiteKey="audit"
+              className="w-full border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:w-auto"
+            />
+          }
         />
       </div>
       <div className="flex flex-col gap-6 px-4 lg:px-6">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex min-h-[92px] items-center justify-between gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div>
+              <div className="text-sm text-blue-700">Seluruh Total</div>
+              <div className="mt-1 text-2xl font-semibold tracking-tight text-blue-900">
+                {format_number(summary.total)}
+              </div>
+            </div>
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-700">
+              <ClipboardCheckIcon className="size-5" />
+            </div>
+          </div>
+          <div className="flex min-h-[92px] items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <div>
+              <div className="text-sm text-amber-700">Seluruh Total Poin</div>
+              <div className="mt-1 text-2xl font-semibold tracking-tight text-amber-900">
+                {format_number(summary.total_point)}
+              </div>
+            </div>
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+              <StarIcon className="size-5" />
+            </div>
+          </div>
+        </div>
         <Card className="gap-0 border-t-2 border-t-primary/70">
           <CardHeader className="border-b">
             <CardTitle>Tren Harian</CardTitle>

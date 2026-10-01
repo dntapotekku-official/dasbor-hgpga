@@ -16,6 +16,7 @@ import PageHeading from "@/components/page-heading";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
+import WebsiteLinkButton from "@/components/website-link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -332,6 +333,12 @@ export default function NilaiMagangPage() {
         <PageHeading
           title="Nilai Magang"
           description="Pantau nilai rapor mentee berdasarkan periode dan outlet magang."
+          action={
+            <WebsiteLinkButton
+              websiteKey="slipgaji"
+              className="w-full border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white sm:w-auto"
+            />
+          }
         />
       </div>
 

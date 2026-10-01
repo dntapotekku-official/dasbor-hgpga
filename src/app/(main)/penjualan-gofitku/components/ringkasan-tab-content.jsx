@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { SearchIcon } from "lucide-react";
 
 import FilterField from "@/components/filter-field";
+import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import usePagination from "@/hooks/usePagination";
+
+const PAGE_SIZE = 10;
 
 function format_percentage(total, target) {
   if (!target) {
@@ -579,6 +583,27 @@ export default function RingkasanTabContent({
     () => sum_rows(filtered_sorted_insanku),
     [filtered_sorted_insanku],
   );
+  const {
+    current_page: grouped_outlet_current_page,
+    total_pages: grouped_outlet_total_pages,
+    paginated_rows: paginated_grouped_outlets,
+    previous_page: previous_grouped_outlet_page,
+    next_page: next_grouped_outlet_page,
+  } = usePagination(filtered_grouped_outlets, PAGE_SIZE);
+  const {
+    current_page: outlet_current_page,
+    total_pages: outlet_total_pages,
+    paginated_rows: paginated_outlet_rows,
+    previous_page: previous_outlet_page,
+    next_page: next_outlet_page,
+  } = usePagination(filtered_sorted_outlets, PAGE_SIZE);
+  const {
+    current_page: insanku_current_page,
+    total_pages: insanku_total_pages,
+    paginated_rows: paginated_insanku_rows,
+    previous_page: previous_insanku_page,
+    next_page: next_insanku_page,
+  } = usePagination(filtered_sorted_insanku, PAGE_SIZE);
 
   if (!outlet_groups.length) {
     return (
@@ -681,7 +706,10 @@ export default function RingkasanTabContent({
           </FilterField>
 
           {/* Outlet & InsanKu: per outlet dengan rincian per orang */}
-          <TabsContent value="outlet-insanku">
+          <TabsContent
+            value="outlet-insanku"
+            className="space-y-3"
+          >
             {is_outlet_view ? (
               <Table
                 className="min-w-[980px]"
@@ -712,10 +740,10 @@ export default function RingkasanTabContent({
                     )}
                   </TableBody>
                 </Table>
-            ) : (
-              <div className="space-y-6">
-                {filtered_grouped_outlets.length ? (
-                  filtered_grouped_outlets.map((group) => (
+            ) : filtered_grouped_outlets.length ? (
+              <>
+                <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1">
+                  {paginated_grouped_outlets.map((group) => (
                     <Card
                       key={`${group.uuid}-summary`}
                       className="gap-0 bg-orange-50/60 shadow-none"
@@ -726,28 +754,39 @@ export default function RingkasanTabContent({
                       <CardContent className="pt-0">
                         <Table
                           className="min-w-[980px]"
-                          containerClassName="max-h-[60vh] overflow-y-auto rounded-lg border bg-card"
+                          containerClassName="rounded-lg border bg-card"
                         >
-                            <TableHeader className="sticky top-0 z-10 bg-primary [&_th]:text-primary-foreground">
-                              <PersonTableHead
-                                sort_key={sort_key}
-                                sort_direction={sort_direction}
-                                onSort={toggle_sort}
-                              />
-                            </TableHeader>
-                            <TableBody>
-                              <PersonRows rows={group.rows} />
-                              <TotalRow totals={group.totals} />
-                            </TableBody>
-                          </Table>
+                          <TableHeader className="sticky top-0 z-10 bg-primary [&_th]:text-primary-foreground">
+                            <PersonTableHead
+                              sort_key={sort_key}
+                              sort_direction={sort_direction}
+                              onSort={toggle_sort}
+                            />
+                          </TableHeader>
+                          <TableBody>
+                            <PersonRows rows={group.rows} />
+                            <TotalRow totals={group.totals} />
+                          </TableBody>
+                        </Table>
                       </CardContent>
                     </Card>
-                  ))
-                ) : (
-                  <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-                    Tidak ada data yang cocok dengan pencarian.
-                  </div>
-                )}
+                  ))}
+                </div>
+                {filtered_grouped_outlets.length > PAGE_SIZE ? (
+                  <Pagination
+                    current_page={grouped_outlet_current_page}
+                    page_size={PAGE_SIZE}
+                    total_items={filtered_grouped_outlets.length}
+                    total_pages={grouped_outlet_total_pages}
+                    item_label="outlet"
+                    on_previous={previous_grouped_outlet_page}
+                    on_next={next_grouped_outlet_page}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                Tidak ada data yang cocok dengan pencarian.
               </div>
             )}
           </TabsContent>
@@ -768,7 +807,7 @@ export default function RingkasanTabContent({
                 <TableBody>
                   {filtered_sorted_outlets.length ? (
                     <>
-                      {filtered_sorted_outlets.map((outlet) => (
+                      {paginated_outlet_rows.map((outlet) => (
                         <TableRow key={outlet.uuid}>
                           <TableCell className="whitespace-normal">
                             <div className="font-medium">
@@ -814,6 +853,17 @@ export default function RingkasanTabContent({
                   )}
                 </TableBody>
               </Table>
+              {filtered_sorted_outlets.length > PAGE_SIZE ? (
+                <Pagination
+                  current_page={outlet_current_page}
+                  page_size={PAGE_SIZE}
+                  total_items={filtered_sorted_outlets.length}
+                  total_pages={outlet_total_pages}
+                  item_label="outlet"
+                  on_previous={previous_outlet_page}
+                  on_next={next_outlet_page}
+                />
+              ) : null}
           </TabsContent>
 
           {/* InsanKu: 1 baris per orang */}
@@ -832,7 +882,7 @@ export default function RingkasanTabContent({
                 <TableBody>
                   {filtered_sorted_insanku.length ? (
                     <>
-                      {filtered_sorted_insanku.map((row) => (
+                      {paginated_insanku_rows.map((row) => (
                         <TableRow key={row.uuid}>
                           <TableCell className="whitespace-normal">
                             <div className="font-medium">{row.name}</div>
@@ -909,6 +959,17 @@ export default function RingkasanTabContent({
                   )}
                 </TableBody>
               </Table>
+              {filtered_sorted_insanku.length > PAGE_SIZE ? (
+                <Pagination
+                  current_page={insanku_current_page}
+                  page_size={PAGE_SIZE}
+                  total_items={filtered_sorted_insanku.length}
+                  total_pages={insanku_total_pages}
+                  item_label="InsanKu"
+                  on_previous={previous_insanku_page}
+                  on_next={next_insanku_page}
+                />
+              ) : null}
           </TabsContent>
         </CardContent>
       </Card>
