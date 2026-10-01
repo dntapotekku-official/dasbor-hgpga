@@ -1,3 +1,8 @@
+import {
+  formatDecimal,
+  formatPercentage,
+} from "@/lib/number";
+
 export function formatCurrency(value) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -12,15 +17,7 @@ export function formatCurrencyNumber(value) {
   }).format(Number(value || 0));
 }
 
-export function formatDecimal(value, maximumFractionDigits = 2) {
-  return Number(value || 0).toLocaleString("id-ID", {
-    maximumFractionDigits,
-  });
-}
-
-export function formatPercentage(value, maximumFractionDigits = 2) {
-  return `${formatDecimal(value, maximumFractionDigits)}%`;
-}
+export { formatDecimal, formatPercentage };
 
 export function formatPeriodRangeLabel(label) {
   const normalizedLabel = String(label ?? "");

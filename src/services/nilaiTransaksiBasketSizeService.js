@@ -4,6 +4,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import ExcelJS from "exceljs";
 
+import {
+  comparePercentage,
+  comparePercentageRounded,
+  roundDecimal,
+} from "@/lib/number";
 import { outlet_category_slugs } from "@/lib/outletCategories";
 import { prisma } from "@/lib/prisma";
 
@@ -117,20 +122,6 @@ function resolve_export_period_range(label) {
   return separator_index < 0
     ? normalized_label
     : normalized_label.slice(separator_index + 1);
-}
-
-/** Menghitung persentase nilai terhadap pembagi dengan perlindungan pembagi nol. */
-function compare_percentage(value, divisor) {
-  if (!divisor) {
-    return 0;
-  }
-
-  return (value / divisor) * 100;
-}
-
-/** Membulatkan Basket Size mengikuti tampilan tabel. */
-function round_basket_size_value(value) {
-  return Math.round(to_number(value) * 10) / 10;
 }
 
 /** Mengonversi nilai menjadi angka valid dengan nilai bawaan nol. */
@@ -278,10 +269,10 @@ function build_nilai_transaksi_metrics({
   const nt_daily = to_number(daily);
   const nt_last_month = to_number(last_month);
   const nt_current_month = to_number(current_month);
-  const nt_growth = compare_percentage(nt_current_month, nt_last_month);
+  const nt_growth = comparePercentage(nt_current_month, nt_last_month);
   const nt_gap_growth = nt_growth - 100;
   const nt_target_compare = nt_has_target
-    ? compare_percentage(nt_current_month, nt_target)
+    ? comparePercentage(nt_current_month, nt_target)
     : null;
   const nt_gap_target = nt_target_compare === null ? null : nt_target_compare - 100;
 
@@ -318,12 +309,10 @@ function build_basket_size_metrics({
   const bs_target = bs_has_target ? to_number(target) : null;
   const bs_last_month = to_number(last_month);
   const bs_current_month = to_number(current_month);
-  const rounded_bs_last_month = round_basket_size_value(bs_last_month);
-  const rounded_bs_current_month = round_basket_size_value(bs_current_month);
-  const bs_growth = compare_percentage(rounded_bs_current_month, rounded_bs_last_month);
+  const bs_growth = comparePercentageRounded(bs_current_month, bs_last_month);
   const bs_gap_growth = bs_growth - 100;
   const bs_target_compare = bs_has_target
-    ? compare_percentage(bs_current_month, bs_target)
+    ? comparePercentage(bs_current_month, bs_target)
     : null;
   const bs_gap_target = bs_target_compare === null ? null : bs_target_compare - 100;
 
@@ -1090,7 +1079,7 @@ function write_export_metric_formulas(row, metrics) {
   );
   set_export_formula(
     row.getCell("O"),
-    `IF(ROUND(M${row_number},1)=0,0,ROUND(N${row_number},1)/ROUND(M${row_number},1)*100)`,
+    `IF(ROUND(M${row_number},2)=0,0,ROUND(N${row_number},2)/ROUND(M${row_number},2)*100)`,
     metrics.bs_growth,
   );
   set_export_formula(
@@ -3017,7 +3006,7 @@ function parse_target_value(target, config) {
   }
 
   const scaled_target = parsed_target * config.scale;
-  const stored_target = Math.round(scaled_target * 100) / 100;
+  const stored_target = roundDecimal(scaled_target);
 
   if (config.allow_decimal && Math.abs(scaled_target - stored_target) > 1e-9) {
     throw new Error("Nilai target maksimal memiliki 2 angka desimal.");
