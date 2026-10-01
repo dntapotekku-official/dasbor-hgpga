@@ -94,7 +94,7 @@ export default function ImportDataModal({
     : import_type === "nilai-transaksi"
       ? "File dipakai untuk kolom harian atau periode berjalan sesuai rentang tanggal yang dipilih."
       : import_type === "basket-size"
-      ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, dan Jumlah Sku."
+      ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, Jumlah Sku, dan Jumlah Transaksi sebagai kunjungan dilayani."
       : "Pastikan file memiliki sheet Laporan Penjualan dan Statistik Kunjungan.";
 
   return (

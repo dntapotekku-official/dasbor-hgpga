@@ -4,8 +4,11 @@ import { import_outlet_report } from "@/app/api/_helpers/import-outlet-report";
 import { requireMenuAccess } from "@/lib/auth";
 import {
   bulkDeleteBasketSizeDate,
+  bulkDeleteBasketSizeRange,
   bulkUpdateBasketSizeDate,
+  bulkUpdateBasketSizeRange,
   deleteBasketSizeDaily,
+  deleteBasketSizeRange,
   getNilaiTransaksiBasketSize,
   importBasketSize,
 } from "@/services/nilaiTransaksiBasketSizeService";
@@ -62,10 +65,17 @@ export async function PATCH(request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = await bulkUpdateBasketSizeDate({
-      source_date: body?.source_date,
-      target_date: body?.target_date,
-    });
+    const data = body?.action === "bulk_update_monthly"
+      ? await bulkUpdateBasketSizeRange({
+          source_from_date: body?.source_from_date,
+          source_to_date: body?.source_to_date,
+          target_from_date: body?.target_from_date,
+          target_to_date: body?.target_to_date,
+        })
+      : await bulkUpdateBasketSizeDate({
+          source_date: body?.source_date,
+          target_date: body?.target_date,
+        });
 
     return NextResponse.json(data);
   } catch (error) {
@@ -91,14 +101,25 @@ export async function DELETE(request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const data = body?.action === "bulk_delete_date"
-      ? await bulkDeleteBasketSizeDate({
+    const data = body?.action === "bulk_delete_monthly"
+      ? await bulkDeleteBasketSizeRange({
+          from_date: body?.from_date,
+          to_date: body?.to_date,
+        })
+      : body?.action === "bulk_delete_date"
+        ? await bulkDeleteBasketSizeDate({
           selected_date: body?.selected_date,
         })
-      : await deleteBasketSizeDaily({
-          uuid_outlet: body?.uuid_outlet,
-          selected_date: body?.selected_date,
-        });
+        : body?.from_date && body?.to_date
+          ? await deleteBasketSizeRange({
+              uuid_outlet: body?.uuid_outlet,
+              from_date: body?.from_date,
+              to_date: body?.to_date,
+            })
+          : await deleteBasketSizeDaily({
+              uuid_outlet: body?.uuid_outlet,
+              selected_date: body?.selected_date,
+            });
 
     return NextResponse.json(data);
   } catch (error) {

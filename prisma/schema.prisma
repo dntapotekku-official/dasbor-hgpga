@@ -31,6 +31,11 @@ enum AttributeType {
   checkbox
 }
 
+enum KunjunganMetric {
+  nilai_transaksi
+  basket_size
+}
+
 model tbl_outlet {
   id                 Int       @id @default(autoincrement())
   uuid               String    @unique @db.Char(36)
@@ -279,7 +284,8 @@ model tbl_jumlah_sku {
   uuid        String    @unique @db.Char(36)
   uuid_outlet String?   @db.Char(36)
   active_key  String?   @unique @db.VarChar(80)
-  date        DateTime
+  start_date  DateTime
+  end_date    DateTime
   value       Int       @default(0)
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
@@ -288,24 +294,27 @@ model tbl_jumlah_sku {
   outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_basket_size_outlet")
 
   @@index([uuid_outlet])
-  @@index([date])
+  @@index([start_date])
+  @@index([end_date])
 }
 
 model tbl_kunjungan {
-  id          Int       @id @default(autoincrement())
-  uuid        String    @unique @db.Char(36)
-  uuid_outlet String?   @db.Char(36)
-  active_key  String?   @unique @db.VarChar(80)
-  value       Int       @default(0)
+  id          Int             @id @default(autoincrement())
+  uuid        String          @unique @db.Char(36)
+  uuid_outlet String?         @db.Char(36)
+  active_key  String?         @unique @db.VarChar(80)
+  metric      KunjunganMetric @default(nilai_transaksi)
+  value       Int             @default(0)
   start_date  DateTime
   end_date    DateTime?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
   deleted_at  DateTime?
 
   outlet tbl_outlet? @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_dilayani_outlet")
 
   @@index([uuid_outlet])
+  @@index([metric])
   @@index([start_date])
   @@index([end_date])
 }

@@ -8,26 +8,21 @@ export async function getKepuasanInternalChart({ year } = {}) {
     throw new Error("Tahun tidak valid.");
   }
 
-  const [rows, total_insanku] = await Promise.all([
-    prisma.tbl_kepuasan_internal.findMany({
-      where: {
-        deleted_at: null,
-        ...(parsed_year
-          ? {
-              date: {
-                gte: new Date(Date.UTC(parsed_year, 0, 1)),
-                lt: new Date(Date.UTC(parsed_year + 1, 0, 1)),
-              },
-            }
-          : {}),
-      },
-      orderBy: { date: "asc" },
-      select: { date: true, puas: true, tidak_puas: true },
-    }),
-    prisma.tbl_insanku.count({
-      where: { deleted_at: null },
-    }),
-  ]);
+  const rows = await prisma.tbl_kepuasan_internal.findMany({
+    where: {
+      deleted_at: null,
+      ...(parsed_year
+        ? {
+            date: {
+              gte: new Date(Date.UTC(parsed_year, 0, 1)),
+              lt: new Date(Date.UTC(parsed_year + 1, 0, 1)),
+            },
+          }
+        : {}),
+    },
+    orderBy: { date: "asc" },
+    select: { date: true, puas: true, tidak_puas: true },
+  });
 
   if (!rows.length) {
     return {
@@ -53,12 +48,22 @@ export async function getKepuasanInternalChart({ year } = {}) {
         { key: "puas", label: "Puas" },
         { key: "tidak_puas", label: "Tidak Puas" },
       ],
-      chart_data: rows.map((item, index) => ({
-        month: labels[index],
-        puas: item.puas,
-        tidak_puas: item.tidak_puas,
-        total_insanku,
-      })),
+      chart_data: rows.map((item, index) => {
+        const puas = Number(item.puas || 0);
+        const tidak_puas = Number(item.tidak_puas || 0);
+        const total_responden = puas + tidak_puas;
+
+        return {
+          month: labels[index],
+          puas,
+          tidak_puas,
+          total_responden,
+          puas_percentage: total_responden ? (puas / total_responden) * 100 : 0,
+          tidak_puas_percentage: total_responden
+            ? (tidak_puas / total_responden) * 100
+            : 0,
+        };
+      }),
     },
   };
 }

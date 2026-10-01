@@ -202,16 +202,20 @@ export default function KepuasanInternalPage() {
           chartData={filtered_data?.chart_data ?? []}
           series={filtered_data?.series ?? chart_data?.series ?? []}
           xAxisInterval={0}
-          labelFormatter={({ value, payload }) => {
-            const total_responden =
-              (Number(payload?.puas) || 0) + (Number(payload?.tidak_puas) || 0);
+          labelFormatter={({ value, data_key, payload }) => {
             const current_value = Number(value) || 0;
+            const total_responden =
+              Number(payload?.total_responden) ||
+              (Number(payload?.puas) || 0) + (Number(payload?.tidak_puas) || 0);
 
             if (!total_responden) {
               return `${current_value.toLocaleString("id-ID")} (0%)`;
             }
 
-            const percentage = (current_value / total_responden) * 100;
+            const percentage_key = `${data_key}_percentage`;
+            const percentage = Number.isFinite(Number(payload?.[percentage_key]))
+              ? Number(payload?.[percentage_key])
+              : (current_value / total_responden) * 100;
             const formatted_percentage = percentage.toLocaleString("id-ID", {
               maximumFractionDigits: 1,
             });

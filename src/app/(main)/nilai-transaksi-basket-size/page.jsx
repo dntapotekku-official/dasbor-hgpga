@@ -99,6 +99,10 @@ function resolveMetricEndpoint(metric) {
   return metric === "basket-size" ? "/api/basket-size" : "/api/nilai-transaksi";
 }
 
+function get_month_start_value(date_value) {
+  return `${String(date_value ?? "").slice(0, 8)}01`;
+}
+
 async function fetchMetricData(date, metric) {
   const response = await fetch(
     `${resolveMetricEndpoint(metric)}?selected_date=${encodeURIComponent(date)}`,
@@ -649,7 +653,14 @@ export default function NilaiTransaksiPage() {
         body: JSON.stringify({
           action: "delete_daily",
           uuid_outlet: deletingItem.row.uuid,
-          selected_date: selectedDate,
+          ...(deletingItem.metric === "basket-size"
+            ? {
+                from_date: get_month_start_value(selectedDate),
+                to_date: selectedDate,
+              }
+            : {
+                selected_date: selectedDate,
+              }),
         }),
       });
       const payload = await response.json();
@@ -1114,12 +1125,12 @@ export default function NilaiTransaksiPage() {
                         setBulkAction({
                           action: "delete_date",
                           metric: activeMetric,
-                          period: activeMetric === "nilai-transaksi" ? "monthly" : "daily",
+                          period: activeMetric === "nilai-transaksi" || activeMetric === "basket-size" ? "monthly" : "daily",
                         })
                       }
                     >
                       <Trash2Icon className="size-4" />
-                      {activeMetric === "nilai-transaksi"
+                      {activeMetric === "nilai-transaksi" || activeMetric === "basket-size"
                         ? "Hapus Massal (Rentang)"
                         : "Hapus Massal (Harian)"}
                     </Button>

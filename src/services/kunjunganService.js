@@ -3,6 +3,8 @@ import ExcelJS from "exceljs";
 
 import { prisma } from "@/lib/prisma";
 
+const KUNJUNGAN_METRIC_NILAI_TRANSAKSI = "nilai_transaksi";
+
 function normalize_outlet_name(value) {
   return String(value ?? "")
     .trim()
@@ -40,16 +42,12 @@ function end_of_day(date) {
   return new Date(date.getTime() + 86_400_000 - 1);
 }
 
-function build_active_daily_key(uuid_outlet, date) {
-  return `${uuid_outlet}:${date.toISOString().slice(0, 10)}`;
-}
-
 function to_date_key(date) {
   return date.toISOString().slice(0, 10);
 }
 
 function build_active_bulanan_key(uuid_outlet, from_date, to_date) {
-  return `${uuid_outlet}:${to_date_key(from_date)}:${to_date_key(to_date)}`;
+  return `${KUNJUNGAN_METRIC_NILAI_TRANSAKSI}:${uuid_outlet}:${to_date_key(from_date)}:${to_date_key(to_date)}`;
 }
 
 function build_exact_range_where(start_date, end_date = start_date) {
@@ -76,6 +74,7 @@ async function clear_daily_visit_active_keys(
   await transaction.tbl_kunjungan.updateMany({
     where: {
       uuid_outlet,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
       ...(exclude_uuid
         ? {
             uuid: {
@@ -106,6 +105,7 @@ async function clear_bulanan_active_keys(
   await transaction.tbl_kunjungan.updateMany({
     where: {
       uuid_outlet,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
       ...(exclude_uuid
         ? {
             uuid: {
@@ -197,6 +197,7 @@ async function find_duplicate_kunjungan({
   return prisma.tbl_kunjungan.findFirst({
     where: {
       uuid_outlet,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
       deleted_at: null,
       ...(exclude_uuid
         ? {
@@ -222,6 +223,7 @@ async function find_duplicate_kunjungan_bulanan({
   return prisma.tbl_kunjungan.findFirst({
     where: {
       uuid_outlet,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
       deleted_at: null,
       ...(exclude_uuid
         ? {
@@ -317,6 +319,7 @@ export async function getKunjungan() {
     prisma.tbl_kunjungan.findMany({
       where: {
         deleted_at: null,
+        metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
         outlet: {
           deleted_at: null,
           excep: false,
@@ -399,6 +402,7 @@ export async function createKunjungan({
       data: {
         uuid: randomUUID(),
         uuid_outlet: resolved_uuid_outlet,
+        metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
         active_key: build_active_bulanan_key(resolved_uuid_outlet, parsed_date, parsed_date),
         start_date: parsed_date,
         end_date: parsed_date,
@@ -442,9 +446,10 @@ export async function updateKunjungan({
   const parsed_date = parse_visit_date(date);
   const parsed_value = parse_visit_value(value);
   const resolved_uuid_outlet = await assert_active_outlet(uuid_outlet);
-  const existing_kunjungan = await prisma.tbl_kunjungan.findUnique({
+  const existing_kunjungan = await prisma.tbl_kunjungan.findFirst({
     where: {
       uuid: normalized_uuid_kunjungan,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
     },
     select: {
       uuid: true,
@@ -479,6 +484,7 @@ export async function updateKunjungan({
       },
       data: {
         uuid_outlet: resolved_uuid_outlet,
+        metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
         active_key: build_active_bulanan_key(resolved_uuid_outlet, parsed_date, parsed_date),
         start_date: parsed_date,
         end_date: parsed_date,
@@ -514,9 +520,10 @@ export async function deleteKunjungan({ uuid_kunjungan }) {
     throw new Error("UUID kunjungan wajib diisi.");
   }
 
-  const existing_kunjungan = await prisma.tbl_kunjungan.findUnique({
+  const existing_kunjungan = await prisma.tbl_kunjungan.findFirst({
     where: {
       uuid: normalized_uuid_kunjungan,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
     },
     select: {
       uuid: true,
@@ -612,6 +619,7 @@ export async function importKunjungan({
       const existing_kunjungan = await transaction.tbl_kunjungan.findFirst({
         where: {
           uuid_outlet: row.uuid_outlet,
+          metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
           ...build_exact_range_where(parsed_date),
         },
         orderBy: {
@@ -635,6 +643,7 @@ export async function importKunjungan({
             },
             data: {
               active_key: build_active_bulanan_key(row.uuid_outlet, parsed_date, parsed_date),
+              metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
               value: row.value,
               deleted_at: null,
             },
@@ -656,6 +665,7 @@ export async function importKunjungan({
             data: {
               uuid: randomUUID(),
               uuid_outlet: row.uuid_outlet,
+              metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
               active_key: build_active_bulanan_key(row.uuid_outlet, parsed_date, parsed_date),
               value: row.value,
               start_date: parsed_date,
@@ -680,6 +690,7 @@ export async function importKunjungan({
         await transaction.tbl_kunjungan.updateMany({
           where: {
             uuid_outlet: row.uuid_outlet,
+            metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
             uuid: {
               not: existing_kunjungan.uuid,
             },
@@ -715,6 +726,7 @@ export async function getKunjunganBulanan() {
   const data_kunjungan_bulanan = await prisma.tbl_kunjungan.findMany({
     where: {
       deleted_at: null,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
       outlet: {
         deleted_at: null,
         excep: false,
@@ -783,6 +795,7 @@ export async function createKunjunganBulanan({
       data: {
         uuid: randomUUID(),
         uuid_outlet: resolved_uuid_outlet,
+        metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
         active_key: build_active_bulanan_key(
           resolved_uuid_outlet,
           parsed_from,
@@ -831,9 +844,10 @@ export async function updateKunjunganBulanan({
   const { parsed_from, parsed_to } = parse_range_dates(from_date, to_date);
   const parsed_value = parse_visit_value(value);
   const resolved_uuid_outlet = await assert_active_outlet(uuid_outlet);
-  const existing = await prisma.tbl_kunjungan.findUnique({
+  const existing = await prisma.tbl_kunjungan.findFirst({
     where: {
       uuid: normalized_uuid,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
     },
     select: {
       uuid: true,
@@ -870,6 +884,7 @@ export async function updateKunjunganBulanan({
       },
       data: {
         uuid_outlet: resolved_uuid_outlet,
+        metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
         active_key: build_active_bulanan_key(
           resolved_uuid_outlet,
           parsed_from,
@@ -909,9 +924,10 @@ export async function deleteKunjunganBulanan({ uuid_kunjungan_bulanan }) {
     throw new Error("UUID kunjungan bulanan wajib diisi.");
   }
 
-  const existing = await prisma.tbl_kunjungan.findUnique({
+  const existing = await prisma.tbl_kunjungan.findFirst({
     where: {
       uuid: normalized_uuid,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
     },
     select: {
       uuid: true,

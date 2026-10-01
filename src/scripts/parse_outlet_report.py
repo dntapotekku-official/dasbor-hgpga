@@ -24,6 +24,7 @@ target_col_4 = "kunjungan"
 target_sheet_4 = "Rekap Penjualan"
 target_col_5 = "Tanggal Penjualan"
 target_col_6 = "Jumlah Sku"
+target_col_7 = "Jumlah Transaksi"
 
 def readSharedString(archive):
     if "xl/sharedStrings.xml" not in archive.namelist():
@@ -121,6 +122,13 @@ def findFirstColumnIndex(header_row, target_columns):
             continue
 
     raise ValueError(f"Kolom wajib tidak ditemukan: {' atau '.join(target_columns)}")
+
+
+def findOptionalColumnIndex(header_row, target_column):
+    try:
+        return findColumnIndex(header_row, target_column)
+    except ValueError:
+        return None
 
 
 def normalizeDate(value):
@@ -242,13 +250,19 @@ def main(file_path, import_date=None):
         outlet_col_rekap = findColumnIndex(rekap_header, "Outlet")
         date_col_rekap = findColumnIndex(rekap_header, target_col_5)
         sku_qty_col_rekap = findColumnIndex(rekap_header, target_col_6)
+        transaction_qty_col_rekap = findOptionalColumnIndex(rekap_header, target_col_7)
         normalized_import_date = normalizeDate(import_date)
 
         for row in rekap_penjualan_rows[1:]:
             if not row:
                 continue
 
-            if len(row) <= max(outlet_col_rekap, date_col_rekap, sku_qty_col_rekap):
+            required_indexes = [outlet_col_rekap, date_col_rekap, sku_qty_col_rekap]
+
+            if transaction_qty_col_rekap is not None:
+                required_indexes.append(transaction_qty_col_rekap)
+
+            if len(row) <= max(required_indexes):
                 continue
 
             outlet_name = str(row[outlet_col_rekap]).strip()
@@ -273,9 +287,22 @@ def main(file_path, import_date=None):
                     "outlet_name": outlet_name,
                     "date": row_date,
                     "sku_qty": 0,
+                    "kunjungan": 0,
+                    "kunjungan_basket_size": 0,
+                    "served_basket_size": 0,
                 },
             )
             current_row["sku_qty"] = current_row.get("sku_qty", 0) + toNumber(row[sku_qty_col_rekap])
+
+            if transaction_qty_col_rekap is not None:
+                transaction_qty = toNumber(row[transaction_qty_col_rekap])
+                current_row["kunjungan"] = current_row.get("kunjungan", 0) + transaction_qty
+                current_row["kunjungan_basket_size"] = (
+                    current_row.get("kunjungan_basket_size", 0) + transaction_qty
+                )
+                current_row["served_basket_size"] = (
+                    current_row.get("served_basket_size", 0) + transaction_qty
+                )
 
     elif basket_size_rows:
         normalized_import_date = normalizeDate(import_date)
