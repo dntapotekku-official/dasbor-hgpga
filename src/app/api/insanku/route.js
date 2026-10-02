@@ -72,6 +72,8 @@ export const PATCH = async (request) => {
       is_skip_sync_insanku: body?.is_skip_sync_insanku,
       is_skip_sync_outlet_insanku: body?.is_skip_sync_outlet_insanku,
       is_exclude_penjualan_gofitku: body?.is_exclude_penjualan_gofitku,
+      gofitku_exclusion_start_date: body?.gofitku_exclusion_start_date,
+      gofitku_exclusion_end_date: body?.gofitku_exclusion_end_date,
     });
 
     return NextResponse.json(data);

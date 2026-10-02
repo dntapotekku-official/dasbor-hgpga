@@ -50,6 +50,32 @@ function get_month_start_from_key(month_key) {
   return new Date(Date.UTC(year, month - 1, 1));
 }
 
+function is_date_in_gofitku_exclusion(date_value, exclusion_periods = []) {
+  const date = new Date(date_value);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return exclusion_periods.some((period) => {
+    const start_date = new Date(period.start_date);
+    const end_date = period.end_date ? new Date(period.end_date) : null;
+
+    return start_date <= date && (!end_date || end_date >= date);
+  });
+}
+
+function filter_sales_by_gofitku_exclusion(sales_rows, relation_map) {
+  return sales_rows.filter((sale) => {
+    const relation = relation_map.get(sale.uuid_outlet_insanku);
+
+    return !is_date_in_gofitku_exclusion(
+      sale.date,
+      relation?.insanku?.gofitku_exclusion_periods,
+    );
+  });
+}
+
 function build_month_keys_desc({ start_month_key, end_month_key }) {
   const start_month = get_month_start_from_key(start_month_key);
   const end_month = get_month_start_from_key(end_month_key);
@@ -110,8 +136,8 @@ async function assert_outlet_access({ outlet_uuid, account_uuid, role }) {
   }
 }
 
-async function get_outlet_insanku_rows(accessible_outlet_uuids) {
-  return prisma.tbl_outlet_insanku.findMany({
+async function get_outlet_insanku_rows(accessible_outlet_uuids, active_date = null) {
+  const rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
       ...(accessible_outlet_uuids
@@ -127,7 +153,6 @@ async function get_outlet_insanku_rows(accessible_outlet_uuids) {
       },
       insanku: {
         deleted_at: null,
-        is_exclude_penjualan_gofitku: false,
       },
     },
     orderBy: [
@@ -157,10 +182,29 @@ async function get_outlet_insanku_rows(accessible_outlet_uuids) {
         select: {
           uuid: true,
           name: true,
+          gofitku_exclusion_periods: {
+            where: {
+              deleted_at: null,
+            },
+            select: {
+              start_date: true,
+              end_date: true,
+            },
+          },
         },
       },
     },
   });
+
+  return active_date
+    ? rows.filter(
+        (row) =>
+          !is_date_in_gofitku_exclusion(
+            active_date,
+            row.insanku?.gofitku_exclusion_periods,
+          ),
+      )
+    : rows;
 }
 
 function get_top_five_chart_rows(rows) {
@@ -213,6 +257,7 @@ export async function getPenjualanGofitku({
 
   const outlet_insanku_rows = await get_outlet_insanku_rows(
     accessible_outlet_uuids,
+    selected_date,
   );
   const accessible_insanku_uuids = Array.from(
     new Set(outlet_insanku_rows.map((item) => item.uuid_insanku).filter(Boolean)),
@@ -265,7 +310,7 @@ export async function getPenjualanGofitku({
   const sales_range_start =
     week_start < month_start ? week_start : month_start;
   const sales_range_end = week_end > month_end ? week_end : month_end;
-  const sales_rows = relation_uuid_set.length
+  const raw_sales_rows = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.findMany({
         where: {
           deleted_at: null,
@@ -295,6 +340,13 @@ export async function getPenjualanGofitku({
         },
       })
     : [];
+  const relation_map = new Map(
+    outlet_insanku_rows.map((item) => [item.uuid, item]),
+  );
+  const sales_rows = filter_sales_by_gofitku_exclusion(
+    raw_sales_rows,
+    relation_map,
+  );
   
   const today_sales = sales_rows.filter((item) => {
     const current_date = new Date(item.date);
@@ -365,8 +417,6 @@ export async function getPenjualanGofitku({
     groups_map.get(relation.uuid_outlet).rows.push(summary_map.get(relation.uuid));
   }
   
-  const relation_map = new Map(outlet_insanku_rows.map((item) => [item.uuid, item]));
-  
   for (const sale of today_sales) {
     const relation = relation_map.get(sale.uuid_outlet_insanku);
   
@@ -415,7 +465,7 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
     new Set(outlet_insanku_rows.map((item) => item.uuid_insanku).filter(Boolean)),
   );
   const relation_uuid_set = outlet_insanku_rows.map((item) => item.uuid);
-  const sales_rows = relation_uuid_set.length
+  const raw_sales_rows = relation_uuid_set.length
     ? await prisma.tbl_penjualan_gofitku.findMany({
         where: {
           deleted_at: null,
@@ -438,6 +488,13 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
         },
       })
     : [];
+  const relation_map = new Map(
+    outlet_insanku_rows.map((item) => [item.uuid, item]),
+  );
+  const sales_rows = filter_sales_by_gofitku_exclusion(
+    raw_sales_rows,
+    relation_map,
+  );
   const sorted_sale_month_keys = Array.from(
     new Set(sales_rows.map((sale) => get_month_key_from_date(sale.date))),
   ).sort();
@@ -469,9 +526,6 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
       end_date: true,
     },
   });
-  const relation_map = new Map(
-    outlet_insanku_rows.map((item) => [item.uuid, item]),
-  );
   const relations_by_outlet = new Map();
   const groups_map = new Map();
   
@@ -600,7 +654,6 @@ async function get_gofitku_chart_scope({
       },
       insanku: {
         deleted_at: null,
-        is_exclude_penjualan_gofitku: false,
       },
     },
     select: {
@@ -616,6 +669,19 @@ async function get_gofitku_chart_scope({
             },
           }
         : {}),
+      insanku: {
+        select: {
+          gofitku_exclusion_periods: {
+            where: {
+              deleted_at: null,
+            },
+            select: {
+              start_date: true,
+              end_date: true,
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -663,46 +729,80 @@ function build_top_product_chart(product_totals) {
   );
 }
 
-async function get_outlet_sales_totals(relation_uuid_set) {
+async function get_outlet_sales_totals(relation_uuid_set, relation_map) {
   if (!relation_uuid_set.length) return [];
 
-  return prisma.tbl_penjualan_gofitku.groupBy({
-    by: ["uuid_outlet_insanku"],
+  const rows = await prisma.tbl_penjualan_gofitku.findMany({
     where: {
       deleted_at: null,
       uuid_outlet_insanku: {
         in: relation_uuid_set,
       },
     },
-    _sum: {
+    select: {
+      uuid_outlet_insanku: true,
       qty: true,
+      date: true,
     },
   });
+  const filtered_rows = filter_sales_by_gofitku_exclusion(rows, relation_map);
+  const totals = new Map();
+
+  for (const row of filtered_rows) {
+    totals.set(
+      row.uuid_outlet_insanku,
+      Number(totals.get(row.uuid_outlet_insanku) || 0) + Number(row.qty || 0),
+    );
+  }
+
+  return Array.from(totals.entries()).map(([uuid_outlet_insanku, total]) => ({
+    uuid_outlet_insanku,
+    _sum: {
+      qty: total,
+    },
+  }));
 }
 
-async function get_product_sales_totals(relation_uuid_set) {
+async function get_product_sales_totals(relation_uuid_set, relation_map) {
   if (!relation_uuid_set.length) return [];
 
-  return prisma.tbl_penjualan_gofitku.groupBy({
-    by: ["name"],
+  const rows = await prisma.tbl_penjualan_gofitku.findMany({
     where: {
       deleted_at: null,
       uuid_outlet_insanku: {
         in: relation_uuid_set,
       },
     },
-    _sum: {
+    select: {
+      uuid_outlet_insanku: true,
+      name: true,
       qty: true,
+      date: true,
     },
   });
+  const filtered_rows = filter_sales_by_gofitku_exclusion(rows, relation_map);
+  const totals = new Map();
+
+  for (const row of filtered_rows) {
+    totals.set(row.name, Number(totals.get(row.name) || 0) + Number(row.qty || 0));
+  }
+
+  return Array.from(totals.entries()).map(([name, total]) => ({
+    name,
+    _sum: {
+      qty: total,
+    },
+  }));
 }
 
 export async function getPenjualanGofitkuTopOutletChart() {
   const outlet_insanku_rows = await get_gofitku_chart_scope({
     role: null,
   });
+  const relation_map = new Map(outlet_insanku_rows.map((item) => [item.uuid, item]));
   const totals = await get_outlet_sales_totals(
     outlet_insanku_rows.map((item) => item.uuid),
+    relation_map,
   );
 
   return {
@@ -714,8 +814,10 @@ export async function getPenjualanGofitkuTopProdukChart(context) {
   const outlet_insanku_rows = await get_gofitku_chart_scope(context, {
     include_outlet: false,
   });
+  const relation_map = new Map(outlet_insanku_rows.map((item) => [item.uuid, item]));
   const totals = await get_product_sales_totals(
     outlet_insanku_rows.map((item) => item.uuid),
+    relation_map,
   );
 
   return {
@@ -775,17 +877,33 @@ export async function createPenjualanGofitku({
       },
       insanku: {
         deleted_at: null,
-        is_exclude_penjualan_gofitku: false,
       },
     },
     select: {
       uuid: true,
       uuid_insanku: true,
+      insanku: {
+        select: {
+          name: true,
+          gofitku_exclusion_periods: {
+            where: {
+              deleted_at: null,
+            },
+            select: {
+              start_date: true,
+              end_date: true,
+            },
+          },
+        },
+      },
     },
   });
 
   const relation_map = new Map(
     outlet_insanku_rows.map((item) => [item.uuid_insanku, item.uuid]),
+  );
+  const relation_by_employee_uuid = new Map(
+    outlet_insanku_rows.map((item) => [item.uuid_insanku, item]),
   );
 
   if (relation_map.size !== employee_uuid_set.length) {
@@ -812,6 +930,19 @@ export async function createPenjualanGofitku({
   await prisma.$transaction(
     normalized_entries.map((entry) => {
       const { date } = get_date_boundaries(entry.date);
+      const relation = relation_by_employee_uuid.get(entry.employee_uuid);
+
+      if (
+        is_date_in_gofitku_exclusion(
+          date,
+          relation?.insanku?.gofitku_exclusion_periods,
+        )
+      ) {
+        throw new Error(
+          `${relation?.insanku?.name ?? "InsanKu"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
+        );
+      }
+
       const fallback_name = entry.produk_uuid
         ? product_map.get(entry.produk_uuid) ?? entry.product_name
         : entry.product_name;
@@ -889,6 +1020,8 @@ export async function updatePenjualanGofitku({
     throw new Error("Data penjualan tidak ditemukan.");
   }
 
+  const { date: parsed_date } = get_date_boundaries(date);
+
   const outlet_insanku = await prisma.tbl_outlet_insanku.findFirst({
     where: {
       uuid_outlet: trimmed_outlet_uuid,
@@ -900,16 +1033,40 @@ export async function updatePenjualanGofitku({
       },
       insanku: {
         deleted_at: null,
-        is_exclude_penjualan_gofitku: false,
       },
     },
     select: {
       uuid: true,
+      insanku: {
+        select: {
+          name: true,
+          gofitku_exclusion_periods: {
+            where: {
+              deleted_at: null,
+            },
+            select: {
+              start_date: true,
+              end_date: true,
+            },
+          },
+        },
+      },
     },
   });
 
   if (!outlet_insanku) {
     throw new Error("InsanKu tidak terhubung dengan outlet yang dipilih.");
+  }
+
+  if (
+    is_date_in_gofitku_exclusion(
+      parsed_date,
+      outlet_insanku.insanku?.gofitku_exclusion_periods,
+    )
+  ) {
+    throw new Error(
+      `${outlet_insanku.insanku?.name ?? "InsanKu"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
+    );
   }
 
   const product_row = trimmed_produk_uuid
@@ -934,8 +1091,6 @@ export async function updatePenjualanGofitku({
   if (!fallback_name) {
     throw new Error("Nama produk wajib tersedia.");
   }
-
-  const { date: parsed_date } = get_date_boundaries(date);
 
   await prisma.tbl_penjualan_gofitku.update({
     where: {

@@ -50,6 +50,8 @@ function build_insanku_sheet_key(item) {
     Boolean(item.is_skip_sync_insanku),
     Boolean(item.is_skip_sync_outlet_insanku),
     Boolean(item.is_exclude_penjualan_gofitku),
+    item.gofitku_exclusion_start_date ?? "",
+    item.gofitku_exclusion_end_date ?? "",
   ].join(":");
 }
 
@@ -245,6 +247,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
         is_skip_sync_outlet_insanku: next_insanku.is_skip_sync_outlet_insanku,
         is_exclude_penjualan_gofitku: next_insanku.is_exclude_penjualan_gofitku,
+        gofitku_exclusion_start_date: next_insanku.gofitku_exclusion_start_date,
+        gofitku_exclusion_end_date: next_insanku.gofitku_exclusion_end_date,
       }),
     });
     const payload = await response.json();
@@ -535,7 +539,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                     ? {}
                     : {
                         is_skip_sync_outlet_insanku: false,
-                        is_exclude_penjualan_gofitku: false,
                       },
               },
               ...(!is_non_slip_gaji
@@ -555,12 +558,34 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                       key: "is_exclude_penjualan_gofitku",
                       label: "Kecualikan dalam penjualan GoFitKu",
                       type: "checkbox",
-                      disabled: (draft) =>
-                        !has_selected_outlet_placement(draft.outlet_placements),
+                      on_change: (draft, checked) =>
+                        checked
+                          ? {}
+                          : {
+                              gofitku_exclusion_start_date: "",
+                              gofitku_exclusion_end_date: "",
+                            },
                       helper: (draft) =>
-                        !has_selected_outlet_placement(draft.outlet_placements)
-                          ? "Checkbox ini aktif setelah InsanKu memiliki minimal satu outlet."
-                          : "InsanKu ini tidak akan tampil atau dihitung pada Penjualan GoFitKu.",
+                        draft.is_exclude_penjualan_gofitku
+                          ? "Isi periode agar InsanKu dikecualikan hanya pada rentang tanggal tersebut."
+                          : "Aktifkan jika InsanKu tidak ikut dihitung pada periode tertentu.",
+                    },
+                    {
+                      key: "gofitku_exclusion_start_date",
+                      label: "Mulai dikecualikan GoFitKu",
+                      type: "date",
+                      disabled: (draft) => !draft.is_exclude_penjualan_gofitku,
+                      helper: (draft) =>
+                        draft.is_exclude_penjualan_gofitku
+                          ? "Wajib diisi saat pengecualian GoFitKu aktif."
+                          : undefined,
+                    },
+                    {
+                      key: "gofitku_exclusion_end_date",
+                      label: "Selesai dikecualikan GoFitKu",
+                      type: "date",
+                      disabled: (draft) => !draft.is_exclude_penjualan_gofitku,
+                      helper: "Kosongkan jika pengecualian berlaku seterusnya.",
                     },
                   ]
                 : []),

@@ -60,27 +60,27 @@ model tbl_outlet {
 }
 
 model tbl_insanku {
-  id                           Int       @id @default(autoincrement())
-  uuid                         String    @unique @db.Char(36)
-  nik                          String?   @db.VarChar(20)
-  name                         String    @db.VarChar(100)
-  username                     String    @unique @db.VarChar(100)
-  password                     String?   @db.Text
-  is_username_change           Boolean   @default(false)
-  is_password_change           Boolean   @default(false)
-  avatar                       String?   @db.Text
-  is_slip_gaji_account         Boolean   @default(false)
-  is_skip_sync                 Boolean   @default(false)
-  is_exclude_penjualan_gofitku Boolean   @default(false)
-  role                         Role
-  created_at                   DateTime  @default(now())
-  updated_at                   DateTime  @updatedAt
-  deleted_at                   DateTime?
+  id                   Int       @id @default(autoincrement())
+  uuid                 String    @unique @db.Char(36)
+  nik                  String?   @db.VarChar(20)
+  name                 String    @db.VarChar(100)
+  username             String    @unique @db.VarChar(100)
+  password             String?   @db.Text
+  is_username_change   Boolean   @default(false)
+  is_password_change   Boolean   @default(false)
+  avatar               String?   @db.Text
+  is_slip_gaji_account Boolean   @default(false)
+  is_skip_sync         Boolean   @default(false)
+  role                 Role
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  deleted_at           DateTime?
 
-  outlet_insanku  tbl_outlet_insanku[]
-  atribut_insanku tbl_atribut_insanku[]
-  nilai_magang    tbl_nilai_magang[]
-  target_gofitku  tbl_target_gofitku[]
+  outlet_insanku            tbl_outlet_insanku[]
+  atribut_insanku           tbl_atribut_insanku[]
+  nilai_magang              tbl_nilai_magang[]
+  target_gofitku            tbl_target_gofitku[]
+  gofitku_exclusion_periods tbl_insanku_gofitku_exclusion[]
 
   @@unique([nik, is_slip_gaji_account])
 }
@@ -216,6 +216,22 @@ model tbl_target_gofitku {
 
   @@index([uuid_insanku])
   @@index([uuid_insanku, start_date, end_date, deleted_at], map: "idx_target_gofitku_insanku_period")
+}
+
+model tbl_insanku_gofitku_exclusion {
+  id           Int       @id @default(autoincrement())
+  uuid         String    @unique @db.Char(36)
+  uuid_insanku String    @db.Char(36)
+  start_date   DateTime
+  end_date     DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+
+  insanku tbl_insanku @relation(fields: [uuid_insanku], references: [uuid], onDelete: Cascade, map: "fk_gofitku_exclusion_insanku")
+
+  @@index([uuid_insanku])
+  @@index([uuid_insanku, start_date, end_date, deleted_at], map: "idx_gofitku_exclusion_insanku_period")
 }
 
 model tbl_target_nilai_transaksi {

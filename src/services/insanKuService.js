@@ -7,6 +7,30 @@ import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelation
 
 const DEFAULT_INSANKU_PASSWORD = "Apotekku";
 
+function parseOptionalDate(value, field_label) {
+  const normalized_value = String(value ?? "").trim();
+
+  if (!normalized_value) {
+    return null;
+  }
+
+  const date = new Date(`${normalized_value}T00:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${field_label} tidak valid.`);
+  }
+
+  return date;
+}
+
+function formatDateInput(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toISOString().slice(0, 10);
+}
+
 function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
   const has_outlet_placements_input = Array.isArray(outlet_placements);
   const normalized_placements = has_outlet_placements_input
@@ -231,7 +255,20 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       username: true,
       is_slip_gaji_account: true,
       is_skip_sync: true,
-      is_exclude_penjualan_gofitku: true,
+      gofitku_exclusion_periods: {
+        where: {
+          deleted_at: null,
+        },
+        orderBy: {
+          start_date: "desc",
+        },
+        take: 1,
+        select: {
+          uuid: true,
+          start_date: true,
+          end_date: true,
+        },
+      },
       outlet_insanku: {
         where: {
           deleted_at: null,
@@ -256,34 +293,44 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
     },
   });
 
-  return data_insanku.map((item) => ({
-    uuid: item.uuid,
-    nik: item.nik,
-    name: item.name,
-    username: item.username,
-    is_slip_gaji_account: item.is_slip_gaji_account,
-    is_skip_sync_insanku: Boolean(item.is_skip_sync),
-    is_skip_sync_outlet_insanku: item.outlet_insanku.some(
-      (outlet_insanku) => outlet_insanku.is_skip_sync,
-    ),
-    is_exclude_penjualan_gofitku: Boolean(item.is_exclude_penjualan_gofitku),
-    outlet_uuids:
-      item.outlet_insanku.length > 0
-        ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.uuid)
-        : [],
-    outlet_names:
-      item.outlet_insanku.length > 0
-        ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.name)
-        : [],
-    outlet_placements:
-      item.outlet_insanku.length > 0
-        ? item.outlet_insanku.map((outlet_insanku) => ({
-            uuid: outlet_insanku.uuid,
-            outlet_uuid: outlet_insanku.outlet.uuid,
-            outlet_name: outlet_insanku.outlet.name,
-          }))
-        : [],
-  }));
+  return data_insanku.map((item) => {
+    const active_gofitku_exclusion = item.gofitku_exclusion_periods[0] ?? null;
+
+    return {
+      uuid: item.uuid,
+      nik: item.nik,
+      name: item.name,
+      username: item.username,
+      is_slip_gaji_account: item.is_slip_gaji_account,
+      is_skip_sync_insanku: Boolean(item.is_skip_sync),
+      is_skip_sync_outlet_insanku: item.outlet_insanku.some(
+        (outlet_insanku) => outlet_insanku.is_skip_sync,
+      ),
+      is_exclude_penjualan_gofitku: Boolean(active_gofitku_exclusion),
+      gofitku_exclusion_start_date: formatDateInput(
+        active_gofitku_exclusion?.start_date,
+      ),
+      gofitku_exclusion_end_date: formatDateInput(
+        active_gofitku_exclusion?.end_date,
+      ),
+      outlet_uuids:
+        item.outlet_insanku.length > 0
+          ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.uuid)
+          : [],
+      outlet_names:
+        item.outlet_insanku.length > 0
+          ? item.outlet_insanku.map((outlet_insanku) => outlet_insanku.outlet.name)
+          : [],
+      outlet_placements:
+        item.outlet_insanku.length > 0
+          ? item.outlet_insanku.map((outlet_insanku) => ({
+              uuid: outlet_insanku.uuid,
+              outlet_uuid: outlet_insanku.outlet.uuid,
+              outlet_name: outlet_insanku.outlet.name,
+            }))
+          : [],
+    };
+  });
 }
 
 export async function syncInsanKu() {
@@ -490,6 +537,8 @@ export async function updateInsanKu({
   is_skip_sync_insanku,
   is_skip_sync_outlet_insanku,
   is_exclude_penjualan_gofitku,
+  gofitku_exclusion_start_date,
+  gofitku_exclusion_end_date,
   expected_is_slip_gaji_account = true,
 }) {
   if (!uuid_insanku) {
@@ -526,6 +575,28 @@ export async function updateInsanKu({
 
   const should_skip_sync_outlet_insanku =
     Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length > 0;
+  const should_exclude_penjualan_gofitku =
+    Boolean(is_exclude_penjualan_gofitku);
+  const exclusion_start_date = parseOptionalDate(
+    gofitku_exclusion_start_date,
+    "Tanggal mulai pengecualian GoFitKu",
+  );
+  const exclusion_end_date = parseOptionalDate(
+    gofitku_exclusion_end_date,
+    "Tanggal selesai pengecualian GoFitKu",
+  );
+
+  if (should_exclude_penjualan_gofitku && !exclusion_start_date) {
+    throw new Error("Tanggal mulai pengecualian GoFitKu wajib diisi.");
+  }
+
+  if (
+    should_exclude_penjualan_gofitku &&
+    exclusion_end_date &&
+    exclusion_end_date < exclusion_start_date
+  ) {
+    throw new Error("Tanggal selesai pengecualian GoFitKu tidak boleh sebelum tanggal mulai.");
+  }
 
   const existing_insanku = await prisma.tbl_insanku.findUnique({
     where: { uuid: uuid_insanku },
@@ -564,9 +635,29 @@ export async function updateInsanKu({
             }
           : {}),
         is_skip_sync: Boolean(is_skip_sync_insanku),
-        is_exclude_penjualan_gofitku: Boolean(is_exclude_penjualan_gofitku),
       },
     });
+
+    await tx.tbl_insanku_gofitku_exclusion.updateMany({
+      where: {
+        uuid_insanku,
+        deleted_at: null,
+      },
+      data: {
+        deleted_at: new Date(),
+      },
+    });
+
+    if (should_exclude_penjualan_gofitku) {
+      await tx.tbl_insanku_gofitku_exclusion.create({
+        data: {
+          uuid: randomUUID(),
+          uuid_insanku,
+          start_date: exclusion_start_date,
+          end_date: exclusion_end_date,
+        },
+      });
+    }
 
     const current_relations = await tx.tbl_outlet_insanku.findMany({
       where: {
