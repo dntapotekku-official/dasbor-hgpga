@@ -6,7 +6,6 @@ import ExcelJS from "exceljs";
 
 import {
   comparePercentage,
-  comparePercentageRounded,
 } from "@/lib/number";
 import { outlet_category_slugs } from "@/lib/outletCategories";
 import { prisma } from "@/lib/prisma";
@@ -308,7 +307,7 @@ function build_basket_size_metrics({
   const bs_target = bs_has_target ? to_number(target) : null;
   const bs_last_month = to_number(last_month);
   const bs_current_month = to_number(current_month);
-  const bs_growth = comparePercentageRounded(bs_current_month, bs_last_month);
+  const bs_growth = comparePercentage(bs_current_month, bs_last_month);
   const bs_gap_growth = bs_growth - 100;
   const bs_target_compare = bs_has_target
     ? comparePercentage(bs_current_month, bs_target)

@@ -39,7 +39,6 @@ import {
 } from "@/lib/nilaiTransaksiBasketSizeTable";
 import {
   comparePercentage,
-  comparePercentageRounded,
 } from "@/lib/number";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { hasRoleAccess } from "@/lib/role";
@@ -246,7 +245,7 @@ function summarizeVisibleRows(rows) {
   const nt_target = summary.nt_target / row_count;
   const bs_target = summary.bs_target / row_count;
   const nt_growth = comparePercentage(nt_current_month, nt_last_month);
-  const bs_growth = comparePercentageRounded(bs_current_month, bs_last_month);
+  const bs_growth = comparePercentage(bs_current_month, bs_last_month);
   const nt_target_compare = comparePercentage(nt_current_month, nt_target);
   const bs_target_compare = comparePercentage(bs_current_month, bs_target);
 
