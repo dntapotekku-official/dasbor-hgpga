@@ -89,6 +89,7 @@ const default_available_dates = {
 };
 
 const BS_DECIMAL_PLACES = 3;
+const BS_PERCENT_DECIMAL_PLACES = 3;
 
 function get_current_date_value() {
   const date_parts = new Intl.DateTimeFormat("en-US", {
@@ -138,7 +139,12 @@ function gapValueClassName(value) {
   return "text-foreground";
 }
 
-function GapMetricValue({ value, is_loading = false, large = false }) {
+function GapMetricValue({
+  value,
+  is_loading = false,
+  large = false,
+  decimal_places = 2,
+}) {
   const DirectionIcon = value > 0
     ? ArrowUpIcon
     : value < 0
@@ -154,7 +160,7 @@ function GapMetricValue({ value, is_loading = false, large = false }) {
       ) : (
         <>
           <DirectionIcon className={large ? "size-7" : "size-4"} />
-          {formatDecimal(value)}%
+          {formatDecimal(value, decimal_places)}%
         </>
       )}
     </span>
@@ -952,6 +958,7 @@ export default function NilaiTransaksiPage() {
                           value={overallMetrics.bs_gap_growth}
                           is_loading={isLoading}
                           large
+                          decimal_places={BS_PERCENT_DECIMAL_PLACES}
                         />
                       </p>
                     </div>
@@ -962,6 +969,7 @@ export default function NilaiTransaksiPage() {
                           value={overallMetrics.bs_gap_target}
                           is_loading={isLoading}
                           large
+                          decimal_places={BS_PERCENT_DECIMAL_PLACES}
                         />
                       </p>
                     </div>
@@ -989,11 +997,11 @@ export default function NilaiTransaksiPage() {
                     />
                     <SummaryMetric
                       label="Growth"
-                      value={`${formatDecimal(overallMetrics.bs_growth)}%`}
+                      value={`${formatDecimal(overallMetrics.bs_growth, BS_PERCENT_DECIMAL_PLACES)}%`}
                     />
                     <SummaryMetric
                       label="% Dibanding Target"
-                      value={`${formatDecimal(overallMetrics.bs_target_compare)}%`}
+                      value={`${formatDecimal(overallMetrics.bs_target_compare, BS_PERCENT_DECIMAL_PLACES)}%`}
                     />
                   </div>
                   <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950/30">

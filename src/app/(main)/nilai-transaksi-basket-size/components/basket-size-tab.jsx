@@ -16,6 +16,7 @@ import { PencilIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const BS_DECIMAL_PLACES = 3;
+const BS_PERCENT_DECIMAL_PLACES = 3;
 
 function sticky_identity_class(column) {
   return column === "number"
@@ -147,15 +148,17 @@ export default function BasketSizeTab({
             <TableCell className="text-center">
               {formatDecimal(row.bs_last_month, BS_DECIMAL_PLACES)}
             </TableCell>
-            <TableCell className="text-center">{formatPercentage(row.bs_growth)}</TableCell>
+            <TableCell className="text-center">
+              {formatPercentage(row.bs_growth, BS_PERCENT_DECIMAL_PLACES)}
+            </TableCell>
             <TableCell className={`text-center ${gapClassName(row.bs_gap_growth)}`}>
-              {formatPercentage(row.bs_gap_growth)}
+              {formatPercentage(row.bs_gap_growth, BS_PERCENT_DECIMAL_PLACES)}
             </TableCell>
             <TableCell className="text-center">
-              {formatPercentage(row.bs_target_compare)}
+              {formatPercentage(row.bs_target_compare, BS_PERCENT_DECIMAL_PLACES)}
             </TableCell>
             <TableCell className={`text-center ${gapClassName(row.bs_gap_target)}`}>
-              {formatPercentage(row.bs_gap_target)}
+              {formatPercentage(row.bs_gap_target, BS_PERCENT_DECIMAL_PLACES)}
             </TableCell>
             {can_manage ? (
               <TableCell>
@@ -207,20 +210,20 @@ export default function BasketSizeTab({
             {formatDecimal(category_metrics.bs_last_month, BS_DECIMAL_PLACES)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatPercentage(category_metrics.bs_growth)}
+            {formatPercentage(category_metrics.bs_growth, BS_PERCENT_DECIMAL_PLACES)}
           </TableCell>
           <TableCell
             className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.bs_gap_growth)}`}
           >
-            {formatPercentage(category_metrics.bs_gap_growth)}
+            {formatPercentage(category_metrics.bs_gap_growth, BS_PERCENT_DECIMAL_PLACES)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatPercentage(category_metrics.bs_target_compare)}
+            {formatPercentage(category_metrics.bs_target_compare, BS_PERCENT_DECIMAL_PLACES)}
           </TableCell>
           <TableCell
             className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.bs_gap_target)}`}
           >
-            {formatPercentage(category_metrics.bs_gap_target)}
+            {formatPercentage(category_metrics.bs_gap_target, BS_PERCENT_DECIMAL_PLACES)}
           </TableCell>
           {can_manage ? (
             <TableCell className="sticky bottom-0 z-30 bg-muted" />

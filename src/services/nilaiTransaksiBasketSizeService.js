@@ -1404,10 +1404,12 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   sheet.getColumn("E").numFmt = '"Rp"* #,##0';
   sheet.getColumn("F").numFmt = '"Rp"* #,##0';
   sheet.getColumn("G").numFmt = '"Rp"* #,##0';
-  ["H", "I", "J", "K", "O", "P", "Q", "R"]
-    .forEach((column) => {
-      sheet.getColumn(column).numFmt = '0.00"%"';
-    });
+  ["H", "I", "J", "K"].forEach((column) => {
+    sheet.getColumn(column).numFmt = '0.00"%"';
+  });
+  ["O", "P", "Q", "R"].forEach((column) => {
+    sheet.getColumn(column).numFmt = '0.000"%"';
+  });
   ["L", "M", "N"].forEach((column) => {
     sheet.getColumn(column).numFmt = "0.000";
   });
