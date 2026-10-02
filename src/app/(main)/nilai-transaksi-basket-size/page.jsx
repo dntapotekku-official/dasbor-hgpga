@@ -88,6 +88,8 @@ const default_available_dates = {
   basket_size: [],
 };
 
+const BS_DECIMAL_PLACES = 3;
+
 function get_current_date_value() {
   const date_parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Makassar",
@@ -967,7 +969,7 @@ export default function NilaiTransaksiPage() {
                   <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
                     <SummaryMetric
                       label="Target"
-                      value={formatDecimal(overallMetrics.bs_target)}
+                      value={formatDecimal(overallMetrics.bs_target, BS_DECIMAL_PLACES)}
                     />
                     <SummaryMetric
                       label="Jumlah SKU"
@@ -979,11 +981,11 @@ export default function NilaiTransaksiPage() {
                     />
                     <SummaryMetric
                       label={tableLabels.previous_period_label || "Periode sebelumnya"}
-                      value={formatDecimal(overallMetrics.bs_last_month)}
+                      value={formatDecimal(overallMetrics.bs_last_month, BS_DECIMAL_PLACES)}
                     />
                     <SummaryMetric
                       label={tableLabels.selected_period_label || "Periode berjalan"}
-                      value={formatDecimal(overallMetrics.bs_current_month)}
+                      value={formatDecimal(overallMetrics.bs_current_month, BS_DECIMAL_PLACES)}
                     />
                     <SummaryMetric
                       label="Growth"
@@ -1012,7 +1014,7 @@ export default function NilaiTransaksiPage() {
                               {item.outlet_name}
                             </span>
                             <span className="shrink-0 font-semibold text-blue-950 dark:text-blue-100">
-                              {formatDecimal(item.value)}
+                              {formatDecimal(item.value, BS_DECIMAL_PLACES)}
                             </span>
                           </div>
                         </div>

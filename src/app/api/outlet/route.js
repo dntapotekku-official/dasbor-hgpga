@@ -21,7 +21,6 @@ export const GET = async (request) => {
             "penjualan-gofitku",
             "nilai-transaksi-basket-size",
             "pengaturan-pengguna",
-            "pengaturan-kunjungan",
             "pengaturan-target",
           ],
           ["member"],

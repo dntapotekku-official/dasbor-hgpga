@@ -33,7 +33,6 @@ import {
   Settings2Icon,
   StoreIcon,
   UserRoundCogIcon,
-  UsersRoundIcon,
 } from "lucide-react"
 
 const data = {
@@ -120,13 +119,6 @@ const data = {
           icon: <StoreIcon />,
           roles: ["admin"],
           menuKey: "pengaturan-outlet",
-        },
-        {
-          title: "Kunjungan",
-          url: "/pengaturan/kunjungan",
-          icon: <UsersRoundIcon />,
-          roles: ["admin"],
-          menuKey: "pengaturan-kunjungan",
         },
         {
           title: "Produk Gofitku",

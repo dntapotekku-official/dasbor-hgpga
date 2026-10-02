@@ -1078,7 +1078,7 @@ function write_export_metric_formulas(row, metrics) {
   );
   set_export_formula(
     row.getCell("O"),
-    `IF(ROUND(M${row_number},2)=0,0,ROUND(N${row_number},2)/ROUND(M${row_number},2)*100)`,
+    `IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)`,
     metrics.bs_growth,
   );
   set_export_formula(
@@ -1408,12 +1408,9 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
     .forEach((column) => {
       sheet.getColumn(column).numFmt = '0.00"%"';
     });
-  ["H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"]
-    .forEach((column) => {
-      if (!["H", "I", "J", "K", "O", "P", "Q", "R"].includes(column)) {
-        sheet.getColumn(column).numFmt = "0.00";
-      }
-    });
+  ["L", "M", "N"].forEach((column) => {
+    sheet.getColumn(column).numFmt = "0.000";
+  });
   sheet.pageSetup.printArea = `A1:R${sheet.rowCount}`;
 
   const buffer = await workbook.xlsx.writeBuffer();

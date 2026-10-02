@@ -105,6 +105,18 @@ function format_integer_target(value) {
   return Number(value ?? 0).toLocaleString("id-ID");
 }
 
+function format_raw_number(value) {
+  const parsed_value = Number(value ?? 0);
+
+  if (!Number.isFinite(parsed_value)) {
+    return "0";
+  }
+
+  return parsed_value.toLocaleString("id-ID", {
+    maximumFractionDigits: 20,
+  });
+}
+
 export default function TargetManagementCard({
   card_title,
   endpoint,
@@ -567,7 +579,7 @@ export default function TargetManagementCard({
     {
       key: "target",
       label: "Target",
-      type: target_value_format === "currency" ? "currency" : "number",
+      type: "number",
       placeholder: target_placeholder,
       input_type: "number",
       step: target_value_format === "integer" ? "1" : "any",
@@ -580,11 +592,8 @@ export default function TargetManagementCard({
       return <CurrencyValue value={value} align="left" />;
     }
 
-    if (target_value_format === "decimal") {
-      return Number(value ?? 0).toLocaleString("id-ID", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+    if (target_value_format === "decimal" || target_value_format === "raw") {
+      return format_raw_number(value);
     }
 
     return format_integer_target(value);

@@ -15,6 +15,8 @@ import { PencilIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+const BS_DECIMAL_PLACES = 3;
+
 function sticky_identity_class(column) {
   return column === "number"
     ? "sticky left-0 z-20 w-24 min-w-24 max-w-24 bg-background"
@@ -124,7 +126,9 @@ export default function BasketSizeTab({
             <TableCell className={`${sticky_identity_class("outlet")} font-medium`}>
               {row.outlet_name}
             </TableCell>
-            <TableCell className="text-center">{formatDecimal(row.bs_target)}</TableCell>
+            <TableCell className="text-center">
+              {formatDecimal(row.bs_target, BS_DECIMAL_PLACES)}
+            </TableCell>
             <TableCell className="text-center">
               {formatDecimal(row.bs_current_month_sku_qty, 0)}
             </TableCell>
@@ -138,10 +142,10 @@ export default function BasketSizeTab({
                   : "text-center"
               }
             >
-              {formatDecimal(row.bs_current_month)}
+              {formatDecimal(row.bs_current_month, BS_DECIMAL_PLACES)}
             </TableCell>
             <TableCell className="text-center">
-              {formatDecimal(row.bs_last_month)}
+              {formatDecimal(row.bs_last_month, BS_DECIMAL_PLACES)}
             </TableCell>
             <TableCell className="text-center">{formatPercentage(row.bs_growth)}</TableCell>
             <TableCell className={`text-center ${gapClassName(row.bs_gap_growth)}`}>
@@ -188,7 +192,7 @@ export default function BasketSizeTab({
             {rows.length} outlet
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.bs_target)}
+            {formatDecimal(category_metrics.bs_target, BS_DECIMAL_PLACES)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatDecimal(category_metrics.bs_current_month_sku_qty, 0)}
@@ -197,10 +201,10 @@ export default function BasketSizeTab({
             {formatDecimal(category_metrics.bs_current_month_kunjungan, 0)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.bs_current_month)}
+            {formatDecimal(category_metrics.bs_current_month, BS_DECIMAL_PLACES)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
-            {formatDecimal(category_metrics.bs_last_month)}
+            {formatDecimal(category_metrics.bs_last_month, BS_DECIMAL_PLACES)}
           </TableCell>
           <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
             {formatPercentage(category_metrics.bs_growth)}

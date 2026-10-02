@@ -29,9 +29,9 @@ const target_config = {
   nilai_transaksi: {
     label: "Nilai Transaksi",
     description: "Kelola target global Nilai Transaksi berdasarkan rentang tanggal.",
-    value_format: "currency",
-    placeholder: "Contoh: 105.000",
-    helper: "Nilai rupiah otomatis menggunakan pemisah ribuan.",
+    value_format: "raw",
+    placeholder: "Contoh: 105000.125",
+    helper: "Gunakan angka asli sesuai kebutuhan.",
   },
   basket_size: {
     label: "Basket Size",
@@ -237,10 +237,13 @@ function GlobalTargetTable({ metric_key }) {
       return <CurrencyValue value={value} align="left" />;
     }
 
-    return Number(value ?? 0).toLocaleString("id-ID", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    const parsed_value = Number(value ?? 0);
+
+    return Number.isFinite(parsed_value)
+      ? parsed_value.toLocaleString("id-ID", {
+          maximumFractionDigits: 20,
+        })
+      : "0";
   };
 
   return (

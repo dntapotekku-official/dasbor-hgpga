@@ -39,11 +39,6 @@ export const menu_access_options = [
     path: "/pengaturan/outlet",
   },
   {
-    value: "pengaturan-kunjungan",
-    label: "Pengaturan Kunjungan",
-    path: "/pengaturan/kunjungan",
-  },
-  {
     value: "pengaturan-produk-gofitku",
     label: "Pengaturan Produk GoFitKu",
     path: "/pengaturan/produk-gofitku",

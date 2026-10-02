@@ -10,7 +10,7 @@ import {
 
 export async function GET() {
   try {
-    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
+    const unauthorized_response = await requireMenuAccess("nilai-transaksi-basket-size");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -35,7 +35,7 @@ export async function GET() {
 
 export async function PUT(request) {
   try {
-    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
+    const unauthorized_response = await requireMenuAccess("nilai-transaksi-basket-size");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -63,7 +63,7 @@ export async function PUT(request) {
 
 export async function PATCH(request) {
   try {
-    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
+    const unauthorized_response = await requireMenuAccess("nilai-transaksi-basket-size");
 
     if (unauthorized_response) {
       return unauthorized_response;
@@ -92,7 +92,7 @@ export async function PATCH(request) {
 
 export async function DELETE(request) {
   try {
-    const unauthorized_response = await requireMenuAccess("pengaturan-kunjungan");
+    const unauthorized_response = await requireMenuAccess("nilai-transaksi-basket-size");
 
     if (unauthorized_response) {
       return unauthorized_response;
