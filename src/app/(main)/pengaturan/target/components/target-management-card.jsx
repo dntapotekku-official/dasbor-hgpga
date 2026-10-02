@@ -570,6 +570,7 @@ export default function TargetManagementCard({
       type: target_value_format === "currency" ? "currency" : "number",
       placeholder: target_placeholder,
       input_type: "number",
+      step: target_value_format === "integer" ? "1" : "any",
       helper: target_helper,
     },
   ];

@@ -14,6 +14,7 @@ export default function GofitkuTab() {
       delete_title="Hapus Target GoFitKu"
       delete_description_template="Target untuk rentang {range} akan disembunyikan dari daftar aktif."
       target_placeholder="Masukkan nilai target"
+      target_helper="Target GoFitKu menggunakan angka bulat."
       target_value_format="integer"
       delete_payload_key="uuid_target_gofitku"
       import_date_mode="range"

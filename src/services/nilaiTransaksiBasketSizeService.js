@@ -7,7 +7,6 @@ import ExcelJS from "exceljs";
 import {
   comparePercentage,
   comparePercentageRounded,
-  roundDecimal,
 } from "@/lib/number";
 import { outlet_category_slugs } from "@/lib/outletCategories";
 import { prisma } from "@/lib/prisma";
@@ -1475,11 +1474,10 @@ export async function updateNilaiTransaksiDaily({
   if (
     !normalized_total_revenue ||
     !Number.isFinite(parsed_total_revenue) ||
-    parsed_total_revenue < 0 ||
-    Math.abs(parsed_total_revenue * 100 - Math.round(parsed_total_revenue * 100)) > 1e-9
+    parsed_total_revenue < 0
   ) {
     throw new Error(
-      "Total penerimaan pendapatan harus berupa angka nol atau lebih dengan maksimal 2 desimal.",
+      "Total penerimaan pendapatan harus berupa angka nol atau lebih.",
     );
   }
 
@@ -1548,11 +1546,10 @@ export async function updateNilaiTransaksiMonthly({
   if (
     !normalized_total_revenue ||
     !Number.isFinite(parsed_total_revenue) ||
-    parsed_total_revenue < 0 ||
-    Math.abs(parsed_total_revenue * 100 - Math.round(parsed_total_revenue * 100)) > 1e-9
+    parsed_total_revenue < 0
   ) {
     throw new Error(
-      "Total penerimaan bulanan harus berupa angka nol atau lebih dengan maksimal 2 desimal.",
+      "Total penerimaan bulanan harus berupa angka nol atau lebih.",
     );
   }
 
@@ -1630,6 +1627,82 @@ export async function updateNilaiTransaksiTotals({
     success: true,
     message: "Total penerimaan nilai transaksi harian dan bulanan berhasil diperbarui.",
   };
+}
+
+/** Memperbarui Jumlah SKU Basket Size outlet pada rentang bulan berjalan. */
+export async function updateBasketSizeSkuQty({
+  uuid_outlet,
+  selected_date,
+  sku_qty,
+}) {
+  const normalized_uuid_outlet = await assert_active_outlet(uuid_outlet);
+  const to_date = parse_metric_date(selected_date, "Tanggal data");
+  const from_date = start_of_month(to_date);
+  const normalized_sku_qty = String(sku_qty ?? "")
+    .trim()
+    .replace(",", ".");
+  const parsed_sku_qty = Number(normalized_sku_qty);
+
+  if (
+    !normalized_sku_qty ||
+    !Number.isFinite(parsed_sku_qty) ||
+    parsed_sku_qty < 0 ||
+    !Number.isInteger(parsed_sku_qty)
+  ) {
+    throw new Error("Jumlah SKU harus berupa angka bulat nol atau lebih.");
+  }
+
+  return prisma.$transaction(async (transaction) => {
+    const records = await transaction.tbl_jumlah_sku.findMany({
+      where: {
+        uuid_outlet: normalized_uuid_outlet,
+        deleted_at: null,
+        ...build_exact_range_where(from_date, to_date),
+      },
+      select: {
+        uuid: true,
+      },
+    });
+
+    if (!records.length) {
+      throw new Error("Data basket size outlet ini tidak ditemukan.");
+    }
+
+    await transaction.tbl_jumlah_sku.update({
+      where: {
+        uuid: records[0].uuid,
+      },
+      data: {
+        active_key: build_active_range_key(
+          normalized_uuid_outlet,
+          from_date,
+          to_date,
+          KUNJUNGAN_METRIC_BASKET_SIZE,
+        ),
+        value: parsed_sku_qty,
+      },
+    });
+
+    if (records.length > 1) {
+      await transaction.tbl_jumlah_sku.updateMany({
+        where: {
+          uuid: {
+            in: records.slice(1).map((item) => item.uuid),
+          },
+          deleted_at: null,
+        },
+        data: {
+          active_key: null,
+          deleted_at: new Date(),
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: "Jumlah SKU basket size berhasil diperbarui.",
+    };
+  });
 }
 
 /** Menghapus seluruh data Nilai Transaksi pada rentang tanggal tertentu. */
@@ -2966,7 +3039,7 @@ const target_metric_config = {
     model: "tbl_target_nilai_transaksi",
     label: "Target Nilai Transaksi",
     scale: 1,
-    allow_decimal: false,
+    allow_decimal: true,
   },
   basket_size: {
     model: "tbl_target_basket_size",
@@ -3001,18 +3074,7 @@ function parse_target_value(target, config) {
     throw new Error("Nilai target harus berupa angka nol atau lebih.");
   }
 
-  if (!config.allow_decimal && !Number.isInteger(parsed_target)) {
-    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
-  }
-
-  const scaled_target = parsed_target * config.scale;
-  const stored_target = roundDecimal(scaled_target);
-
-  if (config.allow_decimal && Math.abs(scaled_target - stored_target) > 1e-9) {
-    throw new Error("Nilai target maksimal memiliki 2 angka desimal.");
-  }
-
-  return stored_target;
+  return parsed_target * config.scale;
 }
 
 /** Memformat target global untuk form pengaturan. */

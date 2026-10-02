@@ -1200,6 +1200,24 @@ function parse_target_date(date, {
   return parsed_date;
 }
 
+function parse_target_value(target, {
+  label = "Nilai target",
+} = {}) {
+  const normalized_target = String(target ?? "").trim();
+
+  if (!normalized_target) {
+    throw new Error(`${label} wajib diisi.`);
+  }
+
+  const parsed_target = Number(normalized_target);
+
+  if (!Number.isInteger(parsed_target) || parsed_target < 0) {
+    throw new Error(`${label} harus berupa angka bulat nol atau lebih.`);
+  }
+
+  return parsed_target;
+}
+
 function assert_valid_range(start_date, end_date) {
   if (end_date < start_date) {
     throw new Error("Tanggal akhir tidak boleh lebih kecil dari tanggal awal.");
@@ -1304,15 +1322,10 @@ async function bulkUpdateTargetDates({
   const parsed_end_date = parse_target_date(end_date, {
     label: "Tanggal selesai baru",
   });
-  const normalized_target = String(target ?? "").trim();
-  const parsed_target = Number(normalized_target);
+  const parsed_target = parse_target_value(target);
 
   assert_valid_range(parsed_source_start_date, parsed_source_end_date);
   assert_valid_range(parsed_start_date, parsed_end_date);
-
-  if (!normalized_target || !Number.isInteger(parsed_target) || parsed_target < 0) {
-    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
-  }
 
   const { insanku_by_uuid } = await get_target_insanku_maps();
 
@@ -1581,17 +1594,13 @@ export async function createTargetGofitku({
   end_date,
 }) {
   const { insanku_by_uuid } = await get_target_insanku_maps();
-  const parsed_target = Number(target);
+  const parsed_target = parse_target_value(target);
   const parsed_start_date = parse_target_date(start_date);
   const parsed_end_date = parse_target_date(end_date);
   const resolved_uuid_insanku = await assert_valid_insanku_uuid(
     uuid_insanku,
     insanku_by_uuid,
   );
-
-  if (!Number.isInteger(parsed_target) || parsed_target < 0) {
-    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
-  }
 
   assert_valid_range(parsed_start_date, parsed_end_date);
 
@@ -1636,14 +1645,9 @@ export async function bulkCreateTargetGofitku({
 }) {
   const parsed_start_date = parse_target_date(start_date);
   const parsed_end_date = parse_target_date(end_date);
-  const normalized_target = String(target ?? "").trim();
-  const parsed_target = Number(normalized_target);
+  const parsed_target = parse_target_value(target);
 
   assert_valid_range(parsed_start_date, parsed_end_date);
-
-  if (!normalized_target || !Number.isInteger(parsed_target) || parsed_target < 0) {
-    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
-  }
 
   const { insanku_rows } = await get_target_insanku_maps();
 
@@ -1717,17 +1721,13 @@ export async function updateTargetGofitku({
   }
 
   const { insanku_by_uuid } = await get_target_insanku_maps();
-  const parsed_target = Number(target);
+  const parsed_target = parse_target_value(target);
   const parsed_start_date = parse_target_date(start_date);
   const parsed_end_date = parse_target_date(end_date);
   const resolved_uuid_insanku = await assert_valid_insanku_uuid(
     uuid_insanku,
     insanku_by_uuid,
   );
-
-  if (!Number.isInteger(parsed_target) || parsed_target < 0) {
-    throw new Error("Nilai target harus berupa angka bulat nol atau lebih.");
-  }
 
   assert_valid_range(parsed_start_date, parsed_end_date);
 
@@ -1870,11 +1870,9 @@ export async function importTargetGofitku({
     }
 
     seen_insanku_uuids.add(matched_insanku.uuid);
-    const parsed_target = Number(String(row?.target ?? "").trim().replace(",", "."));
-
-    if (!Number.isInteger(parsed_target) || parsed_target < 0) {
-      throw new Error(`Nilai target untuk InsanKU ${matched_insanku.name} tidak valid.`);
-    }
+    const parsed_target = parse_target_value(row?.target, {
+      label: `Nilai target untuk InsanKU ${matched_insanku.name}`,
+    });
 
     imported_rows.push({
       uuid: randomUUID(),

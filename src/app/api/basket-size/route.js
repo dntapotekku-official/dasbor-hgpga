@@ -11,6 +11,7 @@ import {
   deleteBasketSizeRange,
   getNilaiTransaksiBasketSize,
   importBasketSize,
+  updateBasketSizeSkuQty,
 } from "@/services/nilaiTransaksiBasketSizeService";
 
 export async function GET(request) {
@@ -65,6 +66,17 @@ export async function PATCH(request) {
     }
 
     const body = await request.json().catch(() => ({}));
+
+    if (body?.action === "update_sku_qty") {
+      const data = await updateBasketSizeSkuQty({
+        uuid_outlet: body?.uuid_outlet,
+        selected_date: body?.selected_date,
+        sku_qty: body?.sku_qty,
+      });
+
+      return NextResponse.json(data);
+    }
+
     const data = body?.action === "bulk_update_monthly"
       ? await bulkUpdateBasketSizeRange({
           source_from_date: body?.source_from_date,

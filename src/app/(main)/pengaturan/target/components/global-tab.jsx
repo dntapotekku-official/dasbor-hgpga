@@ -38,7 +38,7 @@ const target_config = {
     description: "Kelola target global Basket Size berdasarkan rentang tanggal.",
     value_format: "decimal",
     placeholder: "Contoh: 2,08",
-    helper: "Maksimal dua angka desimal, misalnya 2,08.",
+    helper: "Gunakan angka asli sesuai kebutuhan, misalnya 2,0875.",
   },
 };
 
@@ -152,6 +152,7 @@ function GlobalTargetTable({ metric_key }) {
       input_type: "number",
       placeholder: config.placeholder,
       helper: config.helper,
+      step: "any",
       required: true,
     },
   ];

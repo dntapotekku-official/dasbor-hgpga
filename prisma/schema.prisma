@@ -238,7 +238,7 @@ model tbl_target_nilai_transaksi {
   id          Int       @id @default(autoincrement())
   uuid        String    @unique @db.Char(36)
   uuid_outlet String?   @db.Char(36)
-  value       Decimal   @default(0) @db.Decimal(10, 2)
+  value       Float     @default(0)
   start_date  DateTime
   end_date    DateTime?
   created_at  DateTime  @default(now())
@@ -250,7 +250,7 @@ model tbl_target_basket_size {
   id          Int       @id @default(autoincrement())
   uuid        String    @unique @db.Char(36)
   uuid_outlet String?   @db.Char(36)
-  value       Decimal   @default(0) @db.Decimal(10, 2)
+  value       Float     @default(0)
   start_date  DateTime
   end_date    DateTime?
   created_at  DateTime  @default(now())
@@ -265,7 +265,7 @@ model tbl_total_penerimaan_pendapatan {
   active_key  String?   @unique @db.VarChar(80)
   start_date  DateTime
   end_date    DateTime?
-  value       Decimal   @default(0) @db.Decimal(18, 2)
+  value       Float     @default(0)
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
   deleted_at  DateTime?
@@ -395,7 +395,7 @@ model tbl_target_global {
   id         Int       @id @default(autoincrement())
   uuid       String    @unique @db.Char(36)
   key        String    @db.VarChar(100)
-  value      Decimal   @default(0) @db.Decimal(10, 2)
+  value      Float     @default(0)
   start_date DateTime
   end_date   DateTime?
   created_at DateTime  @default(now())

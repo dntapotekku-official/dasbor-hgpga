@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2Icon } from "lucide-react";
+import { PencilIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -46,6 +46,7 @@ export default function BasketSizeTab({
   labels,
   rows,
   can_manage = false,
+  on_edit,
   on_delete,
 }) {
   const selected_period_label = labels?.selected_period_label || "bulan ini";
@@ -100,7 +101,7 @@ export default function BasketSizeTab({
             </TableHead>
           ))}
           {can_manage ? (
-            <TableHead className="sticky top-0 z-30 min-w-[110px] bg-blue-200 text-center text-blue-950">
+            <TableHead className="sticky top-0 z-30 min-w-[180px] bg-blue-200 text-center text-blue-950">
               Aksi
             </TableHead>
           ) : null}
@@ -153,16 +154,27 @@ export default function BasketSizeTab({
               {formatPercentage(row.bs_gap_target)}
             </TableCell>
             {can_manage ? (
-              <TableCell className="text-center">
-                <Button
-                  type="button"
-                  variant="delete"
-                  size="sm"
-                  onClick={() => on_delete(row)}
-                >
-                  <Trash2Icon className="size-4" />
-                  Hapus
-                </Button>
+              <TableCell>
+                <div className="flex justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => on_edit(row)}
+                  >
+                    <PencilIcon className="size-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="delete"
+                    size="sm"
+                    onClick={() => on_delete(row)}
+                  >
+                    <Trash2Icon className="size-4" />
+                    Hapus
+                  </Button>
+                </div>
               </TableCell>
             ) : null}
           </TableRow>

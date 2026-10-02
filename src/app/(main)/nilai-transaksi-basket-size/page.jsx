@@ -49,6 +49,9 @@ const ImportDataModal = dynamic(() => import("./components/import-data-modal"));
 const MetricBulkActionModal = dynamic(
   () => import("./components/metric-bulk-action-modal"),
 );
+const BasketSizeSkuEditModal = dynamic(
+  () => import("./components/basket-size-sku-edit-modal"),
+);
 const NilaiTransaksiDailyEditModal = dynamic(
   () => import("./components/nilai-transaksi-daily-edit-modal"),
 );
@@ -276,6 +279,7 @@ export default function NilaiTransaksiPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importModalType, setImportModalType] = useState("nilai-transaksi");
   const [editingRow, setEditingRow] = useState(null);
+  const [editingBasketSizeRow, setEditingBasketSizeRow] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
   const [bulkAction, setBulkAction] = useState(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -632,6 +636,45 @@ export default function NilaiTransaksiPage() {
         error instanceof Error
           ? error.message
           : "Gagal memperbarui nilai harian.",
+      );
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleBasketSizeSkuEdit = async ({ sku_qty }) => {
+    if (!editingBasketSizeRow) {
+      return;
+    }
+
+    try {
+      setIsMutating(true);
+      const response = await fetch("/api/basket-size", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "update_sku_qty",
+          uuid_outlet: editingBasketSizeRow.uuid,
+          selected_date: selectedDate,
+          sku_qty,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message || "Gagal memperbarui jumlah SKU.");
+      }
+
+      await refreshMetrics();
+      setEditingBasketSizeRow(null);
+      toast.success(payload.message || "Jumlah SKU basket size berhasil diperbarui.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal memperbarui jumlah SKU.",
       );
     } finally {
       setIsMutating(false);
@@ -1160,6 +1203,7 @@ export default function NilaiTransaksiPage() {
                     labels={tableLabels}
                     rows={filtered_outlet_rows}
                     can_manage={canManage}
+                    on_edit={(row) => setEditingBasketSizeRow(row)}
                     on_delete={(row) =>
                       setDeletingItem({ row, metric: "basket-size" })
                     }
@@ -1193,6 +1237,21 @@ export default function NilaiTransaksiPage() {
             }
           }}
           on_submit={handleNilaiTransaksiEdit}
+        />
+      ) : null}
+
+      {editingBasketSizeRow ? (
+        <BasketSizeSkuEditModal
+          open
+          row={editingBasketSizeRow}
+          selected_date={selectedPeriodRangeLabel || selectedDate}
+          is_saving={isMutating}
+          on_open_change={(open) => {
+            if (!open) {
+              setEditingBasketSizeRow(null);
+            }
+          }}
+          on_submit={handleBasketSizeSkuEdit}
         />
       ) : null}
 
