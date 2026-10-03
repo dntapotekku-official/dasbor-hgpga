@@ -425,22 +425,31 @@ export async function syncInsanKu() {
     }));
   const update_insanku = unique_insanku
     .filter((item) => existing_insanku_map.has(item.uuid))
-    .filter((item) => !existing_insanku_map.get(item.uuid)?.is_skip_sync)
+    .filter((item) => {
+      const existing_item = existing_insanku_map.get(item.uuid);
+      return !existing_item.is_skip_sync || existing_item.deleted_at !== null;
+    })
     .map((item) => {
       const existing_item = existing_insanku_map.get(item.uuid);
-      const resolved_password = existing_item?.is_password_change
-        ? existing_item?.password ?? default_password
-        : default_password;
+      const is_reactivated = existing_item.deleted_at !== null;
+      const resolved_password =
+        !is_reactivated && existing_item.is_password_change
+          ? existing_item.password ?? default_password
+          : default_password;
 
       return {
         ...item,
         username: resolveUpdateUsername(item),
         nik: item.nik,
         password: resolved_password,
+        is_reactivated,
       };
     });
   const skipped_insanku = unique_insanku.filter(
-    (item) => existing_insanku_map.get(item.uuid)?.is_skip_sync,
+    (item) => {
+      const existing_item = existing_insanku_map.get(item.uuid);
+      return existing_item?.is_skip_sync && existing_item.deleted_at === null;
+    },
   );
   const deleted_insanku = existing_insanku.filter(
     (item) =>
@@ -454,6 +463,9 @@ export async function syncInsanKu() {
       item.is_skip_sync &&
       item.deleted_at === null,
   );
+  const reactivated_insanku_uuids = update_insanku
+    .filter((item) => item.is_reactivated)
+    .map((item) => item.uuid);
   const inserted_insanku = await prisma.$transaction(async (tx) => {
     let inserted_count = 0;
 
@@ -463,6 +475,14 @@ export async function syncInsanKu() {
         skipDuplicates: true,
       });
       inserted_count = result.count;
+    }
+
+    if (reactivated_insanku_uuids.length > 0) {
+      await softDeleteInsanKuRelations(
+        tx,
+        reactivated_insanku_uuids,
+        new Date(),
+      );
     }
 
     await Promise.all(
@@ -476,6 +496,13 @@ export async function syncInsanKu() {
             password: item.password,
             avatar: item.avatar,
             role: item.role,
+            ...(item.is_reactivated
+              ? {
+                  is_username_change: false,
+                  is_password_change: false,
+                  is_skip_sync: false,
+                }
+              : {}),
             deleted_at: null,
           },
         }),
@@ -513,6 +540,7 @@ export async function syncInsanKu() {
       skipped_duplicate_insanku: new_insanku.length - inserted_insanku,
       username_conflict_insanku,
       updated_insanku: update_insanku.length,
+      reactivated_insanku: reactivated_insanku_uuids.length,
       skipped_insanku: skipped_insanku.length,
       deleted_insanku: deleted_insanku.length,
       retained_skipped_insanku: skipped_deleted_insanku.length,

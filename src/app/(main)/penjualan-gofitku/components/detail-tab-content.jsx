@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import usePagination from "@/hooks/usePagination";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 50;
 
 function DetailRows({ rows, group, on_edit_row, on_delete_row }) {
   return rows.map((row) => (
@@ -84,7 +84,7 @@ export default function DetailTabContent({
 
     return (
       <div className="max-h-[70vh] overflow-auto rounded-lg border">
-        <Table className="min-w-[760px]">
+        <Table className="min-w-[760px]" containerClassName="overflow-visible">
           <TableHeader className="sticky top-0 z-10 bg-primary [&_th]:text-primary-foreground">
             <TableRow>
               <TableHead className="w-[32%]">Nama</TableHead>
@@ -163,7 +163,7 @@ export default function DetailTabContent({
               </div>
               <div className="overflow-hidden rounded-lg border bg-card">
                 <Table className="min-w-[760px]">
-                  <TableHeader className="bg-primary [&_th]:text-primary-foreground">
+                  <TableHeader sticky={false} className="bg-primary [&_th]:text-primary-foreground">
                     <TableRow>
                       <TableHead className="w-[32%]">Nama</TableHead>
                       <TableHead>Jumlah</TableHead>

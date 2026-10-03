@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import usePagination from "@/hooks/usePagination";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 50;
 
 function format_percentage(total, target) {
   if (!target) {
@@ -756,7 +756,7 @@ export default function RingkasanTabContent({
                           className="min-w-[980px]"
                           containerClassName="rounded-lg border bg-card"
                         >
-                          <TableHeader className="sticky top-0 z-10 bg-primary [&_th]:text-primary-foreground">
+                          <TableHeader sticky={false} className="bg-primary [&_th]:text-primary-foreground">
                             <PersonTableHead
                               sort_key={sort_key}
                               sort_direction={sort_direction}

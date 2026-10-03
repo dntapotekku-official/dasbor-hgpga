@@ -24,6 +24,7 @@ function Table({
 
 function TableHeader({
   className,
+  sticky = true,
   variant = "primary",
   ...props
 }) {
@@ -32,6 +33,7 @@ function TableHeader({
       data-slot="table-header"
       className={cn(
         "[&_tr]:border-b",
+        sticky && "[&_th]:sticky [&_th]:top-0 [&_th]:z-10",
         variant === "primary" &&
           "[&_th]:bg-primary [&_th]:text-primary-foreground",
         className

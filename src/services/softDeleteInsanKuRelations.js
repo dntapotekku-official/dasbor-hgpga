@@ -40,6 +40,20 @@ export async function softDeleteInsanKuRelations(
     },
     data: { deleted_at },
   });
+  await transaction.tbl_insanku_gofitku_exclusion.updateMany({
+    where: {
+      uuid_insanku: { in: insanku_uuids },
+      deleted_at: null,
+    },
+    data: { deleted_at },
+  });
+  await transaction.tbl_nilai_magang.updateMany({
+    where: {
+      uuid_insanku: { in: insanku_uuids },
+      deleted_at: null,
+    },
+    data: { active_key: null, deleted_at },
+  });
   await transaction.tbl_outlet_insanku.updateMany({
     where: {
       uuid_insanku: { in: insanku_uuids },

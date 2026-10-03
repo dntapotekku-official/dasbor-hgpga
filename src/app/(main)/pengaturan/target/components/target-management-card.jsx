@@ -688,7 +688,7 @@ export default function TargetManagementCard({
 
           <div className="overflow-hidden rounded-lg border">
             <div className="max-h-[560px] overflow-auto">
-              <Table>
+              <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
                     <TableHead className="w-20">#</TableHead>

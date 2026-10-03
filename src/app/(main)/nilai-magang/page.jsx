@@ -425,7 +425,7 @@ export default function NilaiMagangPage() {
               </div>
 
               <div className="overflow-hidden rounded-lg border">
-                <Table>
+                <Table containerClassName="max-h-[70vh] overflow-auto">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-24 text-center">Peringkat</TableHead>

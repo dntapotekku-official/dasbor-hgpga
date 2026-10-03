@@ -899,7 +899,7 @@ export default function KunjunganPage() {
 
               <div className="overflow-hidden rounded-lg border">
                 <div className="max-h-[560px] overflow-auto">
-                  <Table className="table-fixed">
+                  <Table className="table-fixed" containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
                         <TableHead className="w-20">#</TableHead>
@@ -1056,7 +1056,7 @@ export default function KunjunganPage() {
 
                   <div className="overflow-hidden rounded-lg border">
                     <div className="max-h-[560px] overflow-auto">
-                      <Table className="table-fixed">
+                      <Table className="table-fixed" containerClassName="overflow-visible">
                         <TableHeader className="sticky top-0 z-10 bg-card">
                           <TableRow>
                             <TableHead className="w-20">#</TableHead>

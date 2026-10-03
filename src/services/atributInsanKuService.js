@@ -354,38 +354,18 @@ export async function updateAtributInsanKu({
   }
 
   const next_value = normalize_attribute_value_by_type(attribute.type, value);
-  const existing_rows = await prisma.tbl_atribut_insanku.findMany({
+  await prisma.tbl_atribut_insanku.upsert({
     where: {
+      uuid_insanku_uuid_atribut: { uuid_insanku, uuid_atribut },
+    },
+    update: { value: next_value, deleted_at: null },
+    create: {
+      uuid: randomUUID(),
       uuid_insanku,
       uuid_atribut,
-      deleted_at: null,
-    },
-    select: {
-      uuid: true,
+      value: next_value,
     },
   });
-
-  if (existing_rows.length === 0) {
-    await prisma.tbl_atribut_insanku.create({
-      data: {
-        uuid: randomUUID(),
-        uuid_insanku,
-        uuid_atribut,
-        value: next_value,
-      },
-    });
-  } else {
-    await prisma.tbl_atribut_insanku.updateMany({
-      where: {
-        uuid_insanku,
-        uuid_atribut,
-        deleted_at: null,
-      },
-      data: {
-        value: next_value,
-      },
-    });
-  }
 
   const response_value = format_attribute_value_for_response(
     attribute.type,

@@ -128,6 +128,7 @@ export async function syncOutletInsanKu() {
         },
         update: {
           deleted_at: null,
+          is_skip_sync: false,
         },
         create: {
           uuid: randomUUID(),
