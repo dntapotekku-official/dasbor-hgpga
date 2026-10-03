@@ -241,9 +241,10 @@ function GlobalTargetTable({ metric_key }) {
 
     return Number.isFinite(parsed_value)
       ? parsed_value.toLocaleString("id-ID", {
-          maximumFractionDigits: 20,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
         })
-      : "0";
+      : "0,00";
   };
 
   return (

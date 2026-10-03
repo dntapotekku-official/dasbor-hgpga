@@ -105,15 +105,16 @@ function format_integer_target(value) {
   return Number(value ?? 0).toLocaleString("id-ID");
 }
 
-function format_raw_number(value) {
+function format_decimal_target(value) {
   const parsed_value = Number(value ?? 0);
 
   if (!Number.isFinite(parsed_value)) {
-    return "0";
+    return "0,00";
   }
 
   return parsed_value.toLocaleString("id-ID", {
-    maximumFractionDigits: 20,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
@@ -593,7 +594,7 @@ export default function TargetManagementCard({
     }
 
     if (target_value_format === "decimal" || target_value_format === "raw") {
-      return format_raw_number(value);
+      return format_decimal_target(value);
     }
 
     return format_integer_target(value);

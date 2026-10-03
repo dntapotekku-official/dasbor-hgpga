@@ -18,11 +18,14 @@ export default function BasketSizeSkuEditModal({
 }) {
   const field_id = useId();
   const initial_sku_qty = row?.bs_current_month_sku_qty ?? 0;
+  const initial_kunjungan = row?.bs_current_month_kunjungan ?? 0;
   const [skuQty, setSkuQty] = useState(String(initial_sku_qty));
+  const [kunjungan, setKunjungan] = useState(String(initial_kunjungan));
 
   const handle_close = (next_open) => {
     if (!next_open && !is_saving) {
       setSkuQty(String(initial_sku_qty));
+      setKunjungan(String(initial_kunjungan));
       on_open_change(false);
     }
   };
@@ -61,6 +64,7 @@ export default function BasketSizeSkuEditModal({
               event.preventDefault();
               on_submit({
                 sku_qty: skuQty,
+                kunjungan,
               });
             }}
           >
@@ -78,6 +82,24 @@ export default function BasketSizeSkuEditModal({
                 inputMode="numeric"
                 value={skuQty}
                 onChange={(event) => setSkuQty(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <FieldLabel
+                htmlFor={`${field_id}-kunjungan`}
+                label="Kunjungan"
+                required
+              />
+              <Input
+                id={`${field_id}-kunjungan`}
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={kunjungan}
+                onChange={(event) => setKunjungan(event.target.value)}
                 required
               />
             </div>

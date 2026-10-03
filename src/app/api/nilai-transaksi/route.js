@@ -133,6 +133,8 @@ export async function PATCH(request) {
         selected_date: body?.selected_date,
         total_revenue_daily: body?.total_revenue_daily,
         total_revenue_monthly: body?.total_revenue_monthly,
+        kunjungan_daily: body?.kunjungan_daily,
+        kunjungan_monthly: body?.kunjungan_monthly,
       });
 
       return NextResponse.json(data);

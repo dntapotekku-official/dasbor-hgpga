@@ -7,6 +7,7 @@ import { LoaderCircleIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CurrencyInput from "@/components/currency-input";
 import FieldLabel from "@/components/field-label";
+import { Input } from "@/components/ui/input";
 
 export default function NilaiTransaksiDailyEditModal({
   open,
@@ -19,17 +20,27 @@ export default function NilaiTransaksiDailyEditModal({
   const field_id = useId();
   const initial_daily_total_revenue = row?.nt_daily_total_revenue ?? row?.total_revenue;
   const initial_monthly_total_revenue = row?.nt_current_month_total_revenue;
+  const initial_daily_kunjungan = row?.nt_daily_kunjungan ?? 0;
+  const initial_monthly_kunjungan = row?.nt_current_month_kunjungan ?? 0;
   const [dailyTotalRevenue, setDailyTotalRevenue] = useState(
     String(initial_daily_total_revenue ?? 0),
   );
   const [monthlyTotalRevenue, setMonthlyTotalRevenue] = useState(
     String(initial_monthly_total_revenue ?? 0),
   );
+  const [dailyKunjungan, setDailyKunjungan] = useState(
+    String(initial_daily_kunjungan ?? 0),
+  );
+  const [monthlyKunjungan, setMonthlyKunjungan] = useState(
+    String(initial_monthly_kunjungan ?? 0),
+  );
 
   const handle_close = (next_open) => {
     if (!next_open && !is_saving) {
       setDailyTotalRevenue(String(initial_daily_total_revenue ?? 0));
       setMonthlyTotalRevenue(String(initial_monthly_total_revenue ?? 0));
+      setDailyKunjungan(String(initial_daily_kunjungan ?? 0));
+      setMonthlyKunjungan(String(initial_monthly_kunjungan ?? 0));
       on_open_change(false);
     }
   };
@@ -69,6 +80,8 @@ export default function NilaiTransaksiDailyEditModal({
               on_submit({
                 total_revenue_daily: dailyTotalRevenue,
                 total_revenue_monthly: monthlyTotalRevenue,
+                kunjungan_daily: dailyKunjungan,
+                kunjungan_monthly: monthlyKunjungan,
               });
             }}
           >
@@ -89,8 +102,26 @@ export default function NilaiTransaksiDailyEditModal({
 
             <div className="space-y-2">
               <FieldLabel
+                htmlFor={`${field_id}-daily-kunjungan`}
+                label="Kunjungan (Harian)"
+                required
+              />
+              <Input
+                id={`${field_id}-daily-kunjungan`}
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={dailyKunjungan}
+                onChange={(event) => setDailyKunjungan(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <FieldLabel
                 htmlFor={`${field_id}-monthly-total-revenue`}
-                label="Total Penerimaan (Bulanan)"
+                label="Total Penerimaan Pendapatan (Bulanan)"
                 required
               />
               <CurrencyInput
@@ -98,6 +129,24 @@ export default function NilaiTransaksiDailyEditModal({
                 allowDecimals
                 value={monthlyTotalRevenue}
                 onValueChange={setMonthlyTotalRevenue}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <FieldLabel
+                htmlFor={`${field_id}-monthly-kunjungan`}
+                label="Kunjungan (Bulanan)"
+                required
+              />
+              <Input
+                id={`${field_id}-monthly-kunjungan`}
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={monthlyKunjungan}
+                onChange={(event) => setMonthlyKunjungan(event.target.value)}
                 required
               />
             </div>

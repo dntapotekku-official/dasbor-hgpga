@@ -90,6 +90,20 @@ const default_available_dates = {
 const BS_DECIMAL_PLACES = 3;
 const BS_PERCENT_DECIMAL_PLACES = 3;
 
+function formatBsDecimal(value) {
+  return Number(value ?? 0).toLocaleString("id-ID", {
+    minimumFractionDigits: BS_DECIMAL_PLACES,
+    maximumFractionDigits: BS_DECIMAL_PLACES,
+  });
+}
+
+function formatBsPercentage(value) {
+  return `${Number(value ?? 0).toLocaleString("id-ID", {
+    minimumFractionDigits: BS_PERCENT_DECIMAL_PLACES,
+    maximumFractionDigits: BS_PERCENT_DECIMAL_PLACES,
+  })}%`;
+}
+
 function get_current_date_value() {
   const date_parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Makassar",
@@ -143,6 +157,7 @@ function GapMetricValue({
   is_loading = false,
   large = false,
   decimal_places = 2,
+  fixed_decimal_places = false,
 }) {
   const DirectionIcon = value > 0
     ? ArrowUpIcon
@@ -159,7 +174,12 @@ function GapMetricValue({
       ) : (
         <>
           <DirectionIcon className={large ? "size-7" : "size-4"} />
-          {formatDecimal(value, decimal_places)}%
+          {fixed_decimal_places
+            ? Number(value ?? 0).toLocaleString("id-ID", {
+                minimumFractionDigits: decimal_places,
+                maximumFractionDigits: decimal_places,
+              })
+            : formatDecimal(value, decimal_places)}%
         </>
       )}
     </span>
@@ -609,6 +629,8 @@ export default function NilaiTransaksiPage() {
   const handleNilaiTransaksiEdit = async ({
     total_revenue_daily,
     total_revenue_monthly,
+    kunjungan_daily,
+    kunjungan_monthly,
   }) => {
     if (!editingRow) {
       return;
@@ -627,6 +649,8 @@ export default function NilaiTransaksiPage() {
           selected_date: selectedDate,
           total_revenue_daily,
           total_revenue_monthly,
+          kunjungan_daily,
+          kunjungan_monthly,
         }),
       });
       const payload = await response.json();
@@ -649,7 +673,7 @@ export default function NilaiTransaksiPage() {
     }
   };
 
-  const handleBasketSizeSkuEdit = async ({ sku_qty }) => {
+  const handleBasketSizeSkuEdit = async ({ sku_qty, kunjungan }) => {
     if (!editingBasketSizeRow) {
       return;
     }
@@ -666,6 +690,7 @@ export default function NilaiTransaksiPage() {
           uuid_outlet: editingBasketSizeRow.uuid,
           selected_date: selectedDate,
           sku_qty,
+          kunjungan,
         }),
       });
       const payload = await response.json();
@@ -958,6 +983,7 @@ export default function NilaiTransaksiPage() {
                           is_loading={isLoading}
                           large
                           decimal_places={BS_PERCENT_DECIMAL_PLACES}
+                          fixed_decimal_places
                         />
                       </p>
                     </div>
@@ -969,6 +995,7 @@ export default function NilaiTransaksiPage() {
                           is_loading={isLoading}
                           large
                           decimal_places={BS_PERCENT_DECIMAL_PLACES}
+                          fixed_decimal_places
                         />
                       </p>
                     </div>
@@ -976,7 +1003,7 @@ export default function NilaiTransaksiPage() {
                   <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
                     <SummaryMetric
                       label="Target"
-                      value={formatDecimal(overallMetrics.bs_target, BS_DECIMAL_PLACES)}
+                      value={formatBsDecimal(overallMetrics.bs_target)}
                     />
                     <SummaryMetric
                       label="Jumlah SKU"
@@ -988,19 +1015,19 @@ export default function NilaiTransaksiPage() {
                     />
                     <SummaryMetric
                       label={tableLabels.previous_period_label || "Periode sebelumnya"}
-                      value={formatDecimal(overallMetrics.bs_last_month, BS_DECIMAL_PLACES)}
+                      value={formatBsDecimal(overallMetrics.bs_last_month)}
                     />
                     <SummaryMetric
                       label={tableLabels.selected_period_label || "Periode berjalan"}
-                      value={formatDecimal(overallMetrics.bs_current_month, BS_DECIMAL_PLACES)}
+                      value={formatBsDecimal(overallMetrics.bs_current_month)}
                     />
                     <SummaryMetric
                       label="Growth"
-                      value={`${formatDecimal(overallMetrics.bs_growth, BS_PERCENT_DECIMAL_PLACES)}%`}
+                      value={formatBsPercentage(overallMetrics.bs_growth)}
                     />
                     <SummaryMetric
                       label="% Dibanding Target"
-                      value={`${formatDecimal(overallMetrics.bs_target_compare, BS_PERCENT_DECIMAL_PLACES)}%`}
+                      value={formatBsPercentage(overallMetrics.bs_target_compare)}
                     />
                   </div>
                   <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950/30">
@@ -1021,7 +1048,7 @@ export default function NilaiTransaksiPage() {
                               {item.outlet_name}
                             </span>
                             <span className="shrink-0 font-semibold text-blue-950 dark:text-blue-100">
-                              {formatDecimal(item.value, BS_DECIMAL_PLACES)}
+                              {formatBsDecimal(item.value)}
                             </span>
                           </div>
                         </div>

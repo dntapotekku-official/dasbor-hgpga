@@ -1456,6 +1456,84 @@ async function assert_active_outlet(uuid_outlet) {
   return normalized_uuid_outlet;
 }
 
+function parse_visit_count(value, label = "Kunjungan") {
+  const normalized_value = String(value ?? "").trim().replace(",", ".");
+  const parsed_value = Number(normalized_value);
+
+  if (
+    !normalized_value ||
+    !Number.isFinite(parsed_value) ||
+    parsed_value <= 0 ||
+    !Number.isInteger(parsed_value)
+  ) {
+    throw new Error(`${label} harus berupa angka bulat lebih dari nol.`);
+  }
+
+  return parsed_value;
+}
+
+async function update_kunjungan_metric_range(transaction, {
+  uuid_outlet,
+  from_date,
+  to_date,
+  value,
+  metric,
+}) {
+  const active_key = build_active_range_key(uuid_outlet, from_date, to_date, metric);
+  const records = await transaction.tbl_kunjungan.findMany({
+    where: {
+      uuid_outlet,
+      metric,
+      deleted_at: null,
+      ...build_exact_range_where(from_date, to_date),
+    },
+    orderBy: {
+      updated_at: "desc",
+    },
+    select: {
+      uuid: true,
+    },
+  });
+
+  if (!records.length) {
+    throw new Error("Data kunjungan outlet ini tidak ditemukan.");
+  }
+
+  await clear_monthly_kunjungan_active_keys(transaction, {
+    uuid_outlet,
+    from_date,
+    to_date,
+    exclude_uuid: records[0].uuid,
+    metric,
+  });
+
+  await transaction.tbl_kunjungan.update({
+    where: {
+      uuid: records[0].uuid,
+    },
+    data: {
+      active_key,
+      value,
+      deleted_at: null,
+    },
+  });
+
+  if (records.length > 1) {
+    await transaction.tbl_kunjungan.updateMany({
+      where: {
+        uuid: {
+          in: records.slice(1).map((item) => item.uuid),
+        },
+        deleted_at: null,
+      },
+      data: {
+        active_key: null,
+        deleted_at: new Date(),
+      },
+    });
+  }
+}
+
 /** Memperbarui nilai transaksi harian outlet dan membersihkan record duplikat pada hari yang sama. */
 export async function updateNilaiTransaksiDaily({
   uuid_outlet,
@@ -1609,21 +1687,51 @@ export async function updateNilaiTransaksiTotals({
   selected_date,
   total_revenue_daily,
   total_revenue_monthly,
+  kunjungan_daily,
+  kunjungan_monthly,
 }) {
+  const normalized_uuid_outlet = await assert_active_outlet(uuid_outlet);
+  const to_date = parse_metric_date(selected_date, "Tanggal data");
+  const from_date = start_of_month(to_date);
+  const parsed_kunjungan_daily = parse_visit_count(
+    kunjungan_daily,
+    "Kunjungan harian",
+  );
+  const parsed_kunjungan_monthly = parse_visit_count(
+    kunjungan_monthly,
+    "Kunjungan bulanan",
+  );
+
   await updateNilaiTransaksiDaily({
-    uuid_outlet,
+    uuid_outlet: normalized_uuid_outlet,
     selected_date,
     total_revenue: total_revenue_daily,
   });
   await updateNilaiTransaksiMonthly({
-    uuid_outlet,
+    uuid_outlet: normalized_uuid_outlet,
     selected_date,
     total_revenue: total_revenue_monthly,
+  });
+  await prisma.$transaction(async (transaction) => {
+    await update_kunjungan_metric_range(transaction, {
+      uuid_outlet: normalized_uuid_outlet,
+      from_date: to_date,
+      to_date,
+      value: parsed_kunjungan_daily,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
+    });
+    await update_kunjungan_metric_range(transaction, {
+      uuid_outlet: normalized_uuid_outlet,
+      from_date,
+      to_date,
+      value: parsed_kunjungan_monthly,
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
+    });
   });
 
   return {
     success: true,
-    message: "Total penerimaan nilai transaksi harian dan bulanan berhasil diperbarui.",
+    message: "Data nilai transaksi dan kunjungan berhasil diperbarui.",
   };
 }
 
@@ -1632,6 +1740,7 @@ export async function updateBasketSizeSkuQty({
   uuid_outlet,
   selected_date,
   sku_qty,
+  kunjungan,
 }) {
   const normalized_uuid_outlet = await assert_active_outlet(uuid_outlet);
   const to_date = parse_metric_date(selected_date, "Tanggal data");
@@ -1649,6 +1758,7 @@ export async function updateBasketSizeSkuQty({
   ) {
     throw new Error("Jumlah SKU harus berupa angka bulat nol atau lebih.");
   }
+  const parsed_kunjungan = parse_visit_count(kunjungan, "Kunjungan");
 
   return prisma.$transaction(async (transaction) => {
     const records = await transaction.tbl_jumlah_sku.findMany({
@@ -1696,9 +1806,17 @@ export async function updateBasketSizeSkuQty({
       });
     }
 
+    await update_kunjungan_metric_range(transaction, {
+      uuid_outlet: normalized_uuid_outlet,
+      from_date,
+      to_date,
+      value: parsed_kunjungan,
+      metric: KUNJUNGAN_METRIC_BASKET_SIZE,
+    });
+
     return {
       success: true,
-      message: "Jumlah SKU basket size berhasil diperbarui.",
+      message: "Jumlah SKU dan kunjungan basket size berhasil diperbarui.",
     };
   });
 }

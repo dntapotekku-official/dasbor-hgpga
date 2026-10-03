@@ -72,6 +72,7 @@ export async function PATCH(request) {
         uuid_outlet: body?.uuid_outlet,
         selected_date: body?.selected_date,
         sku_qty: body?.sku_qty,
+        kunjungan: body?.kunjungan,
       });
 
       return NextResponse.json(data);

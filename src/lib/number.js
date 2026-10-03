@@ -33,12 +33,13 @@ export function comparePercentageRounded(
   );
 }
 
-export function formatDecimal(value, maximumFractionDigits = DEFAULT_DECIMAL_PLACES) {
+export function formatDecimal(value, fractionDigits = DEFAULT_DECIMAL_PLACES) {
   return toFiniteNumber(value).toLocaleString("id-ID", {
-    maximumFractionDigits,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   });
 }
 
-export function formatPercentage(value, maximumFractionDigits = DEFAULT_DECIMAL_PLACES) {
-  return `${formatDecimal(value, maximumFractionDigits)}%`;
+export function formatPercentage(value, fractionDigits = DEFAULT_DECIMAL_PLACES) {
+  return `${formatDecimal(value, fractionDigits)}%`;
 }
