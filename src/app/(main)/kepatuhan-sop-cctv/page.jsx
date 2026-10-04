@@ -489,6 +489,7 @@ export default function KepatuhanSopCctvPage() {
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
+                        <TableHead className="w-14 text-center">No.</TableHead>
                         <TableHead>
                           <button
                             type="button"
@@ -522,8 +523,11 @@ export default function KepatuhanSopCctvPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {visible_rows.map((item) => (
+                      {visible_rows.map((item, index) => (
                         <TableRow key={item.uuid_outlet}>
+                          <TableCell className="text-center">
+                            {index + 1}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {item.nama_outlet}
                           </TableCell>

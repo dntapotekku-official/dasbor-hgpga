@@ -20,6 +20,7 @@ export default async function authenticateUser({ username, password }) {
       where: {
         username: normalized_username,
         deleted_at: null,
+        is_active: true,
         excep: false,
       },
     });
@@ -105,6 +106,7 @@ export async function updateOwnPassword({
     where: {
       uuid: user_uuid,
       deleted_at: null,
+      ...(is_member ? { is_active: true } : {}),
     },
     select: {
       uuid: true,

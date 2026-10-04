@@ -77,7 +77,7 @@ export default function BasketSizeTab({
       <TableHeader variant="none" className="sticky top-0 z-30">
         <TableRow>
           <TableHead className="sticky top-0 left-0 z-40 w-24 min-w-24 max-w-24 bg-blue-200 text-center text-blue-950">
-            No
+            No.
           </TableHead>
           <TableHead className="sticky top-0 left-24 z-40 min-w-[240px] bg-blue-200 text-blue-950">
             Outlet
@@ -174,8 +174,8 @@ export default function BasketSizeTab({
               {formatBsPercentage(row.bs_gap_target)}
             </TableCell>
             {can_manage ? (
-              <TableCell>
-                <div className="flex justify-center gap-2">
+              <TableCell className="whitespace-nowrap">
+                <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
                   <Button
                     type="button"
                     variant="outline"

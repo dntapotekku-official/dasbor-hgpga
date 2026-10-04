@@ -48,6 +48,7 @@ export const getCurrentUserFromToken = cache(async function get_current_user_fro
         where: {
           uuid: token_session.uuid,
           deleted_at: null,
+          is_active: true,
           excep: false,
         },
         select: {

@@ -137,6 +137,11 @@ export default function TargetManagementCard({
   entity_key = "uuid_outlet",
   entity_name_key = "outlet_name",
   entity_label = "Outlet",
+  table_entity_label,
+  secondary_entity_name_key,
+  secondary_entity_label,
+  show_nik = true,
+  split_entity_filters = false,
   import_button_label = "Impor",
   enable_bulk_create = false,
   enable_bulk_target_update = false,
@@ -144,6 +149,8 @@ export default function TargetManagementCard({
   const [target_rows, setTargetRows] = useState([]);
   const [entity_options, setEntityOptions] = useState([]);
   const [selected_entity, setSelectedEntity] = useState("all");
+  const [selected_outlet, setSelectedOutlet] = useState("all");
+  const [selected_insanku, setSelectedInsanku] = useState("all");
   const [selected_date, setSelectedDate] = useState("");
   const [selected_target, setSelectedTarget] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
@@ -161,22 +168,69 @@ export default function TargetManagementCard({
   const [sort_key, setSortKey] = useState(entity_name_key);
   const [sort_direction, setSortDirection] = useState("asc");
   const entity_filter_id = useId();
+  const outlet_filter_id = useId();
+  const insanku_filter_id = useId();
   const date_filter_id = useId();
   const entity_filter_options = useMemo(
     () => [{ value: "all", label: `Semua ${entity_label}` }, ...entity_options],
     [entity_label, entity_options],
   );
+  const outlet_filter_options = useMemo(() => {
+    const outlet_map = new Map();
+
+    for (const option of entity_options) {
+      if (option.uuid_outlet && !outlet_map.has(option.uuid_outlet)) {
+        outlet_map.set(option.uuid_outlet, option.outlet_name || "-");
+      }
+    }
+
+    return [
+      { value: "all", label: "Semua Outlet" },
+      ...Array.from(outlet_map.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((left, right) => left.label.localeCompare(right.label, "id-ID")),
+    ];
+  }, [entity_options]);
+  const insanku_filter_options = useMemo(() => {
+    const insanku_map = new Map();
+
+    for (const option of entity_options) {
+      if (option.uuid_insanku && !insanku_map.has(option.uuid_insanku)) {
+        insanku_map.set(option.uuid_insanku, option.insanku_name || "-");
+      }
+    }
+
+    return [
+      { value: "all", label: "Semua InsanKu" },
+      ...Array.from(insanku_map.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((left, right) => left.label.localeCompare(right.label, "id-ID")),
+    ];
+  }, [entity_options]);
   const filtered_items = useMemo(
     () =>
       target_rows.filter(
         (row) =>
-          (selected_entity === "all" ||
-            row[entity_key] === selected_entity) &&
+          (split_entity_filters
+            ? (selected_outlet === "all" ||
+                row.uuid_outlet === selected_outlet) &&
+              (selected_insanku === "all" ||
+                row.uuid_insanku === selected_insanku)
+            : selected_entity === "all" ||
+              row[entity_key] === selected_entity) &&
           (!selected_date ||
             (row.start_date <= selected_date &&
               (!row.end_date || row.end_date >= selected_date))),
       ),
-    [entity_key, selected_date, selected_entity, target_rows],
+    [
+      entity_key,
+      selected_date,
+      selected_entity,
+      selected_insanku,
+      selected_outlet,
+      split_entity_filters,
+      target_rows,
+    ],
   );
   const sorted_items = useMemo(() => {
     return [...filtered_items].sort((a, b) => {
@@ -192,12 +246,12 @@ export default function TargetManagementCard({
         ) * direction;
       }
 
-      return String(a[entity_name_key] ?? "").localeCompare(
-        String(b[entity_name_key] ?? ""),
+      return String(a[sort_key] ?? "").localeCompare(
+        String(b[sort_key] ?? ""),
         "id-ID",
       ) * direction;
     });
-  }, [entity_name_key, filtered_items, sort_direction, sort_key]);
+  }, [filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -252,7 +306,13 @@ export default function TargetManagementCard({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selected_date, selected_entity, setCurrentPage]);
+  }, [
+    selected_date,
+    selected_entity,
+    selected_insanku,
+    selected_outlet,
+    setCurrentPage,
+  ]);
 
   const handle_create = async (new_target) => {
     const result = await fetch(endpoint, {
@@ -402,7 +462,9 @@ export default function TargetManagementCard({
       toast.success(payload.message || `${target_label} berhasil diimpor.`);
 
       const unmatched_entities =
-        payload.data?.unmatched_insanku ?? payload.data?.unmatched_outlets;
+        payload.data?.unmatched_placements ??
+        payload.data?.unmatched_insanku ??
+        payload.data?.unmatched_outlets;
 
       if (Array.isArray(unmatched_entities) && unmatched_entities.length) {
         toast.warning(
@@ -622,31 +684,80 @@ export default function TargetManagementCard({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <FilterField label={entity_label} htmlFor={entity_filter_id}>
-              <OptionDropdown
-                id={entity_filter_id}
-                value={selected_entity}
-                onValueChange={setSelectedEntity}
-                options={entity_filter_options}
-                searchable
-                ariaLabel={`Filter ${entity_label} ${target_label}`}
-                searchPlaceholder={`Cari ${entity_label}...`}
-                emptySearchMessage={`${entity_label} tidak ditemukan.`}
-                triggerClassName="w-full sm:w-64"
-              />
-            </FilterField>
-            <FilterField label="Tanggal" htmlFor={date_filter_id}>
-              <Input
-                id={date_filter_id}
-                type="date"
-                value={selected_date}
-                onChange={(event) => setSelectedDate(event.target.value)}
-                aria-label={`Filter tanggal berlaku ${target_label}`}
+          <div className="space-y-3">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              {split_entity_filters ? (
+                <>
+                  <FilterField
+                    label="Outlet"
+                    htmlFor={outlet_filter_id}
+                    className="w-full sm:w-64"
+                  >
+                    <OptionDropdown
+                      id={outlet_filter_id}
+                      value={selected_outlet}
+                      onValueChange={setSelectedOutlet}
+                      options={outlet_filter_options}
+                      searchable
+                      ariaLabel={`Filter outlet ${target_label}`}
+                      searchPlaceholder="Cari outlet..."
+                      emptySearchMessage="Outlet tidak ditemukan."
+                      triggerClassName="w-full"
+                    />
+                  </FilterField>
+                  <FilterField
+                    label="InsanKu"
+                    htmlFor={insanku_filter_id}
+                    className="w-full sm:w-64"
+                  >
+                    <OptionDropdown
+                      id={insanku_filter_id}
+                      value={selected_insanku}
+                      onValueChange={setSelectedInsanku}
+                      options={insanku_filter_options}
+                      searchable
+                      ariaLabel={`Filter InsanKu ${target_label}`}
+                      searchPlaceholder="Cari InsanKu..."
+                      emptySearchMessage="InsanKu tidak ditemukan."
+                      triggerClassName="w-full"
+                    />
+                  </FilterField>
+                </>
+              ) : (
+                <FilterField
+                  label={entity_label}
+                  htmlFor={entity_filter_id}
+                  className="w-full sm:w-64"
+                >
+                  <OptionDropdown
+                    id={entity_filter_id}
+                    value={selected_entity}
+                    onValueChange={setSelectedEntity}
+                    options={entity_filter_options}
+                    searchable
+                    ariaLabel={`Filter ${entity_label} ${target_label}`}
+                    searchPlaceholder={`Cari ${entity_label}...`}
+                    emptySearchMessage={`${entity_label} tidak ditemukan.`}
+                    triggerClassName="w-full"
+                  />
+                </FilterField>
+              )}
+              <FilterField
+                label="Tanggal"
+                htmlFor={date_filter_id}
                 className="w-full sm:w-44"
-              />
-            </FilterField>
-            <div className="flex w-full flex-wrap justify-end gap-2 sm:ml-auto sm:w-auto">
+              >
+                <Input
+                  id={date_filter_id}
+                  type="date"
+                  value={selected_date}
+                  onChange={(event) => setSelectedDate(event.target.value)}
+                  aria-label={`Filter tanggal berlaku ${target_label}`}
+                  className="w-full"
+                />
+              </FilterField>
+            </div>
+            <div className="flex w-full flex-wrap justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -691,16 +802,27 @@ export default function TargetManagementCard({
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead className="w-20">#</TableHead>
+                    <TableHead className="w-14">No.</TableHead>
                     <TableHead>
                       <SortableTableHead
-                        label={entity_label}
+                        label={table_entity_label ?? entity_label}
                         sortKey={entity_name_key}
                         currentSortKey={sort_key}
                         sortDirection={sort_direction}
                         onSort={toggle_sort}
                       />
                     </TableHead>
+                    {secondary_entity_name_key ? (
+                      <TableHead>
+                        <SortableTableHead
+                          label={secondary_entity_label ?? "Outlet"}
+                          sortKey={secondary_entity_name_key}
+                          currentSortKey={sort_key}
+                          sortDirection={sort_direction}
+                          onSort={toggle_sort}
+                        />
+                      </TableHead>
+                    ) : null}
                     <TableHead>
                       <SortableTableHead
                         label="Rentang Tanggal"
@@ -730,16 +852,21 @@ export default function TargetManagementCard({
                       </TableCell>
                       <TableCell className="font-medium">
                         {row[entity_name_key]}
-                        {row.nik ? (
+                        {show_nik && row.nik ? (
                           <span className="block text-xs font-normal text-muted-foreground">
                             NIK {row.nik}
                           </span>
                         ) : null}
                       </TableCell>
+                      {secondary_entity_name_key ? (
+                        <TableCell className="font-medium">
+                          {row[secondary_entity_name_key] ?? "-"}
+                        </TableCell>
+                      ) : null}
                       <TableCell className="font-medium">{row.range_label}</TableCell>
                       <TableCell>{format_target_value(row.target)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                           <Button
                             type="button"
                             variant="outline"

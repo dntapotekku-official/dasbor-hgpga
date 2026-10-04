@@ -15,6 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function normalize_placements(value, include_key = false, field_key = "") {
   if (!Array.isArray(value)) {
@@ -46,6 +47,7 @@ function get_draft_value(item, field) {
       return Array.isArray(value) ? value : [];
     case "placement-list":
       return normalize_placements(value, true, field.key);
+    case "tabs":
     case "select":
       return String(value ?? field.options?.[0]?.value ?? "").toLowerCase();
     case "number":
@@ -70,6 +72,7 @@ function get_saved_value(draft, field) {
       return Array.isArray(value) ? value : [];
     case "placement-list":
       return normalize_placements(value);
+    case "tabs":
     case "select":
       return String(value ?? "").trim();
     default:
@@ -458,6 +461,34 @@ export default function PengaturanRowSheet({
                     Tambah Penempatan
                   </Button>
                 </div>
+              ) : field.type === "tabs" ? (
+                <Tabs
+                  value={String(draft[field.key] ?? "")}
+                  onValueChange={(next_value) =>
+                    setDraft((current) => {
+                      const next_draft = {
+                        ...current,
+                        [field.key]: next_value,
+                      };
+
+                      return apply_field_change(field, next_draft, next_value);
+                    })
+                  }
+                  className="w-full"
+                >
+                  <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
+                    {(field.options ?? []).map((option) => (
+                      <TabsTrigger
+                        key={option.value}
+                        value={option.value}
+                        disabled={is_disabled}
+                        className="min-w-max flex-1 px-4 py-2"
+                      >
+                        {option.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
               ) : field.type === "select" ? (
                 <OptionDropdown
                   id={field.key}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PencilIcon, TriangleAlertIcon, PlusIcon } from "lucide-react";
+import { PencilIcon, TriangleAlertIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
@@ -9,6 +9,7 @@ import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
+import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
@@ -62,6 +63,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
   const { search, setSearch, filtered_items } = useSearch(insanku, ["name"]);
   const [selected_outlet, setSelectedOutlet] = useState("all");
   const [selected_insanku, setSelectedInsanKu] = useState(null);
+  const [deleting_insanku, setDeletingInsanKu] = useState(null);
+  const [is_deleting_insanku, setIsDeletingInsanKu] = useState(false);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_creating, setIsCreating] = useState(false);
   const [sort_key, setSortKey] = useState("name");
@@ -87,9 +90,13 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       const direction = sort_direction === "asc" ? 1 : -1;
       const first_value = sort_key === "outlet_names"
         ? (a.outlet_names ?? []).join(", ")
+        : sort_key === "is_active"
+          ? Number(Boolean(a.is_active))
         : a[sort_key];
       const second_value = sort_key === "outlet_names"
         ? (b.outlet_names ?? []).join(", ")
+        : sort_key === "is_active"
+          ? Number(Boolean(b.is_active))
         : b[sort_key];
 
       return String(first_value ?? "").localeCompare(
@@ -242,6 +249,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         nik: next_insanku.nik,
         name: next_insanku.name,
         username: next_insanku.username,
+        is_active: next_insanku.is_active,
         outlet_placements,
         outlet_uuids,
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
@@ -279,24 +287,49 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     );
   };
 
-  const handle_delete = async (item) => {
-    const response = await fetch("/api/insanku-non-slip-gaji", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uuid_insanku: item.uuid }),
-    });
-    const payload = await response.json();
-
-    if (!response.ok || !payload.success) {
-      throw new Error(
-        payload.message || "Gagal menghapus data InsanKu Non Slip Gaji.",
-      );
+  const handle_delete = async () => {
+    if (!deleting_insanku) {
+      return;
     }
 
-    setInsanKu((current) => current.filter((row) => row.uuid !== item.uuid));
-    toast.success(
-      payload.message || "Data InsanKu Non Slip Gaji berhasil dihapus.",
-    );
+    const api_endpoint = is_non_slip_gaji
+      ? "/api/insanku-non-slip-gaji"
+      : "/api/insanku";
+    const account_label = is_non_slip_gaji
+      ? "InsanKu Non Slip Gaji"
+      : "InsanKu Slip Gaji";
+    try {
+      setIsDeletingInsanKu(true);
+
+      const response = await fetch(api_endpoint, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uuid_insanku: deleting_insanku.uuid }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          payload.message || `Gagal menghapus data ${account_label}.`,
+        );
+      }
+
+      setInsanKu((current) =>
+        current.filter((row) => row.uuid !== deleting_insanku.uuid),
+      );
+      setDeletingInsanKu(null);
+      toast.success(
+        payload.message || `Data ${account_label} berhasil dihapus.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Gagal menghapus data ${account_label}.`,
+      );
+    } finally {
+      setIsDeletingInsanKu(false);
+    }
   };
 
   return (
@@ -380,7 +413,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 <Table containerClassName="overflow-visible">
                   <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
-                      <TableHead className="w-20">#</TableHead>
+                      <TableHead className="w-14">No.</TableHead>
                       <TableHead>
                         <SortableTableHead
                           label="NIK"
@@ -417,6 +450,15 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           onSort={toggle_sort}
                         />
                       </TableHead>
+                      <TableHead>
+                        <SortableTableHead
+                          label="Status"
+                          sortKey="is_active"
+                          currentSortKey={sort_key}
+                          sortDirection={sort_direction}
+                          onSort={toggle_sort}
+                        />
+                      </TableHead>
                       <TableHead>Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -444,6 +486,18 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           )}
                         </TableCell>
                         <TableCell>
+                          <span
+                            className={
+                              row.is_active
+                                ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                : "inline-flex rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                            }
+                          >
+                            {row.is_active ? "Aktif" : "Tidak Aktif"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                           <Button
                             type="button"
                             variant="outline"
@@ -457,6 +511,16 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                             <PencilIcon className="size-4" />
                             Edit
                           </Button>
+                          <Button
+                            type="button"
+                            variant="delete"
+                            size="sm"
+                            onClick={() => setDeletingInsanKu(row)}
+                          >
+                            <Trash2Icon className="size-4" />
+                            Hapus
+                          </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -496,7 +560,20 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   : "Perbarui data InsanKu pada tampilan pengaturan."
               }
               item={selected_insanku}
-              fields={[
+	              fields={[
+              {
+                key: "is_active",
+                label: "Status",
+                type: "tabs",
+                disabled: !is_non_slip_gaji,
+                helper: !is_non_slip_gaji
+                  ? "Status mengikuti hasil sinkronisasi API. Jika InsanKu tidak ada dari API, status otomatis menjadi Tidak Aktif."
+                  : undefined,
+                options: [
+                  { value: "true", label: "Aktif" },
+                  { value: "false", label: "Tidak Aktif" },
+                ],
+              },
               ...(is_non_slip_gaji
                 ? [
                     {
@@ -591,9 +668,20 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 : []),
               ]}
               on_save={handle_save}
-              on_delete={
-                is_non_slip_gaji && !is_creating ? handle_delete : undefined
-              }
+            />
+            <ConfirmActionDialog
+              open={Boolean(deleting_insanku)}
+              onOpenChange={(next_open) => {
+                if (!next_open && !is_deleting_insanku) {
+                  setDeletingInsanKu(null);
+                }
+              }}
+              title={`Hapus ${is_non_slip_gaji ? "InsanKu Non Slip Gaji" : "InsanKu Slip Gaji"}`}
+              description={`Data ${deleting_insanku?.name ?? ""} akan dihapus beserta relasi aktifnya. Lanjutkan?`}
+              confirmLabel="Ya, hapus"
+              confirmVariant="delete"
+              onConfirm={handle_delete}
+              isPending={is_deleting_insanku}
             />
           </div>
         </CardContent>

@@ -67,6 +67,7 @@ export async function syncOutletInsanKu() {
       prisma.tbl_outlet.findMany({
         where: {
           deleted_at: null,
+          is_active: true,
           excep: false,
         },
         select: {
@@ -90,6 +91,7 @@ export async function syncOutletInsanKu() {
   const existing_insanku = await prisma.tbl_insanku.findMany({
     where: {
       deleted_at: null,
+      is_active: true,
     },
     select: {
       uuid: true,
@@ -142,6 +144,10 @@ export async function syncOutletInsanKu() {
       where: {
         uuid_insanku: {
           notIn: Array.from(skipped_placement_insanku_uuid_set),
+          in: Array.from(valid_insanku_uuid_set),
+        },
+        uuid_outlet: {
+          in: Array.from(valid_outlet_uuid_set),
         },
         deleted_at: null,
       },
@@ -251,6 +257,7 @@ export async function updateOutletInsanKu({
         in: unique_outlet_uuids,
       },
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     select: {

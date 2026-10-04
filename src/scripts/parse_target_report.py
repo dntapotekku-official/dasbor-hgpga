@@ -130,12 +130,14 @@ def main(file_path, subject="outlet"):
             ["insanku", "insan ku", "nama insanku", "nama insan ku"],
         )
         nik_col_index = find_optional_column_index(header_row, ["nik"])
+        outlet_col_index = find_optional_column_index(header_row, ["outlet", "nama outlet"])
 
         if subject_col_index is None and nik_col_index is None:
             raise ValueError("Kolom wajib tidak ditemukan: InsanKU atau NIK")
     else:
         subject_col_index = find_column_index(header_row, "outlet")
         nik_col_index = None
+        outlet_col_index = None
 
     output_rows = []
     for row in rows[1:]:
@@ -147,6 +149,8 @@ def main(file_path, subject="outlet"):
             required_indexes.append(subject_col_index)
         if nik_col_index is not None:
             required_indexes.append(nik_col_index)
+        if outlet_col_index is not None:
+            required_indexes.append(outlet_col_index)
 
         if len(row) <= max(required_indexes):
             continue
@@ -157,15 +161,21 @@ def main(file_path, subject="outlet"):
             else ""
         )
         nik = str(row[nik_col_index]).strip() if nik_col_index is not None else ""
+        outlet_name = (
+            str(row[outlet_col_index]).strip()
+            if outlet_col_index is not None
+            else ""
+        )
         target_value = str(row[target_col_index]).strip()
 
-        if not subject_name and not nik and not target_value:
+        if not subject_name and not nik and not outlet_name and not target_value:
             continue
 
         output_row = {"target": target_value}
         if subject == "insanku":
             output_row["insanku_name"] = subject_name
             output_row["nik"] = nik
+            output_row["outlet_name"] = outlet_name
         else:
             output_row["outlet_name"] = subject_name
 

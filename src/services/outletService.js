@@ -105,6 +105,7 @@ async function getOutletSettingsData({
       name: true,
       category: true,
       excep: true,
+      is_active: true,
       is_skip_sync: true,
       username: true,
       is_username_change: true,
@@ -114,6 +115,7 @@ async function getOutletSettingsData({
           deleted_at: null,
           insanku: {
             deleted_at: null,
+            is_active: true,
           },
         },
         select: {
@@ -130,6 +132,7 @@ async function getOutletSettingsData({
     name: item.name,
     kategori: item.category,
     excep: Boolean(item.excep),
+    is_active: Boolean(item.is_active),
     is_skip_sync: Boolean(item.is_skip_sync),
     username: item.username,
     is_username_change: Boolean(item.is_username_change),
@@ -153,6 +156,7 @@ export async function syncOutlet() {
     select: {
       uuid: true,
       is_skip_sync: true,
+      is_active: true,
       deleted_at: true,
     },
   });
@@ -181,13 +185,7 @@ export async function syncOutlet() {
   const deleted_outlet = existing_outlet.filter(
     (item) =>
       !incoming_outlet_uuid_set.has(item.uuid) &&
-      !item.is_skip_sync &&
-      item.deleted_at === null,
-  );
-  const skipped_deleted_outlet = existing_outlet.filter(
-    (item) =>
-      !incoming_outlet_uuid_set.has(item.uuid) &&
-      item.is_skip_sync &&
+      item.is_active &&
       item.deleted_at === null,
   );
 
@@ -206,105 +204,44 @@ export async function syncOutlet() {
           data: {
             name: item.name,
             category: item.category,
+            is_active: true,
             deleted_at: null,
           },
         }),
       ),
     );
 
+    const skipped_active_outlet_uuids = skipped_outlet
+      .map((item) => item.uuid)
+      .filter(Boolean);
+
+    if (skipped_active_outlet_uuids.length > 0) {
+      await tx.tbl_outlet.updateMany({
+        where: {
+          uuid: {
+            in: skipped_active_outlet_uuids,
+          },
+          deleted_at: null,
+        },
+        data: {
+          is_active: true,
+        },
+      });
+    }
+
     if (deleted_outlet.length > 0) {
       const deleted_outlet_uuids = deleted_outlet.map((item) => item.uuid);
-      const deleted_at = new Date();
-      await Promise.all([
-        tx.tbl_outlet_insanku.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
+      await tx.tbl_outlet.updateMany({
+        where: {
+          uuid: {
+            in: deleted_outlet_uuids,
           },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_kepatuhan_sop_cctv.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_target_nilai_transaksi.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_target_basket_size.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_total_penerimaan_pendapatan.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_jumlah_sku.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_kunjungan.updateMany({
-          where: {
-            uuid_outlet: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-        tx.tbl_outlet.updateMany({
-          where: {
-            uuid: {
-              in: deleted_outlet_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        }),
-      ]);
+          deleted_at: null,
+        },
+        data: {
+          is_active: false,
+        },
+      });
     }
   });
 
@@ -317,8 +254,9 @@ export async function syncOutlet() {
       inserted_outlet: new_outlet.length,
       updated_outlet: update_outlet.length,
       skipped_outlet: skipped_outlet.length,
-      deleted_outlet: deleted_outlet.length,
-      retained_skipped_outlet: skipped_deleted_outlet.length,
+      inactive_outlet: deleted_outlet.length,
+      deleted_outlet: 0,
+      retained_skipped_outlet: 0,
     },
   };
 }
@@ -333,6 +271,7 @@ export async function updateOutlet({
   uuid_outlet,
   name,
   kategori,
+  is_active,
   is_skip_sync,
   username,
   password,
@@ -343,6 +282,10 @@ export async function updateOutlet({
 
   const trimmed_name = String(name ?? "").trim();
   const trimmed_kategori = normalizeOutletKategori(kategori);
+  const normalized_is_active =
+    typeof is_active === "string"
+      ? is_active.toLowerCase() !== "false"
+      : Boolean(is_active ?? true);
   const trimmed_username = String(username ?? "").trim();
   const normalized_password = String(password ?? "");
 
@@ -404,6 +347,7 @@ export async function updateOutlet({
     data: {
       name: trimmed_name,
       category: trimmed_kategori,
+      is_active: normalized_is_active,
       is_skip_sync: Boolean(is_skip_sync),
       username: trimmed_username,
       is_username_change:

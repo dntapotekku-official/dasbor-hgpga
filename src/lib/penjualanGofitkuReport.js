@@ -52,7 +52,7 @@ export function buildPenjualanGofitkuGroups({
       weekly_total: 0,
       monthly_total: 0,
       daily_totals: {},
-      target: target_map.get(relation.uuid_insanku) ?? 0,
+      target: target_map.get(relation.uuid) ?? 0,
     };
     summary_map.set(relation.uuid, row);
     groups_map.get(relation.uuid_outlet).rows.push(row);

@@ -202,7 +202,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
                 some: {
                   uuid_outlet: user_uuid,
                   deleted_at: null,
-                  outlet: { deleted_at: null, excep: false },
+                  outlet: { deleted_at: null, is_active: true, excep: false },
                 },
               },
             }
@@ -217,6 +217,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         nik: true,
         name: true,
         username: true,
+        is_active: true,
         deleted_at: true,
         atribut_insanku: {
           where: {
@@ -264,7 +265,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         nik: employee.nik,
         name: employee.name,
         username: employee.username,
-        is_active: employee.deleted_at === null,
+        is_active: employee.deleted_at === null && employee.is_active,
         filled_attribute_keys: employee.atribut_insanku.map(
           (item) => item.uuid_atribut,
         ),
@@ -313,12 +314,12 @@ export async function updateAtributInsanKu({
         ...(is_member
           ? {
               outlet_insanku: {
-                some: {
-                  uuid_outlet: actor_uuid,
-                  deleted_at: null,
-                  outlet: { deleted_at: null, excep: false },
-                },
-              },
+	                some: {
+	                  uuid_outlet: actor_uuid,
+	                  deleted_at: null,
+	                  outlet: { deleted_at: null, is_active: true, excep: false },
+	                },
+	              },
             }
           : {}),
       },
@@ -587,7 +588,8 @@ export async function importAtributInsanKu({
 
   const employee_where = {
     username: { in: usernames },
-    deleted_at: active_tab === "aktif" ? null : { not: null },
+    deleted_at: null,
+    is_active: active_tab === "aktif",
     is_slip_gaji_account: active_category === "slip-gaji",
   };
   const attribute_uuids = Array.from(

@@ -3,10 +3,11 @@ import test from "node:test";
 
 import { softDeleteInsanKuRelations } from "../src/services/softDeleteInsanKuRelations.js";
 
-test("deactivating InsanKu preserves sales and closes historical target/exclusion periods", async () => {
+test("manual delete cascades InsanKu relations with soft delete semantics", async () => {
   const calls = [];
   const table = (name) => ({
     updateMany: async (args) => calls.push({ name, args }),
+    findMany: async () => [{ uuid: "placement-a" }],
   });
   const transaction = {
     tbl_atribut_insanku: table("atribut"),
@@ -20,8 +21,11 @@ test("deactivating InsanKu preserves sales and closes historical target/exclusio
 
   await softDeleteInsanKuRelations(transaction, ["insanku-a"], deleted_at);
 
-  assert.equal(calls.some((call) => call.name === "sales"), false);
+  assert.equal(calls.find((call) => call.name === "sales")?.args.data.deleted_at, deleted_at);
   assert.equal(calls.find((call) => call.name === "placement")?.args.data.deleted_at, deleted_at);
-  assert.equal(calls.find((call) => call.name === "target")?.args.data.end_date, deleted_at);
-  assert.equal(calls.find((call) => call.name === "exclusion")?.args.data.end_date, deleted_at);
+  assert.equal(calls.find((call) => call.name === "placement")?.args.data.uuid_insanku, null);
+  assert.equal(calls.find((call) => call.name === "atribut")?.args.data.uuid_insanku, null);
+  assert.equal(calls.find((call) => call.name === "target")?.args.data.uuid_outlet_insanku, null);
+  assert.equal(calls.find((call) => call.name === "target")?.args.data.deleted_at, deleted_at);
+  assert.equal(calls.find((call) => call.name === "exclusion")?.args.data.deleted_at, deleted_at);
 });

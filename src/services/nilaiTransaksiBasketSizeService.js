@@ -778,6 +778,7 @@ export async function getNilaiTransaksiBasketSize({
     prisma.tbl_outlet.findMany({
       where: {
         deleted_at: null,
+        is_active: true,
         excep: false,
         ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
       },
@@ -1442,6 +1443,7 @@ async function assert_active_outlet(uuid_outlet) {
     where: {
       uuid: normalized_uuid_outlet,
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     select: {
@@ -2391,6 +2393,7 @@ export async function importNilaiTransaksiBulanan({
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
+      is_active: true,
       excep: false,
       ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
     },
@@ -2617,6 +2620,7 @@ export async function importBasketSize({
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
+      is_active: true,
       excep: false,
       ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
     },
@@ -2929,6 +2933,7 @@ async function get_target_outlet_maps() {
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     orderBy: {

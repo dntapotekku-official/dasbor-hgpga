@@ -102,6 +102,7 @@ async function get_member_outlet_uuids(account_uuid) {
     where: {
       uuid: trimmed_account_uuid,
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     select: {
@@ -169,10 +170,12 @@ async function get_outlet_insanku_rows(accessible_outlet_uuids, active_date = nu
         : {}),
       outlet: {
         deleted_at: null,
+        is_active: true,
         excep: false,
       },
       insanku: {
         deleted_at: null,
+        is_active: true,
       },
     },
     orderBy: [
@@ -303,23 +306,23 @@ export async function getPenjualanGofitku({
     relation_map,
   );
   const report_relation_map = get_report_relations(active_relations, sales_rows);
-  const accessible_insanku_uuids = Array.from(
+  const accessible_relation_uuids = Array.from(
     new Set(
       Array.from(report_relation_map.values())
-        .map((item) => item.uuid_insanku)
+        .map((item) => item.uuid)
         .filter(Boolean),
     ),
   );
   const active_targets = await prisma.tbl_target_gofitku.findMany({
     where: {
       deleted_at: null,
-      ...(accessible_insanku_uuids.length
+      ...(accessible_relation_uuids.length
         ? {
-            uuid_insanku: {
-              in: accessible_insanku_uuids,
+            uuid_outlet_insanku: {
+              in: accessible_relation_uuids,
             },
           }
-        : { uuid_insanku: { in: [] } }),
+        : { uuid_outlet_insanku: { in: [] } }),
       start_date: {
         lte: selected_date,
       },
@@ -338,20 +341,23 @@ export async function getPenjualanGofitku({
       start_date: "desc",
     },
     select: {
-      uuid_insanku: true,
+      uuid_outlet_insanku: true,
       value: true,
     },
   });
   const active_target_map = new Map();
 
   for (const item of active_targets) {
-    const uuid_insanku = String(item.uuid_insanku ?? "").trim();
+    const uuid_outlet_insanku = String(item.uuid_outlet_insanku ?? "").trim();
 
-    if (!uuid_insanku || active_target_map.has(uuid_insanku)) {
+    if (
+      !uuid_outlet_insanku ||
+      active_target_map.has(uuid_outlet_insanku)
+    ) {
       continue;
     }
 
-    active_target_map.set(uuid_insanku, item.value ?? 0);
+    active_target_map.set(uuid_outlet_insanku, item.value ?? 0);
   }
 
   return {
@@ -391,10 +397,10 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
     relation_map,
   );
   const report_relation_map = get_report_relations(active_relations, sales_rows);
-  const accessible_insanku_uuids = Array.from(
+  const accessible_relation_uuids = Array.from(
     new Set(
       Array.from(report_relation_map.values())
-        .map((item) => item.uuid_insanku)
+        .map((item) => item.uuid)
         .filter(Boolean),
     ),
   );
@@ -411,19 +417,19 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
   const targets = await prisma.tbl_target_gofitku.findMany({
     where: {
       deleted_at: null,
-      ...(accessible_insanku_uuids.length
+      ...(accessible_relation_uuids.length
         ? {
-            uuid_insanku: {
-              in: accessible_insanku_uuids,
+            uuid_outlet_insanku: {
+              in: accessible_relation_uuids,
             },
           }
-        : { uuid_insanku: { in: [] } }),
+        : { uuid_outlet_insanku: { in: [] } }),
     },
     orderBy: {
       start_date: "desc",
     },
     select: {
-      uuid_insanku: true,
+      uuid_outlet_insanku: true,
       value: true,
       start_date: true,
       end_date: true,
@@ -455,11 +461,11 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
     sales_by_month.set(month_key, month_sales);
   }
   
-  const get_target_for_month = (uuid_insanku, month_start) => {
+  const get_target_for_month = (uuid_outlet_insanku, month_start) => {
     const target = targets.find((item) => {
       if (
-        String(item.uuid_insanku ?? "").trim() !==
-        String(uuid_insanku ?? "").trim()
+        String(item.uuid_outlet_insanku ?? "").trim() !==
+        String(uuid_outlet_insanku ?? "").trim()
       ) {
         return false;
       }
@@ -496,7 +502,7 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
             name: relation.insanku?.name ?? "-",
             monthly_total: 0,
             daily_totals: {},
-            target: get_target_for_month(relation.uuid_insanku, month_start),
+            target: get_target_for_month(relation.uuid, month_start),
           },
         ]),
       );
@@ -562,8 +568,8 @@ async function get_gofitku_chart_scope({
       OR: [
         {
           deleted_at: null,
-          insanku: { deleted_at: null },
-          outlet: { deleted_at: null },
+          insanku: { deleted_at: null, is_active: true },
+          outlet: { deleted_at: null, is_active: true },
         },
         { penjualan_gofitku: { some: { deleted_at: null } } },
       ],
@@ -785,10 +791,12 @@ export async function createPenjualanGofitku({
       deleted_at: null,
       outlet: {
         deleted_at: null,
+        is_active: true,
         excep: false,
       },
       insanku: {
         deleted_at: null,
+        is_active: true,
       },
     },
     select: {
@@ -964,10 +972,12 @@ export async function updatePenjualanGofitku({
           deleted_at: null,
           outlet: {
             deleted_at: null,
+            is_active: true,
             excep: false,
           },
           insanku: {
             deleted_at: null,
+            is_active: true,
           },
         },
         select: {
@@ -1188,6 +1198,13 @@ async function parse_target_report_workbook(file_path) {
   }
 }
 
+function format_target_placement_label(item) {
+  const insanku_name = item.insanku?.name ?? "InsanKU tidak diketahui";
+  const outlet_name = item.outlet?.name ?? "Outlet tidak diketahui";
+
+  return `${insanku_name} - ${outlet_name}`;
+}
+
 function add_to_lookup(lookup, key, item) {
   if (!key) {
     return;
@@ -1198,36 +1215,69 @@ function add_to_lookup(lookup, key, item) {
   lookup.set(key, matches);
 }
 
-async function get_target_insanku_maps() {
-  const insanku_rows = await prisma.tbl_insanku.findMany({
+async function get_target_placement_maps() {
+  const placement_rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
-      is_slip_gaji_account: true,
+      outlet: {
+        deleted_at: null,
+        is_active: true,
+        excep: false,
+      },
+      insanku: {
+        deleted_at: null,
+        is_active: true,
+        is_slip_gaji_account: true,
+      },
     },
-    orderBy: [{ name: "asc" }, { nik: "asc" }],
+    orderBy: [
+      { insanku: { name: "asc" } },
+      { outlet: { name: "asc" } },
+    ],
     select: {
       uuid: true,
-      nik: true,
-      name: true,
+      uuid_insanku: true,
+      uuid_outlet: true,
+      outlet: { select: { uuid: true, name: true } },
+      insanku: { select: { uuid: true, nik: true, name: true } },
     },
   });
-  const insanku_by_name = new Map();
-  const insanku_by_nik = new Map();
+  const placement_by_name = new Map();
+  const placement_by_nik = new Map();
+  const placement_by_outlet_and_name = new Map();
+  const placement_by_outlet_and_nik = new Map();
 
-  for (const item of insanku_rows) {
+  for (const item of placement_rows) {
+    const normalized_name = normalize_target_insanku_name(item.insanku?.name);
+    const normalized_outlet = normalize_target_insanku_name(item.outlet?.name);
+    const nik = String(item.insanku?.nik ?? "").trim();
+
+    item.placement_name = format_target_placement_label(item);
     add_to_lookup(
-      insanku_by_name,
-      normalize_target_insanku_name(item.name),
+      placement_by_name,
+      normalized_name,
       item,
     );
-    add_to_lookup(insanku_by_nik, String(item.nik ?? "").trim(), item);
+    add_to_lookup(placement_by_nik, nik, item);
+    add_to_lookup(
+      placement_by_outlet_and_name,
+      `${normalized_outlet}:${normalized_name}`,
+      item,
+    );
+    add_to_lookup(
+      placement_by_outlet_and_nik,
+      `${normalized_outlet}:${nik}`,
+      item,
+    );
   }
 
   return {
-    insanku_rows,
-    insanku_by_uuid: new Map(insanku_rows.map((item) => [item.uuid, item])),
-    insanku_by_name,
-    insanku_by_nik,
+    placement_rows,
+    placement_by_uuid: new Map(placement_rows.map((item) => [item.uuid, item])),
+    placement_by_name,
+    placement_by_nik,
+    placement_by_outlet_and_name,
+    placement_by_outlet_and_nik,
   };
 }
 
@@ -1266,14 +1316,14 @@ async function bulkUpdateTargetDates({
   assert_valid_range(parsed_source_start_date, parsed_source_end_date);
   assert_valid_range(parsed_start_date, parsed_end_date);
 
-  const { insanku_by_uuid } = await get_target_insanku_maps();
+  const { placement_by_uuid } = await get_target_placement_maps();
 
   return prisma.$transaction(async (transaction) => {
     const target_model = transaction.tbl_target_gofitku;
     const selected_targets = await target_model.findMany({
       where: {
         deleted_at: null,
-        uuid_insanku: { not: null },
+        uuid_outlet_insanku: { not: null },
         start_date: parsed_source_start_date,
         OR: get_source_end_date_filter(
           parsed_source_start_date,
@@ -1282,7 +1332,7 @@ async function bulkUpdateTargetDates({
       },
       select: {
         uuid: true,
-        uuid_insanku: true,
+        uuid_outlet_insanku: true,
       },
     });
 
@@ -1291,18 +1341,22 @@ async function bulkUpdateTargetDates({
     }
 
     const selected_uuids = selected_targets.map((item) => item.uuid);
-    const insanku_uuids = Array.from(
-      new Set(selected_targets.map((item) => item.uuid_insanku).filter(Boolean)),
+    const placement_uuids = Array.from(
+      new Set(
+        selected_targets
+          .map((item) => item.uuid_outlet_insanku)
+          .filter(Boolean),
+      ),
     );
-    const overlapping_targets = insanku_uuids.length
+    const overlapping_targets = placement_uuids.length
       ? await target_model.findMany({
           where: {
             deleted_at: null,
             uuid: {
               notIn: selected_uuids,
             },
-            uuid_insanku: {
-              in: insanku_uuids,
+            uuid_outlet_insanku: {
+              in: placement_uuids,
             },
             start_date: {
               lte: parsed_end_date,
@@ -1317,24 +1371,26 @@ async function bulkUpdateTargetDates({
             ],
           },
           select: {
-            uuid_insanku: true,
+            uuid_outlet_insanku: true,
           },
         })
       : [];
 
     if (overlapping_targets.length) {
-      const overlapping_insanku_names = Array.from(
+      const overlapping_placement_names = Array.from(
         new Set(
           overlapping_targets
             .map((item) =>
-              insanku_by_uuid.get(String(item.uuid_insanku ?? "").trim())?.name,
+              placement_by_uuid.get(
+                String(item.uuid_outlet_insanku ?? "").trim(),
+              )?.placement_name,
             )
             .filter(Boolean),
         ),
       ).sort((a, b) => a.localeCompare(b, "id-ID"));
 
       throw new Error(
-        `Edit massal dibatalkan karena tanggal baru bentrok untuk InsanKU: ${overlapping_insanku_names.join(", ")}.`,
+        `Edit massal dibatalkan karena tanggal baru bentrok untuk penempatan: ${overlapping_placement_names.join(", ")}.`,
       );
     }
 
@@ -1354,7 +1410,7 @@ async function bulkUpdateTargetDates({
 
     return {
       success: true,
-      message: `Tanggal dan target GoFitKu berhasil diperbarui untuk ${result.count} InsanKU.`,
+      message: `Tanggal dan target GoFitKu berhasil diperbarui untuk ${result.count} penempatan.`,
       data: {
         updated_count: result.count,
         start_date: parsed_start_date.toISOString().slice(0, 10),
@@ -1383,7 +1439,7 @@ async function bulkDeleteTargetPeriod({
     const selected_targets = await target_model.findMany({
       where: {
         deleted_at: null,
-        uuid_insanku: { not: null },
+        uuid_outlet_insanku: { not: null },
         start_date: parsed_source_start_date,
         OR: get_source_end_date_filter(
           parsed_source_start_date,
@@ -1413,7 +1469,7 @@ async function bulkDeleteTargetPeriod({
 
     return {
       success: true,
-      message: `Target GoFitKu berhasil dihapus untuk ${result.count} InsanKU.`,
+      message: `Target GoFitKu berhasil dihapus untuk ${result.count} penempatan.`,
       data: {
         deleted_count: result.count,
       },
@@ -1421,14 +1477,20 @@ async function bulkDeleteTargetPeriod({
   });
 }
 
-function format_target_row(item, insanku_by_uuid) {
-  const insanku = insanku_by_uuid.get(String(item.uuid_insanku ?? "").trim());
+function format_target_row(item, placement_by_uuid) {
+  const placement = placement_by_uuid.get(
+    String(item.uuid_outlet_insanku ?? "").trim(),
+  );
 
   return {
     uuid: item.uuid,
-    uuid_insanku: item.uuid_insanku ?? "",
-    insanku_name: insanku?.name ?? "InsanKU tidak diketahui",
-    nik: insanku?.nik ?? "",
+    uuid_outlet_insanku: item.uuid_outlet_insanku ?? "",
+    uuid_insanku: placement?.insanku?.uuid ?? "",
+    uuid_outlet: placement?.outlet?.uuid ?? "",
+    placement_name: placement?.placement_name ?? "Penempatan tidak diketahui",
+    insanku_name: placement?.insanku?.name ?? "InsanKU tidak diketahui",
+    outlet_name: placement?.outlet?.name ?? "Outlet tidak diketahui",
+    nik: placement?.insanku?.nik ?? "",
     target: Number(item.value ?? 0),
     start_date: item.start_date.toISOString().slice(0, 10),
     end_date: item.end_date
@@ -1438,7 +1500,7 @@ function format_target_row(item, insanku_by_uuid) {
 }
 
 async function find_overlapping_target({
-  uuid_insanku,
+  uuid_outlet_insanku,
   start_date,
   end_date,
   exclude_uuid,
@@ -1446,7 +1508,7 @@ async function find_overlapping_target({
   return prisma.tbl_target_gofitku.findFirst({
     where: {
       deleted_at: null,
-      uuid_insanku,
+      uuid_outlet_insanku,
       ...(exclude_uuid
         ? {
             uuid: {
@@ -1476,22 +1538,25 @@ async function find_overlapping_target({
   });
 }
 
-async function assert_valid_insanku_uuid(uuid_insanku, insanku_by_uuid) {
-  const trimmed_uuid_insanku = String(uuid_insanku ?? "").trim();
+async function assert_valid_placement_uuid(
+  uuid_outlet_insanku,
+  placement_by_uuid,
+) {
+  const trimmed_uuid_outlet_insanku = String(uuid_outlet_insanku ?? "").trim();
 
-  if (!trimmed_uuid_insanku) {
-    throw new Error("InsanKU wajib dipilih.");
+  if (!trimmed_uuid_outlet_insanku) {
+    throw new Error("Penempatan wajib dipilih.");
   }
 
-  if (!insanku_by_uuid.has(trimmed_uuid_insanku)) {
-    throw new Error("InsanKU target tidak ditemukan.");
+  if (!placement_by_uuid.has(trimmed_uuid_outlet_insanku)) {
+    throw new Error("Penempatan target tidak ditemukan.");
   }
 
-  return trimmed_uuid_insanku;
+  return trimmed_uuid_outlet_insanku;
 }
 
 export async function getTargetGofitku() {
-  const { insanku_rows, insanku_by_uuid } = await get_target_insanku_maps();
+  const { placement_rows, placement_by_uuid } = await get_target_placement_maps();
   const data_target_gofitku = await prisma.tbl_target_gofitku.findMany({
     where: {
       deleted_at: null,
@@ -1506,7 +1571,7 @@ export async function getTargetGofitku() {
     ],
     select: {
       uuid: true,
-      uuid_insanku: true,
+      uuid_outlet_insanku: true,
       value: true,
       start_date: true,
       end_date: true,
@@ -1516,35 +1581,41 @@ export async function getTargetGofitku() {
   return {
     data_target_gofitku: data_target_gofitku
       .filter((item) =>
-        insanku_by_uuid.has(String(item.uuid_insanku ?? "").trim()),
+        placement_by_uuid.has(String(item.uuid_outlet_insanku ?? "").trim()),
       )
-      .map((item) => format_target_row(item, insanku_by_uuid)),
-    options: insanku_rows.map((item) => ({
+      .map((item) => format_target_row(item, placement_by_uuid)),
+    options: placement_rows.map((item) => ({
       value: item.uuid,
-      label: item.nik ? `${item.name} (${item.nik})` : item.name,
+      label: item.insanku?.nik
+        ? `${item.placement_name} (${item.insanku.nik})`
+        : item.placement_name,
+      uuid_insanku: item.insanku?.uuid ?? "",
+      insanku_name: item.insanku?.name ?? "",
+      uuid_outlet: item.outlet?.uuid ?? "",
+      outlet_name: item.outlet?.name ?? "",
     })),
   };
 }
 
 export async function createTargetGofitku({
-  uuid_insanku,
+  uuid_outlet_insanku,
   target,
   start_date,
   end_date,
 }) {
-  const { insanku_by_uuid } = await get_target_insanku_maps();
+  const { placement_by_uuid } = await get_target_placement_maps();
   const parsed_target = parse_target_value(target);
   const parsed_start_date = parse_target_date(start_date);
   const parsed_end_date = parse_target_date(end_date);
-  const resolved_uuid_insanku = await assert_valid_insanku_uuid(
-    uuid_insanku,
-    insanku_by_uuid,
+  const resolved_uuid_outlet_insanku = await assert_valid_placement_uuid(
+    uuid_outlet_insanku,
+    placement_by_uuid,
   );
 
   assert_valid_range(parsed_start_date, parsed_end_date);
 
   const overlapping_target = await find_overlapping_target({
-    uuid_insanku: resolved_uuid_insanku,
+    uuid_outlet_insanku: resolved_uuid_outlet_insanku,
     start_date: parsed_start_date,
     end_date: parsed_end_date,
   });
@@ -1556,14 +1627,14 @@ export async function createTargetGofitku({
   const created_target = await prisma.tbl_target_gofitku.create({
     data: {
       uuid: randomUUID(),
-      uuid_insanku: resolved_uuid_insanku,
+      uuid_outlet_insanku: resolved_uuid_outlet_insanku,
       value: parsed_target,
       start_date: parsed_start_date,
       end_date: parsed_end_date,
     },
     select: {
       uuid: true,
-      uuid_insanku: true,
+      uuid_outlet_insanku: true,
       value: true,
       start_date: true,
       end_date: true,
@@ -1572,7 +1643,7 @@ export async function createTargetGofitku({
 
   return {
     success: true,
-    data: format_target_row(created_target, insanku_by_uuid),
+    data: format_target_row(created_target, placement_by_uuid),
     message: "Target GoFitKu berhasil ditambahkan.",
   };
 }
@@ -1588,15 +1659,15 @@ export async function bulkCreateTargetGofitku({
 
   assert_valid_range(parsed_start_date, parsed_end_date);
 
-  const { insanku_rows } = await get_target_insanku_maps();
+  const { placement_rows } = await get_target_placement_maps();
 
-  if (!insanku_rows.length) {
-    throw new Error("Tidak ada InsanKU aktif yang dapat diberikan target.");
+  if (!placement_rows.length) {
+    throw new Error("Tidak ada penempatan aktif yang dapat diberikan target.");
   }
 
-  const normalized_items = insanku_rows.map((item) => ({
+  const normalized_items = placement_rows.map((item) => ({
     uuid: randomUUID(),
-    uuid_insanku: item.uuid,
+    uuid_outlet_insanku: item.uuid,
     value: parsed_target,
     start_date: parsed_start_date,
     end_date: parsed_end_date,
@@ -1607,8 +1678,8 @@ export async function bulkCreateTargetGofitku({
       const replaced_targets = await transaction.tbl_target_gofitku.updateMany({
         where: {
           deleted_at: null,
-          uuid_insanku: {
-            in: normalized_items.map((item) => item.uuid_insanku),
+          uuid_outlet_insanku: {
+            in: normalized_items.map((item) => item.uuid_outlet_insanku),
           },
           start_date: {
             lte: parsed_end_date,
@@ -1650,7 +1721,7 @@ export async function bulkCreateTargetGofitku({
 
 export async function updateTargetGofitku({
   uuid_target_gofitku,
-  uuid_insanku,
+  uuid_outlet_insanku,
   target,
   start_date,
   end_date,
@@ -1659,13 +1730,13 @@ export async function updateTargetGofitku({
     throw new Error("UUID target wajib diisi.");
   }
 
-  const { insanku_by_uuid } = await get_target_insanku_maps();
+  const { placement_by_uuid } = await get_target_placement_maps();
   const parsed_target = parse_target_value(target);
   const parsed_start_date = parse_target_date(start_date);
   const parsed_end_date = parse_target_date(end_date);
-  const resolved_uuid_insanku = await assert_valid_insanku_uuid(
-    uuid_insanku,
-    insanku_by_uuid,
+  const resolved_uuid_outlet_insanku = await assert_valid_placement_uuid(
+    uuid_outlet_insanku,
+    placement_by_uuid,
   );
 
   assert_valid_range(parsed_start_date, parsed_end_date);
@@ -1685,7 +1756,7 @@ export async function updateTargetGofitku({
   }
 
   const overlapping_target = await find_overlapping_target({
-    uuid_insanku: resolved_uuid_insanku,
+    uuid_outlet_insanku: resolved_uuid_outlet_insanku,
     start_date: parsed_start_date,
     end_date: parsed_end_date,
     exclude_uuid: uuid_target_gofitku,
@@ -1700,14 +1771,14 @@ export async function updateTargetGofitku({
       uuid: uuid_target_gofitku,
     },
     data: {
-      uuid_insanku: resolved_uuid_insanku,
+      uuid_outlet_insanku: resolved_uuid_outlet_insanku,
       value: parsed_target,
       start_date: parsed_start_date,
       end_date: parsed_end_date,
     },
     select: {
       uuid: true,
-      uuid_insanku: true,
+      uuid_outlet_insanku: true,
       value: true,
       start_date: true,
       end_date: true,
@@ -1716,7 +1787,7 @@ export async function updateTargetGofitku({
 
   return {
     success: true,
-    data: format_target_row(updated_target, insanku_by_uuid),
+    data: format_target_row(updated_target, placement_by_uuid),
     message: "Target GoFitKu berhasil diperbarui.",
   };
 }
@@ -1770,84 +1841,99 @@ export async function importTargetGofitku({
   assert_valid_range(parsed_start_date, parsed_end_date);
 
   const rows = await parse_target_report_workbook(file_path);
-  const { insanku_by_name, insanku_by_nik, insanku_by_uuid } =
-    await get_target_insanku_maps();
+  const {
+    placement_by_name,
+    placement_by_nik,
+    placement_by_outlet_and_name,
+    placement_by_outlet_and_nik,
+  } = await get_target_placement_maps();
   const imported_rows = [];
-  const unmatched_insanku = [];
-  const ambiguous_insanku = [];
-  const duplicate_insanku = new Set();
-  const seen_insanku_uuids = new Set();
+  const unmatched_placements = [];
+  const ambiguous_placements = [];
+  const duplicate_placements = new Set();
+  const seen_placement_uuids = new Set();
 
   for (const row of rows) {
     const insanku_name = String(row?.insanku_name ?? "").trim();
     const nik = String(row?.nik ?? "").trim();
+    const outlet_name = String(row?.outlet_name ?? "").trim();
 
     if (!insanku_name && !nik) {
       continue;
     }
 
-    const matches = nik
-      ? insanku_by_nik.get(nik) ?? []
-      : insanku_by_name.get(normalize_target_insanku_name(insanku_name)) ?? [];
-    const source_label = nik || insanku_name;
+    const normalized_outlet_name = normalize_target_insanku_name(outlet_name);
+    const normalized_insanku_name = normalize_target_insanku_name(insanku_name);
+    const matches = outlet_name
+      ? nik
+        ? placement_by_outlet_and_nik.get(`${normalized_outlet_name}:${nik}`) ?? []
+        : placement_by_outlet_and_name.get(
+            `${normalized_outlet_name}:${normalized_insanku_name}`,
+          ) ?? []
+      : nik
+        ? placement_by_nik.get(nik) ?? []
+        : placement_by_name.get(normalized_insanku_name) ?? [];
+    const source_label = outlet_name
+      ? `${nik || insanku_name} - ${outlet_name}`
+      : nik || insanku_name;
 
     if (!matches.length) {
-      unmatched_insanku.push(source_label);
+      unmatched_placements.push(source_label);
       continue;
     }
 
     if (matches.length > 1) {
-      ambiguous_insanku.push(source_label);
+      ambiguous_placements.push(source_label);
       continue;
     }
 
-    const matched_insanku = matches[0];
+    const matched_placement = matches[0];
 
-    if (seen_insanku_uuids.has(matched_insanku.uuid)) {
-      duplicate_insanku.add(matched_insanku.name);
+    if (seen_placement_uuids.has(matched_placement.uuid)) {
+      duplicate_placements.add(matched_placement.placement_name);
       continue;
     }
 
-    seen_insanku_uuids.add(matched_insanku.uuid);
+    seen_placement_uuids.add(matched_placement.uuid);
     const parsed_target = parse_target_value(row?.target, {
-      label: `Nilai target untuk InsanKU ${matched_insanku.name}`,
+      label: `Nilai target untuk penempatan ${matched_placement.placement_name}`,
     });
 
     imported_rows.push({
       uuid: randomUUID(),
-      uuid_insanku: matched_insanku.uuid,
+      uuid_outlet_insanku: matched_placement.uuid,
       value: parsed_target,
       start_date: parsed_start_date,
       end_date: parsed_end_date,
     });
   }
 
-  if (ambiguous_insanku.length) {
+  if (ambiguous_placements.length) {
     throw new Error(
-      `Beberapa InsanKU tidak unik. Gunakan kolom NIK untuk: ${Array.from(new Set(ambiguous_insanku))
+      `Beberapa penempatan tidak unik. Gunakan kolom Outlet dan NIK untuk: ${Array.from(new Set(ambiguous_placements))
         .sort((a, b) => a.localeCompare(b, "id-ID"))
         .join(", ")}.`,
     );
   }
 
-  if (duplicate_insanku.size) {
+  if (duplicate_placements.size) {
     throw new Error(
-      `File impor memiliki InsanKU duplikat: ${Array.from(duplicate_insanku)
+      `File impor memiliki penempatan duplikat: ${Array.from(duplicate_placements)
         .sort((a, b) => a.localeCompare(b, "id-ID"))
         .join(", ")}.`,
     );
   }
 
   if (!imported_rows.length) {
-    throw new Error("Tidak ada data target InsanKU yang cocok untuk diimpor.");
+    throw new Error("Tidak ada data target penempatan yang cocok untuk diimpor.");
   }
 
   const replaced_count = await prisma.$transaction(async (transaction) => {
     const replaced_targets = await transaction.tbl_target_gofitku.updateMany({
       where: {
         deleted_at: null,
-        uuid_insanku: {
-          in: imported_rows.map((item) => item.uuid_insanku),
+        uuid_outlet_insanku: {
+          in: imported_rows.map((item) => item.uuid_outlet_insanku),
         },
         start_date: {
           lte: parsed_end_date,
@@ -1877,11 +1963,12 @@ export async function importTargetGofitku({
 
   return {
     success: true,
-    message: `Impor target GoFitKu berhasil untuk ${imported_rows.length} InsanKU${replaced_count ? ` dan ${replaced_count} data lama ditimpa` : ""}.`,
+    message: `Impor target GoFitKu berhasil untuk ${imported_rows.length} penempatan${replaced_count ? ` dan ${replaced_count} data lama ditimpa` : ""}.`,
     data: {
       imported_count: imported_rows.length,
       replaced_count,
-      unmatched_insanku,
+      unmatched_insanku: unmatched_placements,
+      unmatched_placements,
       start_date: parsed_start_date.toISOString().slice(0, 10),
       end_date: parsed_end_date.toISOString().slice(0, 10),
     },

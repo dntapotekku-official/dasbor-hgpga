@@ -287,7 +287,7 @@ export default function AdminTab() {
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead className="w-20">#</TableHead>
+                    <TableHead className="w-14">No.</TableHead>
                     <TableHead>
                       <SortableTableHead
                         label="Nama"
@@ -333,8 +333,8 @@ export default function AdminTab() {
                             ? `${row.menu_access_keys?.length ?? 0} menu`
                             : "Sesuai role"}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                           {can_manage_admin(row) ? (
                             <>
                               <Button

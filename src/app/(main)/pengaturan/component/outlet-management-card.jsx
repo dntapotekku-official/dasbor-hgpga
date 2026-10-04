@@ -74,7 +74,7 @@ export default function OutletManagementCard() {
           selected_category === "all" || item.kategori === selected_category;
         const matches_status =
           selected_status === "all" ||
-          (selected_status === "excluded" ? item.excep : !item.excep);
+          (selected_status === "active" ? item.is_active : !item.is_active);
 
         return matches_category && matches_status;
       }),
@@ -84,8 +84,10 @@ export default function OutletManagementCard() {
     return [...scoped_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
 
-      if (sort_key === "excep") {
-        return (Number(Boolean(a.excep)) - Number(Boolean(b.excep))) * direction;
+      if (sort_key === "is_active") {
+        return (
+          Number(Boolean(a.is_active)) - Number(Boolean(b.is_active))
+        ) * direction;
       }
 
       return String(a[sort_key] ?? "").localeCompare(
@@ -279,6 +281,7 @@ export default function OutletManagementCard() {
         uuid_outlet: next_outlet.uuid,
         name: next_outlet.name,
         kategori: next_outlet.kategori,
+        is_active: next_outlet.is_active,
         is_skip_sync: next_outlet.is_skip_sync,
         username: next_outlet.username,
         password: next_outlet.password,
@@ -411,7 +414,7 @@ export default function OutletManagementCard() {
                 options={[
                   { value: "all", label: "Semua status" },
                   { value: "active", label: "Aktif" },
-                  { value: "excluded", label: "Dikecualikan" },
+                  { value: "inactive", label: "Tidak Aktif" },
                 ]}
                 ariaLabel="Filter status outlet"
                 triggerClassName="w-full lg:w-48"
@@ -430,7 +433,7 @@ export default function OutletManagementCard() {
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead className="w-20">#</TableHead>
+                    <TableHead className="w-14">No.</TableHead>
                     <TableHead>
                       <SortableTableHead
                         label="Nama Outlet"
@@ -459,12 +462,12 @@ export default function OutletManagementCard() {
                       />
                     </TableHead>
                     <TableHead>
-                      <SortableTableHead
-                        label="Status"
-                        sortKey="excep"
-                        currentSortKey={sort_key}
-                        sortDirection={sort_direction}
-                        onSort={toggle_sort}
+                        <SortableTableHead
+                          label="Status"
+                          sortKey="is_active"
+                          currentSortKey={sort_key}
+                          sortDirection={sort_direction}
+                          onSort={toggle_sort}
                       />
                     </TableHead>
                     <TableHead>Aksi</TableHead>
@@ -480,16 +483,16 @@ export default function OutletManagementCard() {
                       <TableCell>
                         <span
                           className={
-                            row.excep
-                              ? "text-rose-700 dark:text-rose-400"
-                              : "text-emerald-700 dark:text-emerald-400"
+                            row.is_active
+                              ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "inline-flex rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
                           }
                         >
-                          {row.excep ? "Dikecualikan" : "Aktif"}
+                          {row.is_active ? "Aktif" : "Tidak Aktif"}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                           <Button
                             type="button"
                             variant="outline"
@@ -552,6 +555,17 @@ export default function OutletManagementCard() {
             description="Perbarui data outlet pada tampilan pengaturan."
             item={selected_outlet}
             fields={[
+              {
+                key: "is_active",
+                label: "Status",
+                type: "tabs",
+                disabled: true,
+                helper: "Status mengikuti hasil sinkronisasi API. Jika outlet tidak ada dari API, status otomatis menjadi Tidak Aktif.",
+                options: [
+                  { value: "true", label: "Aktif" },
+                  { value: "false", label: "Tidak Aktif" },
+                ],
+              },
               {
                 key: "name",
                 label: "Nama Outlet",

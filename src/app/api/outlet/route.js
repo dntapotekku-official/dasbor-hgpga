@@ -100,6 +100,7 @@ export const PATCH = async (request) => {
           uuid_outlet: body?.uuid_outlet,
           name: body?.name,
           kategori: body?.kategori,
+          is_active: body?.is_active,
           is_skip_sync: body?.is_skip_sync,
           username: body?.username,
           password: body?.password,

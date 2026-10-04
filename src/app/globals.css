@@ -171,3 +171,23 @@
     }
   }
 }
+
+@layer components {
+  /* Tombol di dalam baris tabel harus selalu sebaris, tidak wrap ke bawah. */
+  td[data-slot="table-cell"]:has([data-slot="button"]) {
+    white-space: nowrap;
+  }
+  td[data-slot="table-cell"] > div:has([data-slot="button"]) {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    width: max-content;
+    max-width: none;
+  }
+  td[data-slot="table-cell"] [data-slot="button"] {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}

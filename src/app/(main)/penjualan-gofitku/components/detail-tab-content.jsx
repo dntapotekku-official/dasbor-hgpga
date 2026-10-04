@@ -18,15 +18,16 @@ import usePagination from "@/hooks/usePagination";
 const PAGE_SIZE = 50;
 
 function DetailRows({ rows, group, on_edit_row, on_delete_row }) {
-  return rows.map((row) => (
+  return rows.map((row, index) => (
     <TableRow key={row.uuid}>
+      <TableCell className="w-14 text-center">{index + 1}</TableCell>
       <TableCell className="whitespace-normal">
         <div className="font-medium">{row.name}</div>
       </TableCell>
       <TableCell className="font-medium">{row.today_input}</TableCell>
       <TableCell>{row.product_name ?? "-"}</TableCell>
-      <TableCell>
-        <div className="flex gap-2">
+      <TableCell className="whitespace-nowrap">
+        <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
           <Button
             type="button"
             variant="outline"
@@ -87,6 +88,7 @@ export default function DetailTabContent({
         <Table className="min-w-[760px]" containerClassName="overflow-visible">
           <TableHeader className="sticky top-0 z-10 bg-primary [&_th]:text-primary-foreground">
             <TableRow>
+              <TableHead className="w-14 text-center">No.</TableHead>
               <TableHead className="w-[32%]">Nama</TableHead>
               <TableHead>Jumlah</TableHead>
               <TableHead>Produk</TableHead>
@@ -95,15 +97,16 @@ export default function DetailTabContent({
           </TableHeader>
           <TableBody>
             {rows.length ? (
-              rows.map(({ group, row }) => (
+              rows.map(({ group, row }, index) => (
                 <TableRow key={row.uuid}>
+                  <TableCell className="w-14 text-center">{index + 1}</TableCell>
                   <TableCell className="whitespace-normal">
                     <div className="font-medium">{row.name}</div>
                   </TableCell>
                   <TableCell className="font-medium">{row.today_input}</TableCell>
                   <TableCell>{row.product_name ?? "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
+                  <TableCell className="whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                       <Button
                         type="button"
                         variant="outline"
@@ -128,8 +131,8 @@ export default function DetailTabContent({
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={4}
+                  <TableCell
+                  colSpan={5}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   Belum ada detail penjualan untuk tanggal ini.
@@ -166,6 +169,7 @@ export default function DetailTabContent({
                 <Table className="min-w-[760px]">
                   <TableHeader sticky={false} className="bg-primary [&_th]:text-primary-foreground">
                     <TableRow>
+                      <TableHead className="w-14 text-center">No.</TableHead>
                       <TableHead className="w-[32%]">Nama</TableHead>
                       <TableHead>Jumlah</TableHead>
                       <TableHead>Produk</TableHead>

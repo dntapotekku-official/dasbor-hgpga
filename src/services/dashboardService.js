@@ -33,6 +33,7 @@ async function get_member_overview(user, period) {
       where: {
         uuid: user.uuid,
         deleted_at: null,
+        is_active: true,
         excep: false,
       },
       select: {
@@ -43,6 +44,7 @@ async function get_member_overview(user, period) {
             deleted_at: null,
             insanku: {
               deleted_at: null,
+              is_active: true,
             },
           },
           select: {
@@ -156,12 +158,12 @@ async function get_management_overview(user) {
   const [employees, required_attribute_count, outlet_count, admin_count] =
     await Promise.all([
       prisma.tbl_insanku.findMany({
-        where: { deleted_at: null },
+        where: { deleted_at: null, is_active: true },
         select: {
           outlet_insanku: {
             where: {
               deleted_at: null,
-              outlet: { deleted_at: null, excep: false },
+              outlet: { deleted_at: null, is_active: true, excep: false },
             },
             select: { uuid: true },
           },
@@ -181,7 +183,7 @@ async function get_management_overview(user) {
         where: { deleted_at: null, is_attribute: true },
       }),
       prisma.tbl_outlet.count({
-        where: { deleted_at: null, excep: false },
+        where: { deleted_at: null, is_active: true, excep: false },
       }),
       normalizeRole(user.role) === "superadmin"
         ? prisma.tbl_admin.count({ where: { deleted_at: null } })

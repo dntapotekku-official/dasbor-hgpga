@@ -268,7 +268,7 @@ function GlobalTargetTable({ metric_key }) {
             <Table containerClassName="overflow-visible">
               <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
-                  <TableHead className="w-20">#</TableHead>
+                  <TableHead className="w-14">No.</TableHead>
                   <TableHead>Rentang Tanggal</TableHead>
                   <TableHead>Target</TableHead>
                   <TableHead className="w-[180px]">Aksi</TableHead>
@@ -282,8 +282,8 @@ function GlobalTargetTable({ metric_key }) {
                       {format_target_range(row.start_date, row.end_date)}
                     </TableCell>
                     <TableCell>{format_target_value(row.target)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
+                    <TableCell className="whitespace-nowrap">
+                      <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                         <Button
                           type="button"
                           variant="outline"

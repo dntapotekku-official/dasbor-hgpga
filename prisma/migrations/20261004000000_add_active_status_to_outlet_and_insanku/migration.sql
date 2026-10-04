@@ -1,0 +1,2 @@
+ALTER TABLE `tbl_outlet` ADD COLUMN `is_active` BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE `tbl_insanku` ADD COLUMN `is_active` BOOLEAN NOT NULL DEFAULT true;

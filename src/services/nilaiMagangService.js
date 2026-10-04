@@ -177,7 +177,7 @@ async function save_rows(rows, period, selected_outlet) {
         select: { uuid: true },
       }),
       transaction.tbl_outlet.findMany({
-        where: { uuid: { in: outlet_uuids }, deleted_at: null },
+        where: { uuid: { in: outlet_uuids }, deleted_at: null, is_active: true },
         select: { uuid: true },
       }),
     ]);
@@ -280,7 +280,7 @@ export async function getNilaiMagang({ month, year, outlet_uuid } = {}) {
       },
     }),
     prisma.tbl_outlet.findMany({
-      where: { deleted_at: null, excep: false },
+      where: { deleted_at: null, is_active: true, excep: false },
       orderBy: { name: "asc" },
       select: { uuid: true, name: true },
     }),

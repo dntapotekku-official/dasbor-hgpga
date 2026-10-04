@@ -150,6 +150,7 @@ async function assert_active_outlet(uuid_outlet) {
     where: {
       uuid: normalized_uuid_outlet,
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     select: {
@@ -322,6 +323,7 @@ export async function getKunjungan() {
         metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
         outlet: {
           deleted_at: null,
+          is_active: true,
           excep: false,
         },
       },
@@ -352,6 +354,7 @@ export async function getKunjungan() {
     prisma.tbl_outlet.findMany({
       where: {
         deleted_at: null,
+        is_active: true,
         excep: false,
       },
       orderBy: {
@@ -560,6 +563,7 @@ export async function importKunjungan({
   const outlets = await prisma.tbl_outlet.findMany({
     where: {
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     select: {

@@ -59,7 +59,7 @@ export const PUT = async (request) => {
     }
 
     const data = await createTargetGofitku({
-      uuid_insanku: body?.uuid_insanku,
+      uuid_outlet_insanku: body?.uuid_outlet_insanku,
       start_date: body?.start_date,
       end_date: body?.end_date,
       target: body?.target,
@@ -101,7 +101,7 @@ export const PATCH = async (request) => {
 
     const data = await updateTargetGofitku({
       uuid_target_gofitku: body?.uuid_target_gofitku,
-      uuid_insanku: body?.uuid_insanku,
+      uuid_outlet_insanku: body?.uuid_outlet_insanku,
       start_date: body?.start_date,
       end_date: body?.end_date,
       target: body?.target,

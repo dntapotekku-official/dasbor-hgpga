@@ -902,7 +902,7 @@ export default function KunjunganPage() {
                   <Table className="table-fixed" containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
-                        <TableHead className="w-20">#</TableHead>
+                        <TableHead className="w-14">No.</TableHead>
                         <TableHead>
                           <SortableTableHead
                             label="Outlet"
@@ -946,8 +946,8 @@ export default function KunjunganPage() {
                             {Number(row.value ?? 0).toLocaleString("id-ID")}
                           </TableCell>
                           <TableCell>{format_date_label(row.date)}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                               <Button
                                 type="button"
                                 variant="outline"
@@ -1059,7 +1059,7 @@ export default function KunjunganPage() {
                       <Table className="table-fixed" containerClassName="overflow-visible">
                         <TableHeader className="sticky top-0 z-10 bg-card">
                           <TableRow>
-                            <TableHead className="w-20">#</TableHead>
+                            <TableHead className="w-14">No.</TableHead>
                             <TableHead>
                               <SortableTableHead
                                 label="Outlet"
@@ -1113,8 +1113,8 @@ export default function KunjunganPage() {
                               </TableCell>
                               <TableCell>{format_date_label(row.from_date)}</TableCell>
                               <TableCell>{format_date_label(row.to_date)}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-2">
+                              <TableCell className="whitespace-nowrap">
+                                <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                                   <Button
                                     type="button"
                                     variant="outline"

@@ -20,6 +20,11 @@ export async function hardDeleteInsanKuRelations(
         uuid_outlet_insanku: { in: outlet_relation_uuids },
       },
     });
+    await transaction.tbl_target_gofitku.deleteMany({
+      where: {
+        uuid_outlet_insanku: { in: outlet_relation_uuids },
+      },
+    });
   }
 
   await transaction.tbl_atribut_insanku.deleteMany({
@@ -28,11 +33,6 @@ export async function hardDeleteInsanKuRelations(
     },
   });
   await transaction.tbl_nilai_magang.deleteMany({
-    where: {
-      uuid_insanku: { in: insanku_uuids },
-    },
-  });
-  await transaction.tbl_target_gofitku.deleteMany({
     where: {
       uuid_insanku: { in: insanku_uuids },
     },

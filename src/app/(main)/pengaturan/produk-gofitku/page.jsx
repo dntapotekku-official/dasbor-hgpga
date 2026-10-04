@@ -244,7 +244,7 @@ export default function ProdukGofitkuPage() {
                   <Table containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
-                        <TableHead className="w-20">#</TableHead>
+                        <TableHead className="w-14">No.</TableHead>
                         <TableHead>
                           <SortableTableHead
                             label="Nama Produk"
@@ -264,8 +264,8 @@ export default function ProdukGofitkuPage() {
                             {(current_page - 1) * PAGE_SIZE + index + 1}
                           </TableCell>
                           <TableCell className="font-medium">{row.name}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
+                          <TableCell className="whitespace-nowrap">
+                            <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                               <Button
                                 type="button"
                                 variant="outline"

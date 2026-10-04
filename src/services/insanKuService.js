@@ -103,6 +103,7 @@ async function validateOutlets(database, outlet_uuids) {
     where: {
       uuid: { in: outlet_uuids },
       deleted_at: null,
+      is_active: true,
       excep: false,
     },
     select: { uuid: true },
@@ -233,6 +234,7 @@ export function normalizeInsanKuRows(insanku_payload, username_map = new Map()) 
         is_username_change: false,
         is_password_change: false,
         avatar: item?.foto_profile ?? item?.avatar ?? null,
+        is_active: true,
         is_slip_gaji_account: true,
         role: "member",
       };
@@ -253,6 +255,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       nik: true,
       name: true,
       username: true,
+      is_active: true,
       is_slip_gaji_account: true,
       is_skip_sync: true,
       gofitku_exclusion_periods: {
@@ -305,6 +308,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       nik: item.nik,
       name: item.name,
       username: item.username,
+      is_active: Boolean(item.is_active),
       is_slip_gaji_account: item.is_slip_gaji_account,
       is_skip_sync_insanku: Boolean(item.is_skip_sync),
       is_skip_sync_outlet_insanku: item.outlet_insanku.some(
@@ -358,6 +362,7 @@ export async function syncInsanKu() {
         username: true,
         is_password_change: true,
         is_skip_sync: true,
+        is_active: true,
         deleted_at: true,
       },
     }),
@@ -455,16 +460,10 @@ export async function syncInsanKu() {
       return existing_item?.is_skip_sync && existing_item.deleted_at === null;
     },
   );
-  const deleted_insanku = existing_insanku.filter(
+  const inactive_insanku = existing_insanku.filter(
     (item) =>
       !incoming_insanku_uuid_set.has(item.uuid) &&
-      !item.is_skip_sync &&
-      item.deleted_at === null,
-  );
-  const skipped_deleted_insanku = existing_insanku.filter(
-    (item) =>
-      !incoming_insanku_uuid_set.has(item.uuid) &&
-      item.is_skip_sync &&
+      item.is_active &&
       item.deleted_at === null,
   );
   const reactivated_insanku_uuids = update_insanku
@@ -481,14 +480,6 @@ export async function syncInsanKu() {
       inserted_count = result.count;
     }
 
-    if (reactivated_insanku_uuids.length > 0) {
-      await softDeleteInsanKuRelations(
-        tx,
-        reactivated_insanku_uuids,
-        new Date(),
-      );
-    }
-
     await Promise.all(
       update_insanku.map((item) =>
         tx.tbl_insanku.update({
@@ -500,6 +491,7 @@ export async function syncInsanKu() {
             password: item.password,
             avatar: item.avatar,
             role: item.role,
+            is_active: true,
             ...(item.is_reactivated
               ? {
                   is_username_change: false,
@@ -513,20 +505,34 @@ export async function syncInsanKu() {
       ),
     );
 
-    if (deleted_insanku.length > 0) {
-      const deleted_insanku_uuids = deleted_insanku.map((item) => item.uuid);
-      const deleted_at = new Date();
-      await softDeleteInsanKuRelations(tx, deleted_insanku_uuids, deleted_at);
+    const skipped_active_insanku_uuids = skipped_insanku
+      .map((item) => item.uuid)
+      .filter(Boolean);
 
+    if (skipped_active_insanku_uuids.length > 0) {
       await tx.tbl_insanku.updateMany({
         where: {
           uuid: {
-            in: deleted_insanku_uuids,
+            in: skipped_active_insanku_uuids,
           },
           deleted_at: null,
         },
         data: {
-          deleted_at,
+          is_active: true,
+        },
+      });
+    }
+
+    if (inactive_insanku.length > 0) {
+      await tx.tbl_insanku.updateMany({
+        where: {
+          uuid: {
+            in: inactive_insanku.map((item) => item.uuid),
+          },
+          deleted_at: null,
+        },
+        data: {
+          is_active: false,
         },
       });
     }
@@ -546,8 +552,9 @@ export async function syncInsanKu() {
       updated_insanku: update_insanku.length,
       reactivated_insanku: reactivated_insanku_uuids.length,
       skipped_insanku: skipped_insanku.length,
-      deleted_insanku: deleted_insanku.length,
-      retained_skipped_insanku: skipped_deleted_insanku.length,
+      inactive_insanku: inactive_insanku.length,
+      deleted_insanku: 0,
+      retained_skipped_insanku: 0,
     },
   };
 }
@@ -564,6 +571,7 @@ export async function updateInsanKu({
   name,
   username,
   password,
+  is_active,
   outlet_placements = [],
   outlet_uuids = [],
   is_skip_sync_insanku,
@@ -581,6 +589,10 @@ export async function updateInsanKu({
   const trimmed_nik = normalizeNik(nik);
   const trimmed_username = String(username ?? "").trim();
   const trimmed_password = String(password ?? "").trim();
+  const normalized_is_active =
+    typeof is_active === "string"
+      ? is_active.toLowerCase() !== "false"
+      : Boolean(is_active ?? true);
   const normalized_placements = normalizeOutletPlacements(
     outlet_placements,
     outlet_uuids,
@@ -666,6 +678,7 @@ export async function updateInsanKu({
               is_password_change: false,
             }
           : {}),
+        is_active: normalized_is_active,
         is_skip_sync: Boolean(is_skip_sync_insanku),
       },
     });
@@ -965,18 +978,22 @@ export async function updateInsanKuNonSlipGaji(payload) {
   });
 }
 
-export async function deleteInsanKuNonSlipGaji(uuid_insanku) {
+async function deleteInsanKuAccount({
+  uuid_insanku,
+  is_slip_gaji_account,
+  label,
+}) {
   const existing_insanku = await prisma.tbl_insanku.findFirst({
     where: {
       uuid: uuid_insanku,
-      is_slip_gaji_account: false,
+      is_slip_gaji_account,
       deleted_at: null,
     },
     select: { uuid: true },
   });
 
   if (!existing_insanku) {
-    throw new Error("Data InsanKu Non Slip Gaji tidak ditemukan.");
+    throw new Error(`Data ${label} tidak ditemukan.`);
   }
 
   await prisma.$transaction(async (transaction) => {
@@ -984,12 +1001,28 @@ export async function deleteInsanKuNonSlipGaji(uuid_insanku) {
     await softDeleteInsanKuRelations(transaction, [uuid_insanku], deleted_at);
     await transaction.tbl_insanku.update({
       where: { uuid: uuid_insanku },
-      data: { deleted_at },
+      data: { is_active: false, deleted_at },
     });
   });
 
   return {
     success: true,
-    message: "Data InsanKu Non Slip Gaji berhasil dinonaktifkan.",
+    message: `Data ${label} berhasil dihapus.`,
   };
+}
+
+export async function deleteInsanKuSlipGaji(uuid_insanku) {
+  return deleteInsanKuAccount({
+    uuid_insanku,
+    is_slip_gaji_account: true,
+    label: "InsanKu Slip Gaji",
+  });
+}
+
+export async function deleteInsanKuNonSlipGaji(uuid_insanku) {
+  return deleteInsanKuAccount({
+    uuid_insanku,
+    is_slip_gaji_account: false,
+    label: "InsanKu Non Slip Gaji",
+  });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  deleteInsanKuSlipGaji,
   getInsanKu,
   syncInsanKu,
   updateInsanKu,
@@ -67,6 +68,7 @@ export const PATCH = async (request) => {
       name: body?.name,
       username: body?.username,
       password: body?.password,
+      is_active: body?.is_active,
       outlet_placements: body?.outlet_placements,
       outlet_uuids: body?.outlet_uuids,
       is_skip_sync_insanku: body?.is_skip_sync_insanku,
@@ -80,6 +82,26 @@ export const PATCH = async (request) => {
   } catch (error) {
     return NextResponse.json(
       buildApiErrorResponse(error, "Terjadi kesalahan saat menyimpan data InsanKu."),
+      { status: 500 },
+    );
+  }
+};
+
+export const DELETE = async (request) => {
+  try {
+    const unauthorized_response = await requireMenuAccess("pengaturan-pengguna");
+
+    if (unauthorized_response) {
+      return unauthorized_response;
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const data = await deleteInsanKuSlipGaji(body?.uuid_insanku);
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      buildApiErrorResponse(error, "Terjadi kesalahan saat menghapus data InsanKu."),
       { status: 500 },
     );
   }

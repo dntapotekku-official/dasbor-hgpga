@@ -165,9 +165,12 @@ function StatusBadge({ total, target, input, bordered = false }) {
   );
 }
 
-function PersonRows({ rows }) {
-  return rows.map((row) => (
+function PersonRows({ rows, start_index = 0 }) {
+  return rows.map((row, index) => (
     <TableRow key={row.uuid}>
+      <TableCell className="w-14 text-center">
+        {start_index + index + 1}
+      </TableCell>
       <TableCell className="whitespace-normal">
         <div className="font-medium">{row.name}</div>
       </TableCell>
@@ -190,8 +193,11 @@ function PersonRows({ rows }) {
 function TotalRow({ totals, label = "TOTAL" }) {
   return (
     <TableRow className="font-semibold hover:bg-transparent">
-      <TableCell className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted">
+      <TableCell className="sticky bottom-0 z-10 w-14 border-t bg-muted text-center">
         {label}
+      </TableCell>
+      <TableCell className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted">
+        -
       </TableCell>
       <TableCell className="sticky bottom-0 z-10 border-t bg-muted">{totals.today_input}</TableCell>
       <TableCell className="sticky bottom-0 z-10 border-t bg-muted">{totals.weekly_total}</TableCell>
@@ -215,6 +221,7 @@ function TotalRow({ totals, label = "TOTAL" }) {
 function PersonTableHead({ sort_key, sort_direction, onSort }) {
   return (
     <TableRow>
+      <TableHead className="w-14 text-center">No.</TableHead>
       <TableHead className="w-[32%]">
         <SortableTableHead
           label="Nama"
@@ -277,6 +284,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
 function OutletTableHead({ sort_key, sort_direction, onSort }) {
   return (
     <TableRow>
+      <TableHead className="w-14 text-center">No.</TableHead>
       <TableHead className="w-[32%]">
         <SortableTableHead
           label="Outlet"
@@ -339,6 +347,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
 function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
   return (
     <TableRow>
+      <TableHead className="w-14 text-center">No.</TableHead>
       <TableHead className="w-[24%]">
         <SortableTableHead
           label="Nama"
@@ -492,10 +501,7 @@ export default function RingkasanTabContent({
           existing.today_input += Number(row.today_input || 0);
           existing.weekly_total += Number(row.weekly_total || 0);
           existing.monthly_total += Number(row.monthly_total || 0);
-          existing.target = Math.max(
-            existing.target,
-            Number(row.target || 0),
-          );
+          existing.target += Number(row.target || 0);
         }
       }
     }
@@ -658,7 +664,7 @@ export default function RingkasanTabContent({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="h-24 text-center text-sm text-muted-foreground"
                   >
                     Tidak ada data yang cocok dengan pencarian.
@@ -731,7 +737,7 @@ export default function RingkasanTabContent({
                     ) : (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className="h-24 text-center text-sm text-muted-foreground"
                         >
                           Tidak ada data yang cocok dengan pencarian.
@@ -807,8 +813,11 @@ export default function RingkasanTabContent({
                 <TableBody>
                   {filtered_sorted_outlets.length ? (
                     <>
-                      {paginated_outlet_rows.map((outlet) => (
+                      {paginated_outlet_rows.map((outlet, index) => (
                         <TableRow key={outlet.uuid}>
+                          <TableCell className="w-14 text-center">
+                            {(outlet_current_page - 1) * PAGE_SIZE + index + 1}
+                          </TableCell>
                           <TableCell className="whitespace-normal">
                             <div className="font-medium">
                               {outlet.outlet_name}
@@ -844,7 +853,7 @@ export default function RingkasanTabContent({
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={8}
                         className="h-24 text-center text-sm text-muted-foreground"
                       >
                         Tidak ada data yang cocok dengan pencarian.
@@ -882,8 +891,11 @@ export default function RingkasanTabContent({
                 <TableBody>
                   {filtered_sorted_insanku.length ? (
                     <>
-                      {paginated_insanku_rows.map((row) => (
+                      {paginated_insanku_rows.map((row, index) => (
                         <TableRow key={row.uuid}>
+                          <TableCell className="w-14 text-center">
+                            {(insanku_current_page - 1) * PAGE_SIZE + index + 1}
+                          </TableCell>
                           <TableCell className="whitespace-normal">
                             <div className="font-medium">{row.name}</div>
                           </TableCell>
@@ -913,11 +925,14 @@ export default function RingkasanTabContent({
                         </TableRow>
                       ))}
                       <TableRow className="font-semibold hover:bg-transparent">
+                        <TableCell className="sticky bottom-0 z-10 w-14 border-t bg-muted text-center">
+                          TOTAL
+                        </TableCell>
                         <TableCell
                           colSpan={2}
                           className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted"
                         >
-                          TOTAL
+                          -
                         </TableCell>
                         <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
                           {insanku_grand_totals.today_input}
@@ -950,7 +965,7 @@ export default function RingkasanTabContent({
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="h-24 text-center text-sm text-muted-foreground"
                       >
                         Tidak ada data yang cocok dengan pencarian.

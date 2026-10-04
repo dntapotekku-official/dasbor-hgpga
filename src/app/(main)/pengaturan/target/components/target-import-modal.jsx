@@ -41,9 +41,11 @@ export default function TargetImportModal({
     ? `Pilih tanggal mulai dan tanggal selesai, lalu upload file Excel berisi data ${entity_label} dan target untuk ${target_label}.`
     : `Pilih tanggal data, lalu upload file Excel berisi data ${entity_label} dan target untuk ${target_label}.`;
 
-  const accepted_columns = entity_label === "InsanKU"
-    ? "Gunakan kolom NIK (disarankan) atau InsanKU, serta kolom target."
-    : `Pastikan file memiliki kolom ${entity_label.toLowerCase()} dan target.`;
+  const accepted_columns = entity_label === "Penempatan"
+    ? "Gunakan kolom NIK atau InsanKU, kolom Outlet jika ada lebih dari satu penempatan, serta kolom target."
+    : entity_label === "InsanKU"
+      ? "Gunakan kolom NIK (disarankan) atau InsanKU, serta kolom target."
+      : `Pastikan file memiliki kolom ${entity_label.toLowerCase()} dan target.`;
 
   const select_file = (next_file) => {
     if (!next_file) {

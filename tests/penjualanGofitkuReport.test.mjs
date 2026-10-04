@@ -80,3 +80,27 @@ test("old outlet keeps historical sales after employee moves", () => {
   assert.equal(by_outlet.get("outlet-b").rows[0].monthly_total, 0);
   assert.equal(by_outlet.get("outlet-b").rows[0].is_active, true);
 });
+
+test("target follows outlet placement, not only employee uuid", () => {
+  const previous = relation("assignment-old", "Vera", "outlet-a");
+  const current = relation("assignment-new", "Vera", "outlet-b");
+  const groups = buildPenjualanGofitkuGroups({
+    active_relations: [previous, current],
+    sales_rows: [],
+    selected_date: date("05"),
+    day_end: new Date(date("05").getTime() + 86400000),
+    week_start: date("04"),
+    week_end: date("11"),
+    month_start: date("01"),
+    month_end: new Date("2026-11-01T00:00:00.000Z"),
+    target_map: new Map([
+      ["assignment-old", 3],
+      ["assignment-new", 7],
+    ]),
+  });
+
+  assert.deepEqual(
+    groups.flatMap((group) => group.rows.map((row) => row.target)).sort((a, b) => a - b),
+    [3, 7],
+  );
+});

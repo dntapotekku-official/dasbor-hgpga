@@ -46,6 +46,7 @@ model tbl_outlet {
   is_password_change Boolean   @default(false)
   category           Category
   excep              Boolean   @default(false)
+  is_active          Boolean   @default(true)
   is_skip_sync       Boolean   @default(false)
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
@@ -69,6 +70,7 @@ model tbl_insanku {
   is_username_change   Boolean   @default(false)
   is_password_change   Boolean   @default(false)
   avatar               String?   @db.Text
+  is_active            Boolean   @default(true)
   is_slip_gaji_account Boolean   @default(false)
   is_skip_sync         Boolean   @default(false)
   role                 Role
@@ -79,7 +81,6 @@ model tbl_insanku {
   outlet_insanku            tbl_outlet_insanku[]
   atribut_insanku           tbl_atribut_insanku[]
   nilai_magang              tbl_nilai_magang[]
-  target_gofitku            tbl_target_gofitku[]
   gofitku_exclusion_periods tbl_insanku_gofitku_exclusion[]
 
   @@unique([nik, is_slip_gaji_account])
@@ -142,6 +143,7 @@ model tbl_outlet_insanku {
   outlet            tbl_outlet?             @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_outlet_insanku_outlet")
   insanku           tbl_insanku?            @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_outlet_insanku_insanku")
   penjualan_gofitku tbl_penjualan_gofitku[]
+  target_gofitku    tbl_target_gofitku[]
 
   @@unique([uuid_outlet, uuid_insanku])
   @@index([uuid_outlet])
@@ -202,20 +204,20 @@ model tbl_prompt {
 }
 
 model tbl_target_gofitku {
-  id           Int       @id @default(autoincrement())
-  uuid         String    @unique @db.Char(36)
-  uuid_insanku String?   @db.Char(36)
-  value        Int       @default(0)
-  start_date   DateTime
-  end_date     DateTime?
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-  deleted_at   DateTime?
+  id                  Int       @id @default(autoincrement())
+  uuid                String    @unique @db.Char(36)
+  uuid_outlet_insanku String?   @db.Char(36)
+  value               Int       @default(0)
+  start_date          DateTime
+  end_date            DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
 
-  insanku tbl_insanku? @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_target_gofitku_insanku")
+  outlet_insanku tbl_outlet_insanku? @relation(fields: [uuid_outlet_insanku], references: [uuid], onDelete: SetNull, map: "fk_target_gofitku_outlet_insanku")
 
-  @@index([uuid_insanku])
-  @@index([uuid_insanku, start_date, end_date, deleted_at], map: "idx_target_gofitku_insanku_period")
+  @@index([uuid_outlet_insanku])
+  @@index([uuid_outlet_insanku, start_date, end_date, deleted_at], map: "idx_target_gofitku_placement_period")
 }
 
 model tbl_insanku_gofitku_exclusion {
