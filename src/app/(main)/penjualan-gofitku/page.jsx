@@ -36,7 +36,7 @@ export default function PenjualanGoFitKuPage() {
       scanned_entries: [
         {
           id: `${group?.uuid ?? "outlet"}_entry_1`,
-          employee_uuid: group?.rows?.[0]?.uuid ?? "",
+          employee_uuid: group?.rows?.find((row) => row.is_active)?.uuid ?? "",
           produk_uuid: default_product?.value ?? "",
           product_name: default_product?.label ?? "",
           date: default_date,
@@ -58,7 +58,7 @@ export default function PenjualanGoFitKuPage() {
   function create_manual_entry(group, selected_date, entry_index, default_product) {
     return {
       id: `${group?.uuid ?? "outlet"}_manual_${entry_index}`,
-      employee_uuid: group?.rows?.[0]?.uuid ?? "",
+      employee_uuid: group?.rows?.find((row) => row.is_active)?.uuid ?? "",
       produk_uuid: default_product?.value ?? "",
       product_name: default_product?.label ?? "",
       date: selected_date,
@@ -241,6 +241,9 @@ export default function PenjualanGoFitKuPage() {
     const updated_group = payload.data?.outlet_groups?.[0];
 
     if (!updated_group) {
+      setOutletGroups((current) =>
+        current.filter((group) => group.uuid !== group_uuid),
+      );
       return;
     }
 
@@ -262,8 +265,8 @@ export default function PenjualanGoFitKuPage() {
   };
 
   const handle_open_add_modal = () => {
-    if (!outlet_active_group) {
-      toast.error("Outlet belum tersedia untuk akun ini.");
+    if (!outlet_active_group?.rows?.some((row) => row.is_active)) {
+      toast.error("Belum ada penempatan InsanKu aktif di outlet ini.");
       return;
     }
 
@@ -533,7 +536,7 @@ export default function PenjualanGoFitKuPage() {
 
           return {
             id: `${active_outlet.uuid}_scan_${group_index + 1}_${item_index + 1}`,
-            employee_uuid: active_outlet.rows?.[0]?.uuid ?? "",
+            employee_uuid: active_outlet.rows?.find((row) => row.is_active)?.uuid ?? "",
             produk_uuid: matched_product?.value ?? "",
             product_name: matched_product?.label ?? String(item?.produk ?? "").trim(),
             date:
@@ -822,7 +825,7 @@ export default function PenjualanGoFitKuPage() {
                     <Button
                       type="button"
                       onClick={handle_open_add_modal}
-                      disabled={!outlet_active_group}
+                      disabled={!outlet_active_group?.rows?.some((row) => row.is_active)}
                       className="w-full shrink-0 sm:w-auto"
                     >
                       <PlusIcon className="size-4" />
@@ -909,10 +912,12 @@ export default function PenjualanGoFitKuPage() {
             key: "employee_uuid",
             label: "Nama",
             type: "select",
-            options: (editing_outlet?.rows ?? []).map((item) => ({
-              value: item.uuid,
-              label: item.name,
-            })),
+            options: (editing_outlet?.rows ?? [])
+              .filter((item) => item.is_active || item.uuid === editing_row?.employee_uuid)
+              .map((item) => ({
+                value: item.uuid,
+                label: item.name,
+              })),
             searchable: true,
             search_placeholder: "Cari InsanKu...",
             empty_search_message: "InsanKu tidak ditemukan.",

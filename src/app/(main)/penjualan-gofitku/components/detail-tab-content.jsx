@@ -155,6 +155,7 @@ export default function DetailTabContent({
                 <Button
                   type="button"
                   onClick={() => on_add_sale?.(group)}
+                  disabled={!group.rows.some((row) => row.is_active)}
                   className="w-full shrink-0 sm:w-auto"
                 >
                   <PlusIcon className="size-4" />

@@ -160,39 +160,7 @@ export async function syncOutletInsanKu() {
       .map((item) => buildRelationKey(item));
 
     if (removed_relation_keys.length > 0) {
-      const removed_relations = await tx.tbl_outlet_insanku.findMany({
-        where: {
-          OR: removed_relation_keys.map((relation_key) => {
-            const [uuid_outlet, uuid_insanku] = relation_key.split(":");
-
-            return {
-              uuid_outlet,
-              uuid_insanku,
-              deleted_at: null,
-              is_skip_sync: false,
-            };
-          }),
-        },
-        select: {
-          uuid: true,
-        },
-      });
-      const removed_relation_uuids = removed_relations.map((item) => item.uuid);
       const deleted_at = new Date();
-
-      if (removed_relation_uuids.length > 0) {
-        await tx.tbl_penjualan_gofitku.updateMany({
-          where: {
-            uuid_outlet_insanku: {
-              in: removed_relation_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        });
-      }
 
       await Promise.all(
         removed_relation_keys.map((relation_key) => {

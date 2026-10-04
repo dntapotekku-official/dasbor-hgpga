@@ -202,10 +202,12 @@ export default function SalesEntryModal({
                             <OptionDropdown
                               id={`insanku-penjualan-${entry.id}`}
                               value={entry.employee_uuid}
-                              options={(active_outlet?.rows ?? []).map((row) => ({
-                                value: row.uuid,
-                                label: row.name,
-                              }))}
+                              options={(active_outlet?.rows ?? [])
+                                .filter((row) => row.is_active)
+                                .map((row) => ({
+                                  value: row.uuid,
+                                  label: row.name,
+                                }))}
                               onValueChange={(employee_uuid) =>
                                 on_entry_change(entry.id, "employee_uuid", employee_uuid)
                               }

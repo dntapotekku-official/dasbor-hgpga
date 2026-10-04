@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeRole } from "@/lib/role";
 import { emit_socket_event } from "@/lib/socket";
 import { hardDeleteInsanKuRelations } from "@/services/hardDeleteInsanKuRelations";
+import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
 import { syncInsanKu } from "@/services/insanKuService";
 import { syncOutletInsanKu } from "@/services/outletInsanKuService";
 
@@ -465,10 +466,22 @@ export async function syncAtributInsanKuByNik({ actor_role }) {
         });
       }
 
-      await hardDeleteInsanKuRelations(tx, [source.uuid]);
-      await tx.tbl_insanku.delete({
-        where: { uuid: source.uuid },
+      const sales_count = await tx.tbl_penjualan_gofitku.count({
+        where: { outlet_insanku: { uuid_insanku: source.uuid } },
       });
+      if (sales_count > 0) {
+        const deleted_at = new Date();
+        await softDeleteInsanKuRelations(tx, [source.uuid], deleted_at);
+        await tx.tbl_insanku.update({
+          where: { uuid: source.uuid },
+          data: { deleted_at },
+        });
+      } else {
+        await hardDeleteInsanKuRelations(tx, [source.uuid]);
+        await tx.tbl_insanku.delete({
+          where: { uuid: source.uuid },
+        });
+      }
       transferred_attributes += source.atribut_insanku.length;
     }
   });

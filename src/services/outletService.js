@@ -215,35 +215,6 @@ export async function syncOutlet() {
     if (deleted_outlet.length > 0) {
       const deleted_outlet_uuids = deleted_outlet.map((item) => item.uuid);
       const deleted_at = new Date();
-      const deleted_outlet_insanku = await tx.tbl_outlet_insanku.findMany({
-        where: {
-          uuid_outlet: {
-            in: deleted_outlet_uuids,
-          },
-          deleted_at: null,
-        },
-        select: {
-          uuid: true,
-        },
-      });
-      const deleted_outlet_insanku_uuids = deleted_outlet_insanku.map(
-        (item) => item.uuid,
-      );
-
-      if (deleted_outlet_insanku_uuids.length > 0) {
-        await tx.tbl_penjualan_gofitku.updateMany({
-          where: {
-            uuid_outlet_insanku: {
-              in: deleted_outlet_insanku_uuids,
-            },
-            deleted_at: null,
-          },
-          data: {
-            deleted_at,
-          },
-        });
-      }
-
       await Promise.all([
         tx.tbl_outlet_insanku.updateMany({
           where: {

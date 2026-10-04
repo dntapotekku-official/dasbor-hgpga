@@ -7,25 +7,6 @@ export async function softDeleteInsanKuRelations(
     return;
   }
 
-  const outlet_relations = await transaction.tbl_outlet_insanku.findMany({
-    where: {
-      uuid_insanku: { in: insanku_uuids },
-      deleted_at: null,
-    },
-    select: { uuid: true },
-  });
-  const outlet_relation_uuids = outlet_relations.map(({ uuid }) => uuid);
-
-  if (outlet_relation_uuids.length) {
-    await transaction.tbl_penjualan_gofitku.updateMany({
-      where: {
-        uuid_outlet_insanku: { in: outlet_relation_uuids },
-        deleted_at: null,
-      },
-      data: { deleted_at },
-    });
-  }
-
   await transaction.tbl_atribut_insanku.updateMany({
     where: {
       uuid_insanku: { in: insanku_uuids },
@@ -37,6 +18,16 @@ export async function softDeleteInsanKuRelations(
     where: {
       uuid_insanku: { in: insanku_uuids },
       deleted_at: null,
+      start_date: { lte: deleted_at },
+      OR: [{ end_date: null }, { end_date: { gt: deleted_at } }],
+    },
+    data: { end_date: deleted_at },
+  });
+  await transaction.tbl_target_gofitku.updateMany({
+    where: {
+      uuid_insanku: { in: insanku_uuids },
+      deleted_at: null,
+      start_date: { gt: deleted_at },
     },
     data: { deleted_at },
   });
@@ -44,6 +35,16 @@ export async function softDeleteInsanKuRelations(
     where: {
       uuid_insanku: { in: insanku_uuids },
       deleted_at: null,
+      start_date: { lte: deleted_at },
+      OR: [{ end_date: null }, { end_date: { gt: deleted_at } }],
+    },
+    data: { end_date: deleted_at },
+  });
+  await transaction.tbl_insanku_gofitku_exclusion.updateMany({
+    where: {
+      uuid_insanku: { in: insanku_uuids },
+      deleted_at: null,
+      start_date: { gt: deleted_at },
     },
     data: { deleted_at },
   });

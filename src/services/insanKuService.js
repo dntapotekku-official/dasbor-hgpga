@@ -258,6 +258,10 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       gofitku_exclusion_periods: {
         where: {
           deleted_at: null,
+          OR: [
+            { end_date: null },
+            { end_date: { gte: new Date() } },
+          ],
         },
         orderBy: {
           start_date: "desc",
@@ -666,25 +670,51 @@ export async function updateInsanKu({
       },
     });
 
-    await tx.tbl_insanku_gofitku_exclusion.updateMany({
+    const now = new Date();
+    const today_start = new Date(now.toISOString().slice(0, 10));
+    const current_exclusions = await tx.tbl_insanku_gofitku_exclusion.findMany({
       where: {
         uuid_insanku,
         deleted_at: null,
+        OR: [{ end_date: null }, { end_date: { gte: now } }],
       },
-      data: {
-        deleted_at: new Date(),
-      },
+      select: { uuid: true, start_date: true, end_date: true },
     });
+    const exclusion_unchanged = should_exclude_penjualan_gofitku &&
+      current_exclusions.length === 1 &&
+      current_exclusions[0].start_date.getTime() === exclusion_start_date.getTime() &&
+      current_exclusions[0].end_date?.getTime() === exclusion_end_date?.getTime();
 
-    if (should_exclude_penjualan_gofitku) {
-      await tx.tbl_insanku_gofitku_exclusion.create({
-        data: {
-          uuid: randomUUID(),
+    if (!exclusion_unchanged) {
+      const yesterday_end = new Date(today_start.getTime() - 1);
+      await tx.tbl_insanku_gofitku_exclusion.updateMany({
+        where: {
           uuid_insanku,
-          start_date: exclusion_start_date,
-          end_date: exclusion_end_date,
+          deleted_at: null,
+          start_date: { lt: today_start },
+          OR: [{ end_date: null }, { end_date: { gte: now } }],
         },
+        data: { end_date: yesterday_end },
       });
+      await tx.tbl_insanku_gofitku_exclusion.updateMany({
+        where: {
+          uuid_insanku,
+          deleted_at: null,
+          start_date: { gte: today_start },
+        },
+        data: { deleted_at: now },
+      });
+
+      if (should_exclude_penjualan_gofitku) {
+        await tx.tbl_insanku_gofitku_exclusion.create({
+          data: {
+            uuid: randomUUID(),
+            uuid_insanku,
+            start_date: exclusion_start_date,
+            end_date: exclusion_end_date,
+          },
+        });
+      }
     }
 
     const current_relations = await tx.tbl_outlet_insanku.findMany({
@@ -792,16 +822,33 @@ export async function updateInsanKu({
           continue;
         }
 
-        await tx.tbl_outlet_insanku.update({
-          where: {
-            uuid: placement.uuid,
-          },
-          data: {
-            uuid_outlet: placement.outlet_uuid,
-            deleted_at: null,
-            is_skip_sync: should_skip_sync_outlet_insanku,
-          },
+        const sale_count = await tx.tbl_penjualan_gofitku.count({
+          where: { uuid_outlet_insanku: placement.uuid },
         });
+
+        if (sale_count > 0) {
+          await tx.tbl_outlet_insanku.update({
+            where: { uuid: placement.uuid },
+            data: { deleted_at: new Date() },
+          });
+          await tx.tbl_outlet_insanku.create({
+            data: {
+              uuid: randomUUID(),
+              uuid_outlet: placement.outlet_uuid,
+              uuid_insanku,
+              is_skip_sync: should_skip_sync_outlet_insanku,
+            },
+          });
+        } else {
+          await tx.tbl_outlet_insanku.update({
+            where: { uuid: placement.uuid },
+            data: {
+              uuid_outlet: placement.outlet_uuid,
+              deleted_at: null,
+              is_skip_sync: should_skip_sync_outlet_insanku,
+            },
+          });
+        }
         continue;
       }
 
