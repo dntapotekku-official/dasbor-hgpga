@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { dedupeByKey } from "@/lib/utils";
 import {
+  closeOutletInsanKuInactivePeriod,
+  openOutletInsanKuInactivePeriod,
+} from "@/services/inactivePeriodService";
+import {
   fetchInsanKuPayload,
   fetchOutletInsanKuPayload,
   getInsanKuSettingsData,
@@ -130,14 +134,29 @@ export async function syncOutletInsanKu() {
         },
         update: {
           deleted_at: null,
+          is_active: true,
           is_skip_sync: false,
         },
         create: {
           uuid: randomUUID(),
           uuid_outlet: item.uuid_outlet,
           uuid_insanku: item.uuid_insanku,
+          is_active: true,
         },
       });
+      const active_relation = await tx.tbl_outlet_insanku.findUnique({
+        where: {
+          uuid_outlet_uuid_insanku: {
+            uuid_outlet: item.uuid_outlet,
+            uuid_insanku: item.uuid_insanku,
+          },
+        },
+        select: { uuid: true },
+      });
+
+      if (active_relation) {
+        await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
+      }
     }
 
     const current_relations = await tx.tbl_outlet_insanku.findMany({
@@ -172,17 +191,34 @@ export async function syncOutletInsanKu() {
         removed_relation_keys.map((relation_key) => {
           const [uuid_outlet, uuid_insanku] = relation_key.split(":");
 
-          return tx.tbl_outlet_insanku.updateMany({
-            where: {
-              uuid_outlet,
-              uuid_insanku,
-              deleted_at: null,
-              is_skip_sync: false,
-            },
-            data: {
-              deleted_at,
-            },
-          });
+          return tx.tbl_outlet_insanku
+            .findMany({
+              where: {
+                uuid_outlet,
+                uuid_insanku,
+                deleted_at: null,
+                is_skip_sync: false,
+              },
+              select: { uuid: true },
+            })
+            .then(async (relations) => {
+              await tx.tbl_outlet_insanku.updateMany({
+                where: {
+                  uuid: {
+                    in: relations.map((item) => item.uuid),
+                  },
+                },
+                data: {
+                  is_active: false,
+                },
+              });
+
+              await Promise.all(
+                relations.map((relation) =>
+                  openOutletInsanKuInactivePeriod(tx, relation.uuid, deleted_at),
+                ),
+              );
+            });
         }),
       );
     }
@@ -278,6 +314,7 @@ export async function updateOutletInsanKu({
       },
       select: {
         uuid_outlet: true,
+        uuid: true,
       },
     });
     const current_outlet_uuid_set = new Set(
@@ -294,15 +331,30 @@ export async function updateOutletInsanKu({
         },
         update: {
           deleted_at: null,
+          is_active: true,
           is_skip_sync: should_skip_sync,
         },
         create: {
           uuid: randomUUID(),
           uuid_outlet,
           uuid_insanku,
+          is_active: true,
           is_skip_sync: should_skip_sync,
         },
       });
+      const active_relation = await tx.tbl_outlet_insanku.findUnique({
+        where: {
+          uuid_outlet_uuid_insanku: {
+            uuid_outlet,
+            uuid_insanku,
+          },
+        },
+        select: { uuid: true },
+      });
+
+      if (active_relation) {
+        await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
+      }
     }
 
     await tx.tbl_outlet_insanku.updateMany({
@@ -328,9 +380,25 @@ export async function updateOutletInsanKu({
           },
         },
         data: {
-          deleted_at: new Date(),
+          is_active: false,
         },
       });
+      const removed_relations = await tx.tbl_outlet_insanku.findMany({
+        where: {
+          uuid_insanku,
+          uuid_outlet: {
+            in: outlet_uuids_to_remove,
+          },
+          deleted_at: null,
+        },
+        select: { uuid: true },
+      });
+
+      await Promise.all(
+        removed_relations.map((relation) =>
+          openOutletInsanKuInactivePeriod(tx, relation.uuid),
+        ),
+      );
     }
   });
 

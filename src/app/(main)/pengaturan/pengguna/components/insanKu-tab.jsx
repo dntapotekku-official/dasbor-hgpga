@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PencilIcon, TriangleAlertIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import {
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import Pagination from "@/components/pagination";
@@ -252,6 +257,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         is_active: next_insanku.is_active,
         outlet_placements,
         outlet_uuids,
+        deleted_outlet_placements: next_insanku.deleted_outlet_placements ?? [],
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
         is_skip_sync_outlet_insanku: next_insanku.is_skip_sync_outlet_insanku,
         is_exclude_penjualan_gofitku: next_insanku.is_exclude_penjualan_gofitku,
@@ -605,6 +611,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 : []),
               {
                 key: "outlet_placements",
+                deleted_key: "deleted_outlet_placements",
                 label: "Outlet",
                 type: "placement-list",
                 options: outlet.map((item) => ({
@@ -617,6 +624,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                     : {
                         is_skip_sync_outlet_insanku: false,
                       },
+                on_period_click: () => setHistoryInsanKu(selected_insanku),
               },
               ...(!is_non_slip_gaji
                 ? [

@@ -70,6 +70,7 @@ export const PATCH = async (request) => {
       password: body?.password,
       is_active: body?.is_active,
       outlet_placements: body?.outlet_placements,
+      deleted_outlet_placements: body?.deleted_outlet_placements,
       outlet_uuids: body?.outlet_uuids,
       is_skip_sync_insanku: body?.is_skip_sync_insanku,
       is_skip_sync_outlet_insanku: body?.is_skip_sync_outlet_insanku,

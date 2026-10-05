@@ -17,7 +17,6 @@ import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 import PageHeading from "@/components/page-heading";
-import { outlet_category_filter_options } from "@/lib/outletCategories";
 import { hasRoleAccess } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +26,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const DetailTab = dynamic(() => import("./components/detail-tab-content"));
 const SalesEntryModal = dynamic(() => import("./components/sales-entry-modal"));
 const default_date = new Date().toISOString().split("T")[0];
+
+function get_month_input_value(date_value) {
+  return String(date_value ?? "").slice(0, 7);
+}
+
+function get_first_date_from_month(month_value) {
+  return `${month_value}-01`;
+}
 
 export default function PenjualanGoFitKuPage() {
   const { role } = useAuth();
@@ -74,8 +81,7 @@ export default function PenjualanGoFitKuPage() {
   });
   const [active_tab, setActiveTab] = useState("ringkasan");
   const [selected_date, setSelectedDate] = useState(default_date);
-  const [selected_kategori_filter, setSelectedKategoriFilter] = useState("all");
-  const [selected_outlet_filter, setSelectedOutletFilter] = useState("all");
+  const [selected_detail_outlet, setSelectedDetailOutlet] = useState("");
   const [active_outlet, setActiveOutlet] = useState(null);
   const [sales_form, setSalesForm] = useState(() => get_initial_sales_form(null, null));
   const [is_loading_page, setIsLoadingPage] = useState(true);
@@ -89,36 +95,20 @@ export default function PenjualanGoFitKuPage() {
 
   const default_product = produk_options[0] ?? null;
   const is_admin = hasRoleAccess(role, ["admin"]);
-  const category_filtered_outlet_groups = outlet_groups.filter(
-    (group) =>
-      selected_kategori_filter === "all" ||
-      String(group.kategori ?? "")
-        .trim()
-        .toLowerCase()
-        .replaceAll("-", "_")
-        .replace(/\s+/g, "_") === selected_kategori_filter,
-  );
-  const outlet_filter_options = [
-    {
-      value: "all",
-      label: "Semua Outlet",
-    },
-    ...category_filtered_outlet_groups.map((group) => ({
+  const detail_outlet_options = outlet_groups.map((group) => ({
       value: group.uuid,
       label: group.outlet_name,
-    })),
-  ];
-  const selected_outlet_exists = category_filtered_outlet_groups.some(
-    (group) => group.uuid === selected_outlet_filter,
-  );
-  const resolved_outlet_filter = selected_outlet_exists
-    ? selected_outlet_filter
-    : "all";
-  const filtered_outlet_groups =
-    is_admin && resolved_outlet_filter !== "all"
-      ? category_filtered_outlet_groups.filter((group) => group.uuid === resolved_outlet_filter)
-      : category_filtered_outlet_groups;
-  const outlet_active_group = !is_admin ? filtered_outlet_groups[0] : null;
+    }));
+  const resolved_detail_outlet = outlet_groups.some(
+    (group) => group.uuid === selected_detail_outlet,
+  )
+    ? selected_detail_outlet
+    : (outlet_groups[0]?.uuid ?? "");
+  const detail_outlet_groups = is_admin
+    ? outlet_groups.filter((group) => group.uuid === resolved_detail_outlet)
+    : outlet_groups.slice(0, 1);
+  const outlet_active_group = !is_admin ? outlet_groups[0] : null;
+  const is_detail_tab = active_tab === "detail";
   const outlet_chart_height = Math.max(
     320,
     chart_data.outlet_chart_data.length * 42,
@@ -653,7 +643,10 @@ export default function PenjualanGoFitKuPage() {
   };
 
   const handle_selected_date_change = async (event) => {
-    const next_date = event.target.value;
+    const input_value = event.target.value;
+    const next_date = is_detail_tab
+      ? get_first_date_from_month(input_value)
+      : input_value;
 
     setSelectedDate(next_date);
 
@@ -757,84 +750,20 @@ export default function PenjualanGoFitKuPage() {
               </div>
             </Card>
 
-            <Tabs value={active_tab} onValueChange={setActiveTab} className="w-full">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                  {is_admin ? (
-                    <>
-                      <FilterField
-                        label="Kategori"
-                        htmlFor="filter-kategori-penjualan-gofitku"
-                        className="sm:w-[220px]"
-                      >
-                        <OptionDropdown
-                          id="filter-kategori-penjualan-gofitku"
-                          value={selected_kategori_filter}
-                          options={outlet_category_filter_options}
-                          onValueChange={(next_value) => {
-                            setSelectedKategoriFilter(next_value);
-                            setSelectedOutletFilter("all");
-                          }}
-                          ariaLabel="Filter kategori penjualan GoFitKu"
-                        />
-                      </FilterField>
-
-                      <FilterField
-                        label="Outlet"
-                        htmlFor="filter-outlet-penjualan-gofitku"
-                        className="sm:w-[320px]"
-                      >
-                        <OptionDropdown
-                          id="filter-outlet-penjualan-gofitku"
-                          value={resolved_outlet_filter}
-                          options={outlet_filter_options}
-                          onValueChange={setSelectedOutletFilter}
-                          ariaLabel="Filter outlet penjualan GoFitKu"
-                          searchable
-                          searchPlaceholder="Cari outlet..."
-                          emptyMessage="Outlet tidak ditemukan."
-                        />
-                      </FilterField>
-                    </>
-                  ) : null}
-
-                  <FilterField label="Tanggal" className="sm:w-[180px]">
-                    <Input
-                      type="date"
-                      value={selected_date}
-                      onChange={handle_selected_date_change}
-                      className="bg-card"
-                      aria-label="Tanggal penjualan GoFitKu"
-                    />
-                  </FilterField>
-                </div>
-
-                {is_admin ? (
-                  <div className="flex justify-end sm:ml-auto sm:items-end">
-                    <Button
-                      type="button"
-                      onClick={handle_export_sales}
-                      className="w-full shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
-                    >
-                      <FileSpreadsheetIcon className="size-4" />
-                      Ekspor
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex justify-end sm:ml-auto sm:items-end">
-                    <Button
-                      type="button"
-                      onClick={handle_open_add_modal}
-                      disabled={!outlet_active_group?.rows?.some((row) => row.is_active)}
-                      className="w-full shrink-0 sm:w-auto"
-                    >
-                      <PlusIcon className="size-4" />
-                      Tambah Penjualan
-                    </Button>
-                  </div>
-                )}
+            {is_admin ? (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  onClick={handle_export_sales}
+                  className="w-full shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                >
+                  <FileSpreadsheetIcon className="size-4" />
+                  Ekspor
+                </Button>
               </div>
+            ) : null}
 
+            <Tabs value={active_tab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full">
                 <TabsTrigger value="ringkasan" className="flex-1 px-4">
                   Ringkasan
@@ -846,8 +775,11 @@ export default function PenjualanGoFitKuPage() {
 
               <TabsContent value="ringkasan">
                 <RingkasanTab
-                  outlet_groups={filtered_outlet_groups}
+                  outlet_groups={outlet_groups}
                   is_outlet_view={!is_admin}
+                  selected_date={selected_date}
+                  on_date_change={handle_selected_date_change}
+                  on_add_sale={handle_open_add_modal}
                 />
               </TabsContent>
 
@@ -858,10 +790,70 @@ export default function PenjualanGoFitKuPage() {
                   </CardHeader>
 
                   <CardContent className="space-y-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                      <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+                        {is_admin ? (
+                          <FilterField
+                            label="Outlet"
+                            htmlFor="filter-outlet-detail-gofitku"
+                            className="w-full lg:w-[320px]"
+                          >
+                            <OptionDropdown
+                              id="filter-outlet-detail-gofitku"
+                              value={resolved_detail_outlet}
+                              options={detail_outlet_options}
+                              onValueChange={setSelectedDetailOutlet}
+                              ariaLabel="Filter outlet detail GoFitKu"
+                              searchable
+                              searchPlaceholder="Cari outlet..."
+                              emptyMessage="Outlet tidak ditemukan."
+                            />
+                          </FilterField>
+                        ) : null}
+
+                        <FilterField label="Bulan" className="w-full lg:w-[180px]">
+                          <Input
+                            type="month"
+                            value={get_month_input_value(selected_date)}
+                            onChange={handle_selected_date_change}
+                            className="bg-card"
+                            aria-label="Bulan detail penjualan GoFitKu"
+                          />
+                        </FilterField>
+                      </div>
+
+                      {is_admin ? (
+                        <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                          <Button
+                            type="button"
+                            onClick={() => open_add_modal(detail_outlet_groups[0])}
+                            disabled={
+                              !detail_outlet_groups[0]?.rows?.some(
+                                (row) => row.is_active,
+                              )
+                            }
+                            className="w-full shrink-0 sm:w-auto"
+                          >
+                            <PlusIcon className="size-4" />
+                            Tambah Penjualan
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          onClick={handle_open_add_modal}
+                          disabled={!outlet_active_group?.rows?.some((row) => row.is_active)}
+                          className="w-full shrink-0 lg:w-auto"
+                        >
+                          <PlusIcon className="size-4" />
+                          Tambah Penjualan
+                        </Button>
+                      )}
+                    </div>
+
                     <DetailTab
-                      outlet_groups={filtered_outlet_groups}
+                      outlet_groups={detail_outlet_groups}
                       is_outlet_view={!is_admin}
-                      on_add_sale={open_add_modal}
                       on_edit_row={open_edit_modal}
                       on_delete_row={open_delete_dialog}
                     />

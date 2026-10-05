@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SearchIcon } from "lucide-react";
+import { PlusIcon, SearchIcon } from "lucide-react";
 
 import FilterField from "@/components/filter-field";
+import OptionDropdown from "@/components/option-dropdown";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
+import { outlet_category_filter_options } from "@/lib/outletCategories";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -429,10 +432,18 @@ const SUB_TAB_TITLES = {
 };
 
 const SEARCH_PLACEHOLDERS = {
-  "outlet-insanku": "Cari outlet / nama...",
+  "outlet-insanku": "Cari nama InsanKu...",
   outlet: "Cari outlet...",
-  insanku: "Cari nama / outlet...",
+  insanku: "Cari nama InsanKu...",
 };
+
+function normalize_category(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("-", "_")
+    .replace(/\s+/g, "_");
+}
 
 function get_default_sort_key(sub_tab) {
   return sub_tab === "outlet" ? "outlet" : "name";
@@ -441,9 +452,14 @@ function get_default_sort_key(sub_tab) {
 export default function RingkasanTabContent({
   outlet_groups,
   is_outlet_view = false,
+  selected_date,
+  on_date_change,
+  on_add_sale,
 }) {
   const [sub_tab, setSubTab] = useState("outlet-insanku");
   const [search, setSearch] = useState("");
+  const [selected_category, setSelectedCategory] = useState("all");
+  const [selected_outlet, setSelectedOutlet] = useState("all");
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
 
@@ -453,6 +469,40 @@ export default function RingkasanTabContent({
     setSortKey(get_default_sort_key(next_value));
     setSortDirection("asc");
   };
+
+  const category_filtered_groups = useMemo(
+    () =>
+      outlet_groups.filter(
+        (group) =>
+          selected_category === "all" ||
+          normalize_category(group.kategori) === selected_category,
+      ),
+    [outlet_groups, selected_category],
+  );
+  const outlet_filter_options = useMemo(
+    () => [
+      { value: "all", label: "Semua Outlet" },
+      ...category_filtered_groups.map((group) => ({
+        value: group.uuid,
+        label: group.outlet_name,
+      })),
+    ],
+    [category_filtered_groups],
+  );
+  const resolved_outlet = category_filtered_groups.some(
+    (group) => group.uuid === selected_outlet,
+  )
+    ? selected_outlet
+    : "all";
+  const filtered_outlet_groups = useMemo(
+    () =>
+      sub_tab !== "outlet" && resolved_outlet !== "all"
+        ? category_filtered_groups.filter(
+            (group) => group.uuid === resolved_outlet,
+          )
+        : category_filtered_groups,
+    [category_filtered_groups, resolved_outlet, sub_tab],
+  );
 
   const toggle_sort = (next_sort_key) => {
     if (sort_key === next_sort_key) {
@@ -470,18 +520,18 @@ export default function RingkasanTabContent({
 
   const outlet_summary = useMemo(
     () =>
-      outlet_groups.map((group) => ({
+      filtered_outlet_groups.map((group) => ({
         uuid: group.uuid,
         outlet_name: group.outlet_name,
         ...sum_rows(group.rows ?? []),
       })),
-    [outlet_groups],
+    [filtered_outlet_groups],
   );
 
   const insanku_summary = useMemo(() => {
     const aggregated = new Map();
 
-    for (const group of outlet_groups) {
+    for (const group of filtered_outlet_groups) {
       for (const row of group.rows ?? []) {
         const key = String(row.uuid ?? row.name ?? "");
         const existing = aggregated.get(key);
@@ -512,7 +562,7 @@ export default function RingkasanTabContent({
         .sort((a, b) => String(a).localeCompare(String(b), "id"))
         .join(", "),
     }));
-  }, [outlet_groups]);
+  }, [filtered_outlet_groups]);
 
   const keyword = search.trim().toLowerCase();
 
@@ -530,8 +580,7 @@ export default function RingkasanTabContent({
     const filtered = insanku_summary.filter(
       (row) =>
         !keyword ||
-        String(row.name ?? "").toLowerCase().includes(keyword) ||
-        String(row.outlet_label ?? "").toLowerCase().includes(keyword),
+        String(row.name ?? "").toLowerCase().includes(keyword),
     );
 
     return sort_by_key(filtered, sort_key, sort_direction, get_insanku_value);
@@ -540,14 +589,9 @@ export default function RingkasanTabContent({
   const filtered_grouped_outlets = useMemo(() => {
     const result = [];
 
-    for (const group of outlet_groups) {
-      const outlet_matches =
-        keyword &&
-        String(group.outlet_name ?? "").toLowerCase().includes(keyword);
-
+    for (const group of filtered_outlet_groups) {
       const rows = (group.rows ?? []).filter(
         (row) =>
-          outlet_matches ||
           !keyword ||
           String(row.name ?? "").toLowerCase().includes(keyword),
       );
@@ -568,18 +612,18 @@ export default function RingkasanTabContent({
     );
 
     return result;
-  }, [outlet_groups, keyword, sort_key, sort_direction]);
+  }, [filtered_outlet_groups, keyword, sort_key, sort_direction]);
 
   const flat_outlet_insanku_rows = useMemo(() => {
     const filtered = (
-      outlet_groups.flatMap((group) => group.rows ?? []) ?? []
+      filtered_outlet_groups.flatMap((group) => group.rows ?? []) ?? []
     ).filter(
       (row) =>
         !keyword || String(row.name ?? "").toLowerCase().includes(keyword),
     );
 
     return sort_by_key(filtered, sort_key, sort_direction, get_person_value);
-  }, [outlet_groups, keyword, sort_key, sort_direction]);
+  }, [filtered_outlet_groups, keyword, sort_key, sort_direction]);
 
   const outlet_grand_totals = useMemo(
     () => sum_rows(filtered_sorted_outlets),
@@ -611,6 +655,85 @@ export default function RingkasanTabContent({
     next_page: next_insanku_page,
   } = usePagination(filtered_sorted_insanku, PAGE_SIZE);
 
+  const filter_controls = (
+    <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+      <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-end">
+        <FilterField
+          label="Pencarian"
+          htmlFor="filter-pencarian-ringkasan-gofitku"
+          className="w-full xl:w-[280px]"
+        >
+          <div className="relative w-full">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="filter-pencarian-ringkasan-gofitku"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={SEARCH_PLACEHOLDERS[sub_tab]}
+              className="bg-card pl-9"
+            />
+          </div>
+        </FilterField>
+
+        {!is_outlet_view && sub_tab !== "outlet" ? (
+          <FilterField
+            label="Outlet"
+            htmlFor="filter-outlet-ringkasan-gofitku"
+            className="w-full xl:w-[280px]"
+          >
+            <OptionDropdown
+              id="filter-outlet-ringkasan-gofitku"
+              value={resolved_outlet}
+              options={outlet_filter_options}
+              onValueChange={setSelectedOutlet}
+              ariaLabel="Filter outlet ringkasan GoFitKu"
+              searchable
+              searchPlaceholder="Cari outlet..."
+              emptyMessage="Outlet tidak ditemukan."
+            />
+          </FilterField>
+        ) : null}
+
+        {!is_outlet_view ? (
+          <FilterField
+            label="Kategori"
+            htmlFor="filter-kategori-ringkasan-gofitku"
+            className="w-full xl:w-[220px]"
+          >
+            <OptionDropdown
+              id="filter-kategori-ringkasan-gofitku"
+              value={selected_category}
+              options={outlet_category_filter_options}
+              onValueChange={(next_value) => {
+                setSelectedCategory(next_value);
+                setSelectedOutlet("all");
+              }}
+              ariaLabel="Filter kategori ringkasan GoFitKu"
+            />
+          </FilterField>
+        ) : null}
+
+        <FilterField label="Tanggal" className="w-full xl:w-[180px]">
+          <Input
+            type="date"
+            value={selected_date}
+            onChange={on_date_change}
+            className="bg-card"
+            aria-label="Tanggal ringkasan penjualan GoFitKu"
+          />
+        </FilterField>
+
+      </div>
+
+      {is_outlet_view ? (
+        <Button type="button" onClick={on_add_sale} className="w-full shrink-0 xl:w-auto">
+          <PlusIcon className="size-4" />
+          Tambah Penjualan
+        </Button>
+      ) : null}
+    </div>
+  );
+
   if (!outlet_groups.length) {
     return (
       <div className="rounded-lg border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
@@ -627,22 +750,7 @@ export default function RingkasanTabContent({
         </CardHeader>
 
         <CardContent className="space-y-5">
-          <FilterField
-            label="Pencarian"
-            htmlFor="filter-pencarian-ringkasan-gofitku"
-            className="w-full sm:w-[320px]"
-          >
-            <div className="relative w-full">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="filter-pencarian-ringkasan-gofitku"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={SEARCH_PLACEHOLDERS["outlet-insanku"]}
-                className="bg-card pl-9"
-              />
-            </div>
-          </FilterField>
+          {filter_controls}
 
           <Table
             className="min-w-[980px]"
@@ -694,22 +802,7 @@ export default function RingkasanTabContent({
         </CardHeader>
 
         <CardContent className="space-y-5">
-          <FilterField
-            label="Pencarian"
-            htmlFor="filter-pencarian-ringkasan-gofitku"
-            className="w-full sm:w-[320px]"
-          >
-            <div className="relative w-full">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="filter-pencarian-ringkasan-gofitku"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={SEARCH_PLACEHOLDERS[sub_tab]}
-                className="bg-card pl-9"
-              />
-            </div>
-          </FilterField>
+          {filter_controls}
 
           {/* Outlet & InsanKu: per outlet dengan rincian per orang */}
           <TabsContent
@@ -748,7 +841,7 @@ export default function RingkasanTabContent({
                 </Table>
             ) : filtered_grouped_outlets.length ? (
               <>
-                <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1">
+                <div className="max-h-[70vh] space-y-6 overflow-y-auto rounded-lg border bg-muted/20 p-3">
                   {paginated_grouped_outlets.map((group) => (
                     <Card
                       key={`${group.uuid}-summary`}

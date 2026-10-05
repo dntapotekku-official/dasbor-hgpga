@@ -1,3 +1,48 @@
+function is_date_in_periods(date_value, periods = []) {
+  const date = new Date(date_value);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return periods.some((period) => {
+    const start_date = new Date(period.start_date);
+    const end_date = period.end_date ? new Date(period.end_date) : null;
+
+    return start_date <= date && (!end_date || end_date >= date);
+  });
+}
+
+export function isGofitkuRelationAvailableOnDate(relation, date_value) {
+  return (
+    !is_date_in_periods(date_value, relation?.inactive_periods) &&
+    !is_date_in_periods(date_value, relation?.insanku?.inactive_periods) &&
+    !is_date_in_periods(
+      date_value,
+      relation?.insanku?.gofitku_exclusion_periods,
+    )
+  );
+}
+
+export function isGofitkuRelationAvailableInRange(
+  relation,
+  range_start,
+  range_end,
+) {
+  const cursor = new Date(range_start);
+  const end = new Date(range_end);
+
+  while (cursor < end) {
+    if (isGofitkuRelationAvailableOnDate(relation, cursor)) {
+      return true;
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return false;
+}
+
 export function buildPenjualanGofitkuGroups({
   active_relations,
   sales_rows,
@@ -37,6 +82,7 @@ export function buildPenjualanGofitkuGroups({
         kategori: relation.outlet?.category ?? null,
         rows: [],
         detail_rows: [],
+        monthly_detail_groups: [],
       });
     }
 
@@ -91,6 +137,29 @@ export function buildPenjualanGofitkuGroups({
       row.monthly_total += qty;
       const day = sale.date.getUTCDate();
       row.daily_totals[day] = Number(row.daily_totals[day] || 0) + qty;
+      const group = groups_map.get(relation.uuid_outlet);
+      const date_key = sale.date.toISOString().slice(0, 10);
+      let daily_group = group.monthly_detail_groups.find(
+        (item) => item.date === date_key,
+      );
+
+      if (!daily_group) {
+        daily_group = {
+          date: date_key,
+          rows: [],
+        };
+        group.monthly_detail_groups.push(daily_group);
+      }
+
+      daily_group.rows.push({
+        uuid: sale.uuid,
+        employee_uuid: relation.uuid_insanku ?? "",
+        name: relation.insanku?.name ?? "-",
+        product_name: sale.name ?? "-",
+        produk_uuid: sale.uuid_produk_gofitku ?? "",
+        today_input: qty,
+        date: date_key,
+      });
     }
     if (sale.date >= selected_date && sale.date < day_end) {
       row.today_input += qty;
@@ -106,5 +175,28 @@ export function buildPenjualanGofitkuGroups({
     }
   }
 
-  return Array.from(groups_map.values());
+  const month_dates = [];
+  const month_cursor = new Date(month_start);
+
+  while (month_cursor < month_end) {
+    month_dates.push(month_cursor.toISOString().slice(0, 10));
+    month_cursor.setUTCDate(month_cursor.getUTCDate() + 1);
+  }
+
+  return Array.from(groups_map.values()).map((group) => {
+    const detail_group_map = new Map(
+      group.monthly_detail_groups.map((daily_group) => [
+        daily_group.date,
+        daily_group,
+      ]),
+    );
+
+    return {
+      ...group,
+      monthly_detail_groups: month_dates.map((date_key) => ({
+        date: date_key,
+        rows: detail_group_map.get(date_key)?.rows ?? [],
+      })),
+    };
+  });
 }

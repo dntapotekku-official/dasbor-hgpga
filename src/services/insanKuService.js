@@ -3,6 +3,13 @@ import { hashPassword } from "@/lib/password";
 import { randomUUID } from "node:crypto";
 import { dedupeByUuid } from "@/lib/utils";
 import { normalizeNik, stripInvisibleCharacters } from "@/lib/nik";
+import {
+  closeInsanKuInactivePeriod,
+  closeOutletInsanKuInactivePeriod,
+  createOutletInsanKuPreActivePeriod,
+  openInsanKuInactivePeriod,
+  openOutletInsanKuInactivePeriod,
+} from "@/services/inactivePeriodService";
 import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
 
 const DEFAULT_INSANKU_PASSWORD = "Apotekku";
@@ -38,6 +45,7 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
         .map((placement) => ({
           uuid: String(placement?.uuid ?? "").trim(),
           outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+          active_start_date: String(placement?.active_start_date ?? "").trim(),
         }))
         .filter((placement) => placement.outlet_uuid)
     : [];
@@ -48,6 +56,7 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
           .map((outlet_uuid) => ({
             uuid: "",
             outlet_uuid: String(outlet_uuid ?? "").trim(),
+            active_start_date: "",
           }))
           .filter((placement) => placement.outlet_uuid)
       : [];
@@ -71,6 +80,18 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
     placement_uuids,
     outlet_uuids: unique_outlet_uuids,
   };
+}
+
+function normalizeDeletedOutletPlacements(deleted_outlet_placements) {
+  return Array.isArray(deleted_outlet_placements)
+    ? deleted_outlet_placements
+        .map((placement) => ({
+          uuid: String(placement?.uuid ?? "").trim(),
+          outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+          inactive_start_date: String(placement?.inactive_start_date ?? "").trim(),
+        }))
+        .filter((placement) => placement.uuid)
+    : [];
 }
 
 function getInsanKuPayloadUuid(item) {
@@ -279,6 +300,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       outlet_insanku: {
         where: {
           deleted_at: null,
+          is_active: true,
           outlet: {
             deleted_at: null,
             excep: false,
@@ -481,8 +503,8 @@ export async function syncInsanKu() {
     }
 
     await Promise.all(
-      update_insanku.map((item) =>
-        tx.tbl_insanku.update({
+      update_insanku.map(async (item) => {
+        await tx.tbl_insanku.update({
           where: { uuid: item.uuid },
           data: {
             name: item.name,
@@ -501,8 +523,9 @@ export async function syncInsanKu() {
               : {}),
             deleted_at: null,
           },
-        }),
-      ),
+        });
+        await closeInsanKuInactivePeriod(tx, item.uuid);
+      }),
     );
 
     const skipped_active_insanku_uuids = skipped_insanku
@@ -521,9 +544,16 @@ export async function syncInsanKu() {
           is_active: true,
         },
       });
+      await Promise.all(
+        skipped_active_insanku_uuids.map((uuid_insanku) =>
+          closeInsanKuInactivePeriod(tx, uuid_insanku),
+        ),
+      );
     }
 
     if (inactive_insanku.length > 0) {
+      const inactive_start_date = new Date();
+
       await tx.tbl_insanku.updateMany({
         where: {
           uuid: {
@@ -535,6 +565,11 @@ export async function syncInsanKu() {
           is_active: false,
         },
       });
+      await Promise.all(
+        inactive_insanku.map((item) =>
+          openInsanKuInactivePeriod(tx, item.uuid, inactive_start_date),
+        ),
+      );
     }
 
     return inserted_count;
@@ -573,6 +608,7 @@ export async function updateInsanKu({
   password,
   is_active,
   outlet_placements = [],
+  deleted_outlet_placements = [],
   outlet_uuids = [],
   is_skip_sync_insanku,
   is_skip_sync_outlet_insanku,
@@ -597,7 +633,19 @@ export async function updateInsanKu({
     outlet_placements,
     outlet_uuids,
   );
+  const normalized_deleted_placements = normalizeDeletedOutletPlacements(
+    deleted_outlet_placements,
+  );
   const resolved_outlet_placements = normalized_placements.placements;
+  const deleted_placement_date_map = new Map(
+    normalized_deleted_placements.map((placement) => [
+      placement.uuid,
+      parseOptionalDate(
+        placement.inactive_start_date,
+        "Tanggal efektif hapus penempatan",
+      ) ?? new Date(),
+    ]),
+  );
   const placement_uuid_list = normalized_placements.placement_uuids;
   const unique_outlet_uuids = normalized_placements.outlet_uuids;
 
@@ -682,6 +730,11 @@ export async function updateInsanKu({
         is_skip_sync: Boolean(is_skip_sync_insanku),
       },
     });
+    if (normalized_is_active) {
+      await closeInsanKuInactivePeriod(tx, uuid_insanku);
+    } else {
+      await openInsanKuInactivePeriod(tx, uuid_insanku);
+    }
 
     const now = new Date();
     const today_start = new Date(now.toISOString().slice(0, 10));
@@ -737,10 +790,13 @@ export async function updateInsanKu({
       select: {
         uuid: true,
         uuid_outlet: true,
+        is_active: true,
         deleted_at: true,
       },
     });
-    const active_relations = current_relations.filter((item) => item.deleted_at === null);
+    const active_relations = current_relations.filter(
+      (item) => item.deleted_at === null && item.is_active,
+    );
     const current_relation_uuid_set = new Set(
       active_relations.map((item) => item.uuid),
     );
@@ -765,6 +821,8 @@ export async function updateInsanKu({
       .map((item) => item.uuid);
 
     if (relation_uuids_to_remove.length > 0) {
+      const inactive_start_date = new Date();
+
       await tx.tbl_outlet_insanku.updateMany({
         where: {
           uuid: {
@@ -772,9 +830,19 @@ export async function updateInsanKu({
           },
         },
         data: {
-          deleted_at: new Date(),
+          is_active: false,
         },
       });
+      await Promise.all(
+        relation_uuids_to_remove.map((uuid_outlet_insanku) =>
+          openOutletInsanKuInactivePeriod(
+            tx,
+            uuid_outlet_insanku,
+            deleted_placement_date_map.get(uuid_outlet_insanku) ??
+              inactive_start_date,
+          ),
+        ),
+      );
     }
 
     await tx.tbl_outlet_insanku.updateMany({
@@ -788,6 +856,11 @@ export async function updateInsanKu({
     });
 
     for (const placement of resolved_outlet_placements) {
+      const placement_active_start_date = parseOptionalDate(
+        placement.active_start_date,
+        "Tanggal mulai penempatan",
+      );
+
       if (placement.uuid) {
         const current_relation = current_relations_by_uuid.get(placement.uuid);
 
@@ -802,9 +875,15 @@ export async function updateInsanKu({
             },
             data: {
               deleted_at: null,
+              is_active: true,
               is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
+          await closeOutletInsanKuInactivePeriod(
+            tx,
+            placement.uuid,
+            placement_active_start_date ?? undefined,
+          );
           continue;
         }
 
@@ -819,18 +898,29 @@ export async function updateInsanKu({
             },
             data: {
               deleted_at: null,
+              is_active: true,
               is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
+          await closeOutletInsanKuInactivePeriod(
+            tx,
+            existing_target_relation.uuid,
+            placement_active_start_date ?? undefined,
+          );
 
           await tx.tbl_outlet_insanku.update({
             where: {
               uuid: placement.uuid,
             },
             data: {
-              deleted_at: new Date(),
+              is_active: false,
             },
           });
+          await openOutletInsanKuInactivePeriod(
+            tx,
+            placement.uuid,
+            placement_active_start_date ?? undefined,
+          );
 
           continue;
         }
@@ -842,25 +932,44 @@ export async function updateInsanKu({
         if (sale_count > 0) {
           await tx.tbl_outlet_insanku.update({
             where: { uuid: placement.uuid },
-            data: { deleted_at: new Date() },
+            data: { is_active: false },
           });
+          await openOutletInsanKuInactivePeriod(
+            tx,
+            placement.uuid,
+            placement_active_start_date ?? undefined,
+          );
+          const created_relation_uuid = randomUUID();
+
           await tx.tbl_outlet_insanku.create({
             data: {
-              uuid: randomUUID(),
+              uuid: created_relation_uuid,
               uuid_outlet: placement.outlet_uuid,
               uuid_insanku,
+              is_active: true,
               is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
+          await createOutletInsanKuPreActivePeriod(
+            tx,
+            created_relation_uuid,
+            placement_active_start_date,
+          );
         } else {
           await tx.tbl_outlet_insanku.update({
             where: { uuid: placement.uuid },
             data: {
               uuid_outlet: placement.outlet_uuid,
               deleted_at: null,
+              is_active: true,
               is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
+          await closeOutletInsanKuInactivePeriod(
+            tx,
+            placement.uuid,
+            placement_active_start_date ?? undefined,
+          );
         }
         continue;
       }
@@ -876,20 +985,34 @@ export async function updateInsanKu({
           },
           data: {
             deleted_at: null,
+            is_active: true,
             is_skip_sync: should_skip_sync_outlet_insanku,
           },
         });
+        await closeOutletInsanKuInactivePeriod(
+          tx,
+          existing_target_relation.uuid,
+          placement_active_start_date ?? undefined,
+        );
         continue;
       }
 
+      const created_relation_uuid = randomUUID();
+
       await tx.tbl_outlet_insanku.create({
         data: {
-          uuid: randomUUID(),
+          uuid: created_relation_uuid,
           uuid_outlet: placement.outlet_uuid,
           uuid_insanku,
+          is_active: true,
           is_skip_sync: should_skip_sync_outlet_insanku,
         },
       });
+      await createOutletInsanKuPreActivePeriod(
+        tx,
+        created_relation_uuid,
+        placement_active_start_date,
+      );
     }
   });
 

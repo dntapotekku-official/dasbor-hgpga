@@ -11,10 +11,12 @@ test("manual delete cascades InsanKu relations with soft delete semantics", asyn
   });
   const transaction = {
     tbl_atribut_insanku: table("atribut"),
+    tbl_insanku_inactive_period: table("insanku_inactive_period"),
     tbl_target_gofitku: table("target"),
     tbl_insanku_gofitku_exclusion: table("exclusion"),
     tbl_nilai_magang: table("magang"),
     tbl_outlet_insanku: table("placement"),
+    tbl_outlet_insanku_inactive_period: table("placement_inactive_period"),
     tbl_penjualan_gofitku: table("sales"),
   };
   const deleted_at = new Date("2026-10-05T00:00:00.000Z");
@@ -28,4 +30,12 @@ test("manual delete cascades InsanKu relations with soft delete semantics", asyn
   assert.equal(calls.find((call) => call.name === "target")?.args.data.uuid_outlet_insanku, null);
   assert.equal(calls.find((call) => call.name === "target")?.args.data.deleted_at, deleted_at);
   assert.equal(calls.find((call) => call.name === "exclusion")?.args.data.deleted_at, deleted_at);
+  assert.equal(
+    calls.find((call) => call.name === "insanku_inactive_period")?.args.data.deleted_at,
+    deleted_at,
+  );
+  assert.equal(
+    calls.find((call) => call.name === "placement_inactive_period")?.args.data.deleted_at,
+    deleted_at,
+  );
 });

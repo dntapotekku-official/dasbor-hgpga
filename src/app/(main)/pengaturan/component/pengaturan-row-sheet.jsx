@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, ChevronDownIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  PlusIcon,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import OptionDropdown from "@/components/option-dropdown";
@@ -17,6 +25,10 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+function get_today_input_value() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function normalize_placements(value, include_key = false, field_key = "") {
   if (!Array.isArray(value)) {
     return [];
@@ -26,15 +38,30 @@ function normalize_placements(value, include_key = false, field_key = "") {
     .map((placement, index) => ({
       uuid: String(placement?.uuid ?? "").trim(),
       outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+      active_start_date: String(placement?.active_start_date ?? "").trim(),
       ...(include_key
         ? {
             key: String(
               placement?.uuid ?? `${field_key}-${index}`,
             ),
           }
-        : {}),
+      : {}),
     }))
     .filter((placement) => include_key || placement.outlet_uuid);
+}
+
+function normalize_deleted_placements(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((placement) => ({
+      uuid: String(placement?.uuid ?? "").trim(),
+      outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
+      inactive_start_date: String(placement?.inactive_start_date ?? "").trim(),
+    }))
+    .filter((placement) => placement.uuid);
 }
 
 function get_draft_value(item, field) {
@@ -81,9 +108,17 @@ function get_saved_value(draft, field) {
 }
 
 function build_draft(item, fields) {
-  return Object.fromEntries(
-    fields.map((field) => [field.key, get_draft_value(item, field)]),
-  );
+  return fields.reduce((draft, field) => {
+    draft[field.key] = get_draft_value(item, field);
+
+    if (field.type === "placement-list" && field.deleted_key) {
+      draft[field.deleted_key] = normalize_deleted_placements(
+        item?.[field.deleted_key],
+      );
+    }
+
+    return draft;
+  }, {});
 }
 
 function apply_field_change(field, next_draft, next_value) {
@@ -108,12 +143,16 @@ export default function PengaturanRowSheet({
   const [draft, setDraft] = useState(() => build_draft(item, fields));
   const [open_field_key, setOpenFieldKey] = useState(null);
   const [field_search, setFieldSearch] = useState({});
+  const [placement_add_action, setPlacementAddAction] = useState(null);
+  const [placement_delete_action, setPlacementDeleteAction] = useState(null);
   const [is_submitting, setIsSubmitting] = useState(false);
 
   const reset_sheet_state = () => {
     setDraft(build_draft(item, fields));
     setOpenFieldKey(null);
     setFieldSearch({});
+    setPlacementAddAction(null);
+    setPlacementDeleteAction(null);
   };
 
   const handle_open_change = (next_open) => {
@@ -144,6 +183,14 @@ export default function PengaturanRowSheet({
       ...item,
       ...Object.fromEntries(
         fields.map((field) => [field.key, get_saved_value(draft, field)]),
+      ),
+      ...Object.fromEntries(
+        fields
+          .filter((field) => field.type === "placement-list" && field.deleted_key)
+          .map((field) => [
+            field.deleted_key,
+            normalize_deleted_placements(draft[field.deleted_key]),
+          ]),
       ),
     };
 
@@ -180,6 +227,71 @@ export default function PengaturanRowSheet({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const confirm_add_placement = () => {
+    if (!placement_add_action?.outlet_uuid) {
+      toast.error("Outlet wajib dipilih.");
+      return;
+    }
+
+    if (!placement_add_action?.active_start_date) {
+      toast.error("Tanggal mulai penempatan wajib diisi.");
+      return;
+    }
+
+    setDraft((current) => {
+      const field = placement_add_action.field;
+      const next_placements = [
+        ...(current[field.key] ?? []),
+        {
+          uuid: "",
+          outlet_uuid: placement_add_action.outlet_uuid,
+          active_start_date: placement_add_action.active_start_date,
+          key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        },
+      ];
+      const next_draft = {
+        ...current,
+        [field.key]: next_placements,
+      };
+
+      return apply_field_change(field, next_draft, next_placements);
+    });
+    setPlacementAddAction(null);
+  };
+
+  const confirm_delete_placement = () => {
+    if (!placement_delete_action?.inactive_start_date) {
+      toast.error("Tanggal efektif hapus wajib diisi.");
+      return;
+    }
+
+    setDraft((current) => {
+      const { field, index, placement, inactive_start_date } =
+        placement_delete_action;
+      const next_placements = (current[field.key] ?? []).filter(
+        (_, item_index) => item_index !== index,
+      );
+      const next_draft = {
+        ...current,
+        [field.key]: next_placements,
+      };
+
+      if (field.deleted_key && placement.uuid) {
+        next_draft[field.deleted_key] = [
+          ...(current[field.deleted_key] ?? []),
+          {
+            uuid: placement.uuid,
+            outlet_uuid: placement.outlet_uuid,
+            inactive_start_date,
+          },
+        ];
+      }
+
+      return apply_field_change(field, next_draft, next_placements);
+    });
+    setPlacementDeleteAction(null);
   };
 
   return (
@@ -358,7 +470,7 @@ export default function PengaturanRowSheet({
                       return (
                         <div
                           key={placement.key ?? `${field.key}-${index}`}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 rounded-lg border bg-muted/20 p-3"
                         >
                           <div className="min-w-0 flex-1">
                             <OptionDropdown
@@ -410,16 +522,11 @@ export default function PengaturanRowSheet({
                             size="icon-sm"
                             className="shrink-0"
                             onClick={() =>
-                              setDraft((current) => {
-                                const next_placements = (current[field.key] ?? []).filter(
-                                  (_, item_index) => item_index !== index,
-                                );
-                                const next_draft = {
-                                  ...current,
-                                  [field.key]: next_placements,
-                                };
-
-                                return apply_field_change(field, next_draft, next_placements);
+                              setPlacementDeleteAction({
+                                field,
+                                index,
+                                placement,
+                                inactive_start_date: get_today_input_value(),
                               })
                             }
                           >
@@ -438,21 +545,10 @@ export default function PengaturanRowSheet({
                     type="button"
                     variant="outline"
                     onClick={() =>
-                      setDraft((current) => {
-                        const next_placements = [
-                          ...(current[field.key] ?? []),
-                          {
-                            uuid: "",
-                            outlet_uuid: "",
-                            key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                          },
-                        ];
-                        const next_draft = {
-                          ...current,
-                          [field.key]: next_placements,
-                        };
-
-                        return apply_field_change(field, next_draft, next_placements);
+                      setPlacementAddAction({
+                        field,
+                        outlet_uuid: "",
+                        active_start_date: get_today_input_value(),
                       })
                     }
                     className="w-full"
@@ -571,6 +667,153 @@ export default function PengaturanRowSheet({
           </Button>
         </div>
       </SheetContent>
+      <DialogPrimitive.Root
+        open={Boolean(placement_add_action)}
+        onOpenChange={(next_open) => {
+          if (!next_open) {
+            setPlacementAddAction(null);
+          }
+        }}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />
+          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogPrimitive.Title className="font-heading text-lg font-semibold">
+                  Tambah Penempatan
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                  Pilih outlet dan tanggal mulai efektif penempatan.
+                </DialogPrimitive.Description>
+              </div>
+              <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <XIcon className="size-4" />
+                <span className="sr-only">Tutup</span>
+              </DialogPrimitive.Close>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <FieldLabel htmlFor="placement-add-outlet" label="Outlet" required />
+                <OptionDropdown
+                  id="placement-add-outlet"
+                  value={placement_add_action?.outlet_uuid ?? ""}
+                  onValueChange={(next_value) =>
+                    setPlacementAddAction((current) =>
+                      current ? { ...current, outlet_uuid: next_value } : current,
+                    )
+                  }
+                  options={[
+                    { value: "", label: "Pilih outlet" },
+                    ...(placement_add_action?.field?.options?.filter((option) => {
+                      const selected_outlet_values = new Set(
+                        (draft[placement_add_action.field.key] ?? [])
+                          .map((item) => String(item?.outlet_uuid ?? "").trim())
+                          .filter(Boolean),
+                      );
+
+                      return !selected_outlet_values.has(option.value);
+                    }) ?? []),
+                  ]}
+                  searchable
+                  searchPlaceholder="Cari outlet..."
+                  emptyMessage="Outlet tidak ditemukan."
+                />
+              </div>
+              <div className="space-y-2">
+                <FieldLabel
+                  htmlFor="placement-add-date"
+                  label="Tanggal mulai penempatan"
+                  required
+                />
+                <Input
+                  id="placement-add-date"
+                  type="date"
+                  value={placement_add_action?.active_start_date ?? ""}
+                  onChange={(event) =>
+                    setPlacementAddAction((current) =>
+                      current
+                        ? { ...current, active_start_date: event.target.value }
+                        : current,
+                    )
+                  }
+                />
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <DialogPrimitive.Close asChild>
+                <Button type="button" variant="outline">
+                  Batal
+                </Button>
+              </DialogPrimitive.Close>
+              <Button type="button" onClick={confirm_add_placement}>
+                Tambah
+              </Button>
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+      <DialogPrimitive.Root
+        open={Boolean(placement_delete_action)}
+        onOpenChange={(next_open) => {
+          if (!next_open) {
+            setPlacementDeleteAction(null);
+          }
+        }}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />
+          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogPrimitive.Title className="font-heading text-lg font-semibold">
+                  Hapus Penempatan
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                  Tentukan tanggal efektif hapus penempatan.
+                </DialogPrimitive.Description>
+              </div>
+              <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <XIcon className="size-4" />
+                <span className="sr-only">Tutup</span>
+              </DialogPrimitive.Close>
+            </div>
+            <div className="mt-4 space-y-2">
+              <FieldLabel
+                htmlFor="placement-delete-date"
+                label="Tanggal efektif hapus"
+                required
+              />
+              <Input
+                id="placement-delete-date"
+                type="date"
+                value={placement_delete_action?.inactive_start_date ?? ""}
+                onChange={(event) =>
+                  setPlacementDeleteAction((current) =>
+                    current
+                      ? { ...current, inactive_start_date: event.target.value }
+                      : current,
+                  )
+                }
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <DialogPrimitive.Close asChild>
+                <Button type="button" variant="outline">
+                  Batal
+                </Button>
+              </DialogPrimitive.Close>
+              <Button
+                type="button"
+                variant="delete"
+                onClick={confirm_delete_placement}
+              >
+                Hapus
+              </Button>
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </Sheet>
   );
 }

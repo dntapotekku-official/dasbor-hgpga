@@ -4,7 +4,12 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { prisma } from "@/lib/prisma";
-import { buildPenjualanGofitkuGroups } from "@/lib/penjualanGofitkuReport";
+import {
+  buildPenjualanGofitkuGroups,
+  isGofitkuRelationAvailableInRange,
+  isGofitkuRelationAvailableOnDate,
+} from "@/lib/penjualanGofitkuReport";
+import { isDateInInactivePeriods } from "@/services/inactivePeriodService";
 
 function get_date_boundaries(date_value) {
   const normalized_date = String(date_value ?? "").trim();
@@ -66,14 +71,11 @@ function is_date_in_gofitku_exclusion(date_value, exclusion_periods = []) {
   });
 }
 
-function filter_sales_by_gofitku_exclusion(sales_rows, relation_map) {
+function filter_sales_by_relation_periods(sales_rows, relation_map) {
   return sales_rows.filter((sale) => {
     const relation = relation_map.get(sale.uuid_outlet_insanku);
 
-    return !is_date_in_gofitku_exclusion(
-      sale.date,
-      relation?.insanku?.gofitku_exclusion_periods,
-    );
+    return relation && isGofitkuRelationAvailableOnDate(relation, sale.date);
   });
 }
 
@@ -142,6 +144,11 @@ const report_relation_select = {
   uuid: true,
   uuid_outlet: true,
   uuid_insanku: true,
+  is_active: true,
+  inactive_periods: {
+    where: { deleted_at: null },
+    select: { start_date: true, end_date: true },
+  },
   outlet: {
     select: { uuid: true, name: true, category: true },
   },
@@ -149,6 +156,11 @@ const report_relation_select = {
     select: {
       uuid: true,
       name: true,
+      is_active: true,
+      inactive_periods: {
+        where: { deleted_at: null },
+        select: { start_date: true, end_date: true },
+      },
       gofitku_exclusion_periods: {
         where: { deleted_at: null },
         select: { start_date: true, end_date: true },
@@ -157,7 +169,11 @@ const report_relation_select = {
   },
 };
 
-async function get_outlet_insanku_rows(accessible_outlet_uuids, active_date = null) {
+async function get_outlet_insanku_rows(
+  accessible_outlet_uuids,
+  active_date = null,
+  { include_inactive = false } = {},
+) {
   const rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
@@ -175,7 +191,6 @@ async function get_outlet_insanku_rows(accessible_outlet_uuids, active_date = nu
       },
       insanku: {
         deleted_at: null,
-        is_active: true,
       },
     },
     orderBy: [
@@ -194,14 +209,12 @@ async function get_outlet_insanku_rows(accessible_outlet_uuids, active_date = nu
   });
 
   return active_date
-    ? rows.filter(
-        (row) =>
-          !is_date_in_gofitku_exclusion(
-            active_date,
-            row.insanku?.gofitku_exclusion_periods,
-          ),
+    ? rows.filter((row) =>
+        isGofitkuRelationAvailableOnDate(row, active_date),
       )
-    : rows;
+    : include_inactive
+      ? rows
+      : rows.filter((row) => row.is_active && row.insanku?.is_active !== false);
 }
 
 async function get_report_sales(accessible_outlet_uuids, date_range) {
@@ -301,7 +314,7 @@ export async function getPenjualanGofitku({
     lt: sales_range_end,
   });
   const relation_map = get_report_relations(active_relations, raw_sales_rows);
-  const sales_rows = filter_sales_by_gofitku_exclusion(
+  const sales_rows = filter_sales_by_relation_periods(
     raw_sales_rows,
     relation_map,
   );
@@ -389,10 +402,12 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
 
   const active_relations = await get_outlet_insanku_rows(
     accessible_outlet_uuids,
+    null,
+    { include_inactive: true },
   );
   const raw_sales_rows = await get_report_sales(accessible_outlet_uuids);
   const relation_map = get_report_relations(active_relations, raw_sales_rows);
-  const sales_rows = filter_sales_by_gofitku_exclusion(
+  const sales_rows = filter_sales_by_relation_periods(
     raw_sales_rows,
     relation_map,
   );
@@ -481,18 +496,26 @@ export async function getPenjualanGofitkuExport({ account_uuid, role }) {
   
   for (const month_key of month_keys) {
     const month_start = get_month_start_from_key(month_key);
+    const month_end = new Date(
+      Date.UTC(
+        month_start.getUTCFullYear(),
+        month_start.getUTCMonth() + 1,
+        1,
+      ),
+    );
     const year = month_start.getUTCFullYear();
     const month = month_start.getUTCMonth() + 1;
     const total_days = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const month_sales = sales_by_month.get(month_key) ?? [];
-    const month_relation_uuids = new Set([
-      ...active_relations.map((item) => item.uuid),
-      ...month_sales.map((sale) => sale.uuid_outlet_insanku),
-    ]);
   
     for (const group of groups_map.values()) {
       const group_relations = (relations_by_outlet.get(group.uuid) ?? []).filter(
-        (relation) => month_relation_uuids.has(relation.uuid),
+        (relation) =>
+          isGofitkuRelationAvailableInRange(
+            relation,
+            month_start,
+            month_end,
+          ),
       );
       const row_map = new Map(
         group_relations.map((relation) => [
@@ -663,7 +686,7 @@ async function get_outlet_sales_totals(relation_uuid_set, relation_map) {
       date: true,
     },
   });
-  const filtered_rows = filter_sales_by_gofitku_exclusion(rows, relation_map);
+  const filtered_rows = filter_sales_by_relation_periods(rows, relation_map);
   const totals = new Map();
 
   for (const row of filtered_rows) {
@@ -698,7 +721,7 @@ async function get_product_sales_totals(relation_uuid_set, relation_map) {
       date: true,
     },
   });
-  const filtered_rows = filter_sales_by_gofitku_exclusion(rows, relation_map);
+  const filtered_rows = filter_sales_by_relation_periods(rows, relation_map);
   const totals = new Map();
 
   for (const row of filtered_rows) {
@@ -796,15 +819,22 @@ export async function createPenjualanGofitku({
       },
       insanku: {
         deleted_at: null,
-        is_active: true,
       },
     },
     select: {
       uuid: true,
       uuid_insanku: true,
+      inactive_periods: {
+        where: { deleted_at: null },
+        select: { start_date: true, end_date: true },
+      },
       insanku: {
         select: {
           name: true,
+          inactive_periods: {
+            where: { deleted_at: null },
+            select: { start_date: true, end_date: true },
+          },
           gofitku_exclusion_periods: {
             where: {
               deleted_at: null,
@@ -851,6 +881,15 @@ export async function createPenjualanGofitku({
     normalized_entries.map((entry) => {
       const { date } = get_date_boundaries(entry.date);
       const relation = relation_by_employee_uuid.get(entry.employee_uuid);
+
+      if (
+        isDateInInactivePeriods(date, relation?.inactive_periods) ||
+        isDateInInactivePeriods(date, relation?.insanku?.inactive_periods)
+      ) {
+        throw new Error(
+          `${relation?.insanku?.name ?? "InsanKu"} tidak aktif pada tanggal tersebut.`,
+        );
+      }
 
       if (
         is_date_in_gofitku_exclusion(
@@ -939,9 +978,17 @@ export async function updatePenjualanGofitku({
           uuid_outlet: true,
           uuid_insanku: true,
           deleted_at: true,
+          inactive_periods: {
+            where: { deleted_at: null },
+            select: { start_date: true, end_date: true },
+          },
           insanku: {
             select: {
               name: true,
+              inactive_periods: {
+                where: { deleted_at: null },
+                select: { start_date: true, end_date: true },
+              },
               gofitku_exclusion_periods: {
                 where: { deleted_at: null },
                 select: { start_date: true, end_date: true },
@@ -977,14 +1024,21 @@ export async function updatePenjualanGofitku({
           },
           insanku: {
             deleted_at: null,
-            is_active: true,
           },
         },
         select: {
           uuid: true,
+          inactive_periods: {
+            where: { deleted_at: null },
+            select: { start_date: true, end_date: true },
+          },
           insanku: {
             select: {
               name: true,
+              inactive_periods: {
+                where: { deleted_at: null },
+                select: { start_date: true, end_date: true },
+              },
               gofitku_exclusion_periods: {
                 where: {
                   deleted_at: null,
@@ -1005,6 +1059,15 @@ export async function updatePenjualanGofitku({
 
   if (outlet_insanku.deleted_at && parsed_date > outlet_insanku.deleted_at) {
     throw new Error("Penjualan tidak dapat dipindah ke tanggal setelah penempatan berakhir.");
+  }
+
+  if (
+    isDateInInactivePeriods(parsed_date, outlet_insanku.inactive_periods) ||
+    isDateInInactivePeriods(parsed_date, outlet_insanku.insanku?.inactive_periods)
+  ) {
+    throw new Error(
+      `${outlet_insanku.insanku?.name ?? "InsanKu"} tidak aktif pada tanggal tersebut.`,
+    );
   }
 
   if (
@@ -1219,6 +1282,7 @@ async function get_target_placement_maps() {
   const placement_rows = await prisma.tbl_outlet_insanku.findMany({
     where: {
       deleted_at: null,
+      is_active: true,
       outlet: {
         deleted_at: null,
         is_active: true,

@@ -1,15 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildPenjualanGofitkuGroups } from "../src/lib/penjualanGofitkuReport.js";
+import {
+  buildPenjualanGofitkuGroups,
+  isGofitkuRelationAvailableInRange,
+  isGofitkuRelationAvailableOnDate,
+} from "../src/lib/penjualanGofitkuReport.js";
 
 const date = (day) => new Date(`2026-10-${day}T00:00:00.000Z`);
 const relation = (uuid, person, outlet = "outlet-a") => ({
   uuid,
   uuid_outlet: outlet,
   uuid_insanku: person,
+  inactive_periods: [],
   outlet: { uuid: outlet, name: outlet, category: "APOTEK" },
-  insanku: { uuid: person, name: person },
+  insanku: {
+    uuid: person,
+    name: person,
+    inactive_periods: [],
+    gofitku_exclusion_periods: [],
+  },
 });
 const sale = (uuid, assignment, day, qty) => ({
   uuid,
@@ -102,5 +112,51 @@ test("target follows outlet placement, not only employee uuid", () => {
   assert.deepEqual(
     groups.flatMap((group) => group.rows.map((row) => row.target)).sort((a, b) => a - b),
     [3, 7],
+  );
+});
+
+test("relation is unavailable during placement, employee, or GoFitKu exclusion periods", () => {
+  const placement_inactive = relation("assignment-placement", "Ani");
+  placement_inactive.inactive_periods = [
+    { start_date: date("05"), end_date: date("06") },
+  ];
+
+  const employee_inactive = relation("assignment-employee", "Budi");
+  employee_inactive.insanku.inactive_periods = [
+    { start_date: date("05"), end_date: date("06") },
+  ];
+
+  const excluded = relation("assignment-excluded", "Cici");
+  excluded.insanku.gofitku_exclusion_periods = [
+    { start_date: date("05"), end_date: date("06") },
+  ];
+
+  assert.equal(isGofitkuRelationAvailableOnDate(placement_inactive, date("05")), false);
+  assert.equal(isGofitkuRelationAvailableOnDate(employee_inactive, date("05")), false);
+  assert.equal(isGofitkuRelationAvailableOnDate(excluded, date("05")), false);
+  assert.equal(isGofitkuRelationAvailableOnDate(excluded, date("07")), true);
+});
+
+test("monthly export relation remains visible only when at least one day is available", () => {
+  const partially_active = relation("assignment-partial", "Ani");
+  partially_active.inactive_periods = [
+    { start_date: date("01"), end_date: date("15") },
+  ];
+
+  const fully_inactive = relation("assignment-inactive", "Budi");
+  fully_inactive.inactive_periods = [
+    { start_date: date("01"), end_date: new Date("2026-10-31T00:00:00.000Z") },
+  ];
+
+  const month_start = date("01");
+  const month_end = new Date("2026-11-01T00:00:00.000Z");
+
+  assert.equal(
+    isGofitkuRelationAvailableInRange(partially_active, month_start, month_end),
+    true,
+  );
+  assert.equal(
+    isGofitkuRelationAvailableInRange(fully_inactive, month_start, month_end),
+    false,
   );
 });
