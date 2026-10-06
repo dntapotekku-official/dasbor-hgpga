@@ -388,6 +388,136 @@ export async function getPenjualanGofitku({
   };
 }
 
+export async function getExternalPenjualanGofitku({
+  uuid_outlet,
+}) {
+  const trimmed_uuid_outlet = String(uuid_outlet ?? "").trim();
+
+  if (trimmed_uuid_outlet) {
+    const outlet = await prisma.tbl_outlet.findFirst({
+      where: {
+        uuid: trimmed_uuid_outlet,
+        deleted_at: null,
+        is_active: true,
+        excep: false,
+      },
+      select: {
+        uuid: true,
+      },
+    });
+
+    if (!outlet) {
+      throw new Error("Outlet tidak ditemukan.");
+    }
+  }
+
+  const placement_rows = await prisma.tbl_outlet_insanku.findMany({
+    where: {
+      ...(trimmed_uuid_outlet
+        ? {
+            uuid_outlet: trimmed_uuid_outlet,
+          }
+        : {}),
+      deleted_at: null,
+      outlet: {
+        deleted_at: null,
+        is_active: true,
+        excep: false,
+      },
+      insanku: {
+        deleted_at: null,
+      },
+    },
+    orderBy: [
+      {
+        outlet: {
+          name: "asc",
+        },
+      },
+      {
+        insanku: {
+          name: "asc",
+        },
+      },
+    ],
+    select: {
+      uuid: true,
+      uuid_outlet: true,
+      uuid_insanku: true,
+      insanku: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+  const placement_uuids = placement_rows.map((item) => item.uuid);
+  const sales_rows = await prisma.tbl_penjualan_gofitku.findMany({
+    where: {
+      deleted_at: null,
+      ...(placement_uuids.length
+        ? {
+            uuid_outlet_insanku: {
+              in: placement_uuids,
+            },
+          }
+        : {
+            uuid_outlet_insanku: {
+              in: [],
+            },
+          }),
+    },
+    select: {
+      qty: true,
+      uuid_outlet_insanku: true,
+    },
+  });
+  const sales_total_map = new Map();
+
+  for (const row of sales_rows) {
+    const uuid_outlet_insanku = String(row.uuid_outlet_insanku ?? "").trim();
+
+    if (!uuid_outlet_insanku) {
+      continue;
+    }
+
+    sales_total_map.set(
+      uuid_outlet_insanku,
+      (sales_total_map.get(uuid_outlet_insanku) ?? 0) + (row.qty ?? 0),
+    );
+  }
+
+  const group_map = new Map();
+
+  for (const placement of placement_rows) {
+    const uuid_outlet_row = String(placement.uuid_outlet ?? "").trim();
+    const uuid_insanku = String(placement.uuid_insanku ?? "").trim();
+
+    if (!uuid_outlet_row || !uuid_insanku) {
+      continue;
+    }
+
+    const group = group_map.get(uuid_outlet_row) ?? {
+      uuid_outlet: uuid_outlet_row,
+      insanku: [],
+    };
+
+    group.insanku.push({
+      uuid_insanku,
+      nama: placement.insanku?.name ?? "-",
+      total: sales_total_map.get(placement.uuid) ?? 0,
+    });
+    group_map.set(uuid_outlet_row, group);
+  }
+
+  return Array.from(group_map.values()).map((group) => ({
+    uuid_outlet: group.uuid_outlet,
+    insanku: group.insanku.sort((left, right) =>
+      left.nama.localeCompare(right.nama, "id"),
+    ),
+  }));
+}
+
 export async function getPenjualanGofitkuExport({ account_uuid, role }) {
   const accessible_outlet_uuids = await get_accessible_outlet_uuids({
     account_uuid,
