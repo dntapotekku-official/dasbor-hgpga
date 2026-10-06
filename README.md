@@ -37,6 +37,10 @@ Menu **Pengaturan → Target → GoFitKu** menyediakan dua cara pengisian banyak
 
 Pada Impor maupun Tambah Massal, target aktif dengan periode yang bertabrakan akan diarsipkan dan ditimpa oleh target baru. Target disimpan per InsanKU; target lama berbasis outlet diarsipkan saat migrasi dan perlu diinput ulang.
 
+## Dokumentasi API
+
+- [API Eksternal Penjualan GoFitKu](docs/api-penjualan-gofitku-external.md)
+
 ## Deployment
 
 Server produksi memerlukan `.env` yang lengkap, Docker, dan Docker Compose. Skrip `deploy.sh` menarik branch `main`, menjalankan migrasi bila ada perubahan, membangun image, dan me-restart container.

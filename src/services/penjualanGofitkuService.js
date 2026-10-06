@@ -451,6 +451,7 @@ export async function getExternalPenjualanGofitku({
           }
         : {}),
       deleted_at: null,
+      is_active: true,
       outlet: {
         deleted_at: null,
         is_active: true,
@@ -458,6 +459,7 @@ export async function getExternalPenjualanGofitku({
       },
       insanku: {
         deleted_at: null,
+        is_active: true,
       },
     },
     orderBy: [
@@ -476,14 +478,53 @@ export async function getExternalPenjualanGofitku({
       uuid: true,
       uuid_outlet: true,
       uuid_insanku: true,
+      inactive_periods: {
+        where: {
+          deleted_at: null,
+        },
+        select: {
+          start_date: true,
+          end_date: true,
+        },
+      },
       insanku: {
         select: {
           name: true,
+          inactive_periods: {
+            where: {
+              deleted_at: null,
+            },
+            select: {
+              start_date: true,
+              end_date: true,
+            },
+          },
+          gofitku_exclusion_periods: {
+            where: {
+              deleted_at: null,
+            },
+            select: {
+              start_date: true,
+              end_date: true,
+            },
+          },
         },
       },
     },
   });
-  const placement_uuids = placement_rows.map((item) => item.uuid);
+  const active_placement_rows = month_boundaries
+    ? placement_rows.filter((placement) =>
+        isGofitkuRelationAvailableInRange(
+          placement,
+          month_boundaries.month_start,
+          month_boundaries.month_end,
+        ),
+      )
+    : placement_rows;
+  const placement_uuids = active_placement_rows.map((item) => item.uuid);
+  const placement_map = new Map(
+    active_placement_rows.map((item) => [item.uuid, item]),
+  );
   const sales_rows = await prisma.tbl_penjualan_gofitku.findMany({
     where: {
       deleted_at: null,
@@ -509,6 +550,7 @@ export async function getExternalPenjualanGofitku({
     },
     select: {
       qty: true,
+      date: true,
       uuid_outlet_insanku: true,
     },
   });
@@ -516,8 +558,13 @@ export async function getExternalPenjualanGofitku({
 
   for (const row of sales_rows) {
     const uuid_outlet_insanku = String(row.uuid_outlet_insanku ?? "").trim();
+    const placement = placement_map.get(uuid_outlet_insanku);
 
-    if (!uuid_outlet_insanku) {
+    if (
+      !uuid_outlet_insanku ||
+      !placement ||
+      !isGofitkuRelationAvailableOnDate(placement, row.date)
+    ) {
       continue;
     }
 
@@ -529,7 +576,7 @@ export async function getExternalPenjualanGofitku({
 
   const group_map = new Map();
 
-  for (const placement of placement_rows) {
+  for (const placement of active_placement_rows) {
     const uuid_outlet_row = String(placement.uuid_outlet ?? "").trim();
     const uuid_insanku = String(placement.uuid_insanku ?? "").trim();
 
