@@ -74,6 +74,7 @@ export const GET = async (request) => {
     const data = await getExternalPenjualanGofitku({
       uuid_outlet:
         searchParams.get("uuid_outlet") ?? searchParams.get("uuid_outet"),
+      tanggal: searchParams.get("tanggal"),
     });
 
     return NextResponse.json({

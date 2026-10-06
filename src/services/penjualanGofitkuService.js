@@ -56,6 +56,36 @@ function get_month_start_from_key(month_key) {
   return new Date(Date.UTC(year, month - 1, 1));
 }
 
+function get_month_boundaries(month_value) {
+  const normalized_month = String(month_value ?? "").trim();
+
+  if (!normalized_month) {
+    return null;
+  }
+
+  if (!/^\d{4}-\d{2}$/.test(normalized_month)) {
+    throw new Error("Format tanggal harus YYYY-MM.");
+  }
+
+  const month_start = get_month_start_from_key(normalized_month);
+
+  if (Number.isNaN(month_start.getTime())) {
+    throw new Error("Format tanggal tidak valid.");
+  }
+
+  return {
+    normalized_month,
+    month_start,
+    month_end: new Date(
+      Date.UTC(
+        month_start.getUTCFullYear(),
+        month_start.getUTCMonth() + 1,
+        1,
+      ),
+    ),
+  };
+}
+
 function is_date_in_gofitku_exclusion(date_value, exclusion_periods = []) {
   const date = new Date(date_value);
 
@@ -390,8 +420,10 @@ export async function getPenjualanGofitku({
 
 export async function getExternalPenjualanGofitku({
   uuid_outlet,
+  tanggal,
 }) {
   const trimmed_uuid_outlet = String(uuid_outlet ?? "").trim();
+  const month_boundaries = get_month_boundaries(tanggal);
 
   if (trimmed_uuid_outlet) {
     const outlet = await prisma.tbl_outlet.findFirst({
@@ -455,6 +487,14 @@ export async function getExternalPenjualanGofitku({
   const sales_rows = await prisma.tbl_penjualan_gofitku.findMany({
     where: {
       deleted_at: null,
+      ...(month_boundaries
+        ? {
+            date: {
+              gte: month_boundaries.month_start,
+              lt: month_boundaries.month_end,
+            },
+          }
+        : {}),
       ...(placement_uuids.length
         ? {
             uuid_outlet_insanku: {
@@ -512,6 +552,7 @@ export async function getExternalPenjualanGofitku({
 
   return Array.from(group_map.values()).map((group) => ({
     uuid_outlet: group.uuid_outlet,
+    ...(month_boundaries ? { tanggal: month_boundaries.normalized_month } : {}),
     insanku: group.insanku.sort((left, right) =>
       left.nama.localeCompare(right.nama, "id"),
     ),
