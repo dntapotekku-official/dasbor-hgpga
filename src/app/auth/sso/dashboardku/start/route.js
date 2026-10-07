@@ -5,9 +5,10 @@ import {
   dashboardku_sso_state_cookie_name,
   dashboardku_sso_state_max_age,
 } from "@/services/dashboardkuSsoService";
+import { getPublicUrl } from "@/lib/url";
 
 function redirect_to_login(request, message) {
-  const login_url = new URL("/login", request.url);
+  const login_url = getPublicUrl(request, "/login");
 
   login_url.searchParams.set("sso_error", message);
 

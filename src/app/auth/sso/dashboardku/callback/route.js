@@ -9,9 +9,10 @@ import {
   session_cookie_name,
   session_max_age,
 } from "@/lib/session";
+import { getPublicUrl } from "@/lib/url";
 
 function redirect_to_login(request, message) {
-  const login_url = new URL("/login", request.url);
+  const login_url = getPublicUrl(request, "/login");
 
   login_url.searchParams.set("sso_error", message);
 
@@ -41,7 +42,7 @@ export async function GET(request) {
       state_token,
     });
     const token = await createSessionToken(session_payload);
-    const response = NextResponse.redirect(new URL(return_to, request.url));
+    const response = NextResponse.redirect(getPublicUrl(request, return_to));
 
     response.cookies.set(session_cookie_name, token, {
       httpOnly: true,
