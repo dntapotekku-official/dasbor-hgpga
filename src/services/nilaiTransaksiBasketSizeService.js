@@ -712,6 +712,62 @@ function build_exact_range_where(start_date, end_date = start_date) {
   };
 }
 
+function get_external_category_label(row) {
+  return export_category_labels[row.category_key] || row.kategori || "";
+}
+
+function map_external_nilai_transaksi_basket_size_row(row, index) {
+  return {
+    no: index + 1,
+    outlet: row.outlet_name,
+    jenis: get_external_category_label(row),
+    nilai_transaksi: {
+      target: row.nt_target,
+      harian: row.nt_daily,
+      bulan_sebelumnya: row.nt_last_month,
+      bulan_berjalan: row.nt_current_month,
+      persen_growth: row.nt_growth,
+      gap_growth: row.nt_gap_growth,
+      persen_dari_target: row.nt_target_compare,
+      gap_target: row.nt_gap_target,
+    },
+    basket_size: {
+      target: row.bs_target,
+      bulan_sebelumnya: row.bs_last_month,
+      capaian: row.bs_current_month,
+      persen_dibanding_bulan_sebelumnya: row.bs_growth,
+      gap_growth: row.bs_gap_growth,
+      persen_dibanding_target: row.bs_target_compare,
+      gap_target: row.bs_gap_target,
+    },
+  };
+}
+
+function map_external_nilai_transaksi_summary(summary) {
+  return {
+    target: summary.nt_target,
+    harian: summary.nt_daily,
+    bulan_sebelumnya: summary.nt_last_month,
+    bulan_berjalan: summary.nt_current_month,
+    persen_growth: summary.nt_growth,
+    gap_growth: summary.nt_gap_growth,
+    persen_dari_target: summary.nt_target_compare,
+    gap_target: summary.nt_gap_target,
+  };
+}
+
+function map_external_basket_size_summary(summary) {
+  return {
+    target: summary.bs_target,
+    bulan_sebelumnya: summary.bs_last_month,
+    capaian: summary.bs_current_month,
+    persen_dibanding_bulan_sebelumnya: summary.bs_growth,
+    gap_growth: summary.bs_gap_growth,
+    persen_dibanding_target: summary.bs_target_compare,
+    gap_target: summary.bs_gap_target,
+  };
+}
+
 /** Mengambil dashboard gabungan NS/BS beserta target, ringkasan kategori, dan tanggal tersedia. */
 export async function getNilaiTransaksiBasketSize({
   selected_date,
@@ -1026,6 +1082,19 @@ export async function getNilaiTransaksiBasketSize({
       nilai_transaksi_bulanan: map_available_ranges(nilai_transaksi_ranges),
       basket_size: map_available_ranges(basket_size_ranges),
     },
+  };
+}
+
+export async function getExternalNilaiTransaksiBasketSize({ tanggal }) {
+  const data = await getNilaiTransaksiBasketSize({
+    selected_date: tanggal,
+  });
+
+  return {
+    tanggal,
+    summary_nt: map_external_nilai_transaksi_summary(data.overall_metrics),
+    summary_bs: map_external_basket_size_summary(data.overall_metrics),
+    rows: data.rows.map(map_external_nilai_transaksi_basket_size_row),
   };
 }
 
