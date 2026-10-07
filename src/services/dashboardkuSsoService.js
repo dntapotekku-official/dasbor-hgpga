@@ -3,7 +3,6 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 
 import { prisma } from "@/lib/prisma";
-import { isAdminAccountRole, normalizeRole } from "@/lib/role";
 
 export const dashboardku_sso_state_cookie_name = "dashboardku_sso_state";
 export const dashboardku_sso_state_max_age = 10 * 60;
@@ -272,50 +271,25 @@ async function verify_id_token({ id_token, nonce, metadata }) {
   return payload;
 }
 
-async function get_session_payload_from_link({ issuer, subject }) {
-  const link = await prisma.tbl_sso_account_link.findFirst({
-    where: {
-      issuer,
-      subject,
-      status: "active",
-      deleted_at: null,
-    },
-  });
+function get_oidc_username(payload) {
+  return String(
+    payload.preferred_username ??
+      payload.username ??
+      payload.email ??
+      "",
+  ).trim();
+}
 
-  if (!link) {
-    throw new Error("Akun SSO belum terhubung atau sudah dinonaktifkan.");
-  }
+async function get_session_payload_from_username(id_token_payload) {
+  const username = get_oidc_username(id_token_payload);
 
-  if (link.account_type === "admin") {
-    const admin = await prisma.tbl_admin.findFirst({
-      where: {
-        uuid: link.account_uuid,
-        deleted_at: null,
-      },
-      select: {
-        uuid: true,
-        username: true,
-        name: true,
-        role: true,
-      },
-    });
-    const role = normalizeRole(admin?.role);
-
-    if (!admin || !isAdminAccountRole(role)) {
-      throw new Error("Akun lokal SSO tidak valid.");
-    }
-
-    return {
-      uuid: admin.uuid,
-      username: admin.username,
-      name: admin.name,
-      role,
-    };
+  if (!username) {
+    throw new Error("Username SSO DashboardKU tidak ditemukan.");
   }
 
   const outlet = await prisma.tbl_outlet.findFirst({
     where: {
-      uuid: link.account_uuid,
+      username,
       deleted_at: null,
       is_active: true,
       excep: false,
@@ -328,7 +302,7 @@ async function get_session_payload_from_link({ issuer, subject }) {
   });
 
   if (!outlet) {
-    throw new Error("Akun outlet lokal SSO tidak valid.");
+    throw new Error("Username SSO tidak cocok dengan outlet aktif Performance Report.");
   }
 
   return {
@@ -361,10 +335,7 @@ export async function finishDashboardkuSsoLogin({ code, state, state_token }) {
     nonce: state_payload.nonce,
     metadata,
   });
-  const session_payload = await get_session_payload_from_link({
-    issuer: get_issuer(),
-    subject: id_token_payload.sub,
-  });
+  const session_payload = await get_session_payload_from_username(id_token_payload);
 
   return {
     session_payload,

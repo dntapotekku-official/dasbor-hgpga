@@ -11,8 +11,8 @@ Dokumen ini menjelaskan implementasi login SSO dari DashboardKU ke Performance R
 5. DashboardKU redirect kembali ke `/auth/sso/dashboardku/callback` dengan `code`.
 6. Performance Report menukar `code` ke token melalui backend.
 7. Performance Report memvalidasi `id_token`, issuer, audience, expiry, nonce, dan signature JWKS.
-8. Performance Report mencari mapping `issuer + subject` ke akun lokal.
-9. Jika mapping aktif, Performance Report membuat session lokal `user_session`.
+8. Performance Report membaca `preferred_username` dari `id_token`.
+9. Jika username cocok persis dengan `tbl_outlet.username` yang aktif, Performance Report membuat session lokal `user_session`.
 
 ## Endpoint di Performance Report
 
@@ -28,6 +28,7 @@ DASHBOARDKU_OIDC_ISSUER=https://dashboardku.apotekku.com
 DASHBOARDKU_OIDC_CLIENT_ID=performance-report
 DASHBOARDKU_OIDC_CLIENT_SECRET=isi_secret_dari_dashboardku
 DASHBOARDKU_OIDC_REDIRECT_URI=https://domain-performance-report.com/auth/sso/dashboardku/callback
+DASHBOARDKU_OIDC_SCOPE=openid profile email
 DASHBOARDKU_OIDC_POST_LOGIN_REDIRECT=/penjualan-gofitku
 ```
 
@@ -42,43 +43,19 @@ DASHBOARDKU_OIDC_SCOPE=openid profile email
 DASHBOARDKU_OIDC_ALLOWED_REDIRECTS=/,/penjualan-gofitku
 ```
 
-## Mapping Akun
+## Pencocokan Akun
 
-SSO tidak otomatis membuat akun lokal. Admin harus menautkan akun DashboardKU ke akun Performance Report di tabel `tbl_sso_account_link`.
+Performance Report tidak memakai tabel mapping SSO. Akun SSO dicocokkan langsung dari claim `preferred_username` DashboardKU ke `tbl_outlet.username`.
 
-Field penting:
+Syarat login berhasil:
 
-| Field | Keterangan |
-| --- | --- |
-| `issuer` | Issuer DashboardKU, contoh `https://dashboardku.apotekku.com`. |
-| `subject` | Claim `sub` dari user DashboardKU. |
-| `account_uuid` | UUID akun lokal Performance Report. |
-| `account_type` | `admin` atau `outlet`. |
-| `status` | `active` atau `revoked`. |
+1. DashboardKU mengirim claim `preferred_username`.
+2. Nilai `preferred_username` sama persis dengan `tbl_outlet.username`.
+3. Outlet lokal aktif.
+4. Outlet lokal tidak deleted.
+5. Outlet lokal tidak termasuk `excep`.
 
-Contoh mapping outlet:
-
-```sql
-INSERT INTO tbl_sso_account_link (
-  uuid,
-  issuer,
-  subject,
-  account_uuid,
-  account_type,
-  status,
-  updated_at
-) VALUES (
-  UUID(),
-  'https://dashboardku.apotekku.com',
-  'subject-user-dashboardku',
-  'uuid-outlet-performance-report',
-  'outlet',
-  'active',
-  NOW(3)
-);
-```
-
-Jika akun belum tertaut, callback menolak login dan mengarahkan user kembali ke halaman login dengan pesan error.
+Jika username tidak ditemukan atau outlet tidak aktif, callback menolak login dan mengarahkan user kembali ke halaman login dengan pesan error.
 
 ## Catatan Keamanan
 
@@ -86,5 +63,5 @@ Jika akun belum tertaut, callback menolak login dan mengarahkan user kembali ke 
 - `state`, `nonce`, dan `code_verifier` disimpan sementara dalam cookie `httpOnly`.
 - Cookie sementara berlaku 10 menit.
 - Token DashboardKU hanya dipakai untuk membuktikan identitas.
-- Role, akses menu, dan akses outlet tetap diambil dari database Performance Report.
+- Role SSO selalu menjadi `member`; akses outlet diambil dari outlet yang username-nya cocok.
 - Session akhir tetap memakai cookie lokal `user_session` seperti login manual.
