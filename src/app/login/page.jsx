@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircleIcon } from "lucide-react";
+import { LoaderCircleIcon, ShieldCheckIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -23,6 +23,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [is_loading, setIsLoading] = useState(false);
   const login_lock_ref = useRef(false);
+
+  useEffect(() => {
+    const search_params = new URLSearchParams(window.location.search);
+    const sso_error = search_params.get("sso_error");
+
+    if (sso_error) {
+      toast.error(sso_error);
+    }
+  }, []);
 
   const loginHandler = async (event) => {
     event.preventDefault();
@@ -123,6 +132,21 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>atau</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            <a
+              href="/auth/sso/dashboardku/start"
+              className={buttonVariants({
+                variant: "outline",
+                className: "w-full shadow-sm",
+              })}
+            >
+              <ShieldCheckIcon className="size-4" />
+              Masuk dengan DashboardKU
+            </a>
             <CardDescription className="mt-3 text-center">
               Lupa kata sandi? hubungi administrator.
             </CardDescription>

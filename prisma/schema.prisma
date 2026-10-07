@@ -36,6 +36,16 @@ enum KunjunganMetric {
   basket_size
 }
 
+enum SsoAccountType {
+  admin
+  outlet
+}
+
+enum SsoLinkStatus {
+  active
+  revoked
+}
+
 model tbl_outlet {
   id                 Int       @id @default(autoincrement())
   uuid               String    @unique @db.Char(36)
@@ -102,6 +112,23 @@ model tbl_admin {
   deleted_at         DateTime?
 
   admin_menu_access tbl_admin_menu_access[]
+}
+
+model tbl_sso_account_link {
+  id           Int            @id @default(autoincrement())
+  uuid         String         @unique @db.Char(36)
+  issuer       String         @db.VarChar(255)
+  subject      String         @db.VarChar(191)
+  account_uuid String         @db.Char(36)
+  account_type SsoAccountType
+  status       SsoLinkStatus  @default(active)
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+  deleted_at   DateTime?
+
+  @@unique([issuer, subject])
+  @@index([account_uuid])
+  @@index([status])
 }
 
 model tbl_kepuasan_internal {
