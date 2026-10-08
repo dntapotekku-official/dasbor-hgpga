@@ -22,7 +22,10 @@ export default async function DashboardLayout({ children }) {
       >
         <AppSidebar
           variant="inset"
-          dashboardkuHomeUrl={process.env.DASHBOARDKU_HOME_URL}
+          dashboardkuHomeUrl={
+            process.env.DASHBOARDKU_HOME_URL ??
+            process.env.DASHBOARDKU_OIDC_ISSUER
+          }
         />
         <SidebarInset>
           <SiteHeader />
