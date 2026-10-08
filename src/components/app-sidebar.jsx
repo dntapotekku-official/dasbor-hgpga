@@ -20,6 +20,7 @@ import {
 import {
   BotMessageSquareIcon,
   BadgeDollarSignIcon,
+  ArrowLeftIcon,
   ChartBarIcon,
   CctvIcon,
   ClipboardCheckIcon,
@@ -161,6 +162,7 @@ const data = {
 }
 
 export function AppSidebar({
+  dashboardkuHomeUrl,
   ...props
 }) {
   const { user } = useAuth()
@@ -186,6 +188,10 @@ export function AppSidebar({
 
       return !item.menuKey || canAccessMenu(user, item.menuKey, item.roles);
     });
+  const home_href = nav_items[0]?.url ?? "/";
+  const dashboardku_home_url = String(dashboardkuHomeUrl ?? "").trim();
+  const should_show_dashboardku_link =
+    user?.auth_source === "dashboardku" && dashboardku_home_url;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -194,7 +200,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               className="h-auto data-[slot=sidebar-menu-button]:p-1.5!"
-              render={<Link href="/" />}>
+              render={<Link href={home_href} />}>
               <Image
                 src="/apotekku-logo-legal.png"
                 alt="Performance Report"
@@ -211,6 +217,27 @@ export function AppSidebar({
         <NavMain items={nav_items} />
       </SidebarContent>
       <SidebarFooter>
+        {should_show_dashboardku_link ? (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Kembali ke DashboardKU"
+                className="h-auto min-h-11 items-center px-3 py-3 text-white/85 hover:bg-white/10 hover:text-white"
+                render={
+                  <a
+                    href={dashboardku_home_url}
+                    rel="noreferrer"
+                  />
+                }
+              >
+                <ArrowLeftIcon />
+                <span className="min-w-0 whitespace-normal break-words leading-snug">
+                  Kembali ke DashboardKU
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        ) : null}
         <NavUser user={current_user} />
       </SidebarFooter>
     </Sidebar>

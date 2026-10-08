@@ -4,15 +4,15 @@ Dokumen ini menjelaskan implementasi login SSO dari DashboardKU ke Performance R
 
 ## Alur Login
 
-1. User membuka Performance Report dan klik **Masuk dengan DashboardKU**.
-2. Browser diarahkan ke `/auth/sso/dashboardku/start`.
+1. User membuka Performance Report dan klik **Masuk dengan DashboardKU**, atau membuka menu DashboardKU yang mengarah ke Performance Report.
+2. Browser diarahkan ke `/auth/sso/dashboardku/start`. Menu DashboardKU dapat mengirim `return_to` dan `menu_scope`, misalnya `/auth/sso/dashboardku/start?return_to=/penjualan-gofitku&menu_scope=penjualan-gofitku`.
 3. Performance Report membuat `state`, `nonce`, dan PKCE `code_verifier`.
 4. Browser diarahkan ke DashboardKU untuk authorization.
 5. DashboardKU redirect kembali ke `/auth/sso/dashboardku/callback` dengan `code`.
 6. Performance Report menukar `code` ke token melalui backend.
 7. Performance Report memvalidasi `id_token`, issuer, audience, expiry, nonce, dan signature JWKS.
 8. Performance Report membaca `preferred_username` dari `id_token`.
-9. Jika username cocok persis dengan `tbl_outlet.username` yang aktif, Performance Report membuat session lokal `user_session`.
+9. Jika username cocok persis dengan `tbl_outlet.username` yang aktif, Performance Report membuat session lokal `user_session`. Jika `menu_scope` dikirim, session dibatasi ke menu tersebut.
 
 ## Endpoint di Performance Report
 
@@ -30,6 +30,7 @@ DASHBOARDKU_OIDC_CLIENT_SECRET=isi_secret_dari_dashboardku
 DASHBOARDKU_OIDC_REDIRECT_URI=https://domain-performance-report.com/auth/sso/dashboardku/callback
 DASHBOARDKU_OIDC_SCOPE=openid profile email
 DASHBOARDKU_OIDC_POST_LOGIN_REDIRECT=/penjualan-gofitku
+DASHBOARDKU_HOME_URL=https://dashboardku.apotekku.com
 ```
 
 Opsional jika DashboardKU tidak menyediakan discovery endpoint standar:
@@ -64,4 +65,5 @@ Jika username tidak ditemukan atau outlet tidak aktif, callback menolak login da
 - Cookie sementara berlaku 10 menit.
 - Token DashboardKU hanya dipakai untuk membuktikan identitas.
 - Role SSO selalu menjadi `member`; akses outlet diambil dari outlet yang username-nya cocok.
+- Parameter `menu_scope` divalidasi terhadap daftar menu Performance Report sebelum disimpan ke session.
 - Session akhir tetap memakai cookie lokal `user_session` seperti login manual.

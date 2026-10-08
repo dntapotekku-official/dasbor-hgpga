@@ -103,6 +103,11 @@ export function getMenuKeyForPath(pathname) {
 
 export function canAccessMenu(user, menu_key, fallback_roles = []) {
   const role = normalizeRole(user?.role);
+  const menu_scope_keys = normalizeMenuAccessKeys(user?.menu_scope_keys);
+
+  if (menu_scope_keys.length > 0 && !menu_scope_keys.includes(menu_key)) {
+    return false;
+  }
 
   if (isSuperadmin(role)) {
     return true;

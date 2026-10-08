@@ -279,7 +279,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead className="w-[18%]">Status</TableHead>
+      <TableHead className="w-[18%]">Status (Bulan Ini)</TableHead>
     </TableRow>
   );
 }
@@ -342,7 +342,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead className="w-[18%]">Status</TableHead>
+      <TableHead className="w-[18%]">Status (Bulan Ini)</TableHead>
     </TableRow>
   );
 }
@@ -414,7 +414,7 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead className="w-[16%]">Status</TableHead>
+      <TableHead className="w-[16%]">Status (Bulan Ini)</TableHead>
     </TableRow>
   );
 }

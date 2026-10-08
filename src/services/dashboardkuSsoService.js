@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 
+import { normalizeMenuAccessKeys } from "@/lib/menu-access";
 import { prisma } from "@/lib/prisma";
 
 export const dashboardku_sso_state_cookie_name = "dashboardku_sso_state";
@@ -90,6 +91,20 @@ export function resolveDashboardkuSsoRedirect(path) {
     : fallback_path;
 }
 
+export function resolveDashboardkuMenuScope(scope) {
+  const raw_scopes = String(scope ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const menu_scope_keys = normalizeMenuAccessKeys(raw_scopes);
+
+  if (raw_scopes.length > 0 && menu_scope_keys.length === 0) {
+    throw new Error("Scope menu SSO DashboardKU tidak valid.");
+  }
+
+  return menu_scope_keys;
+}
+
 function resolve_endpoint(metadata, key, env_name, fallback_path) {
   const configured_url = String(process.env[env_name] ?? "").trim();
 
@@ -158,7 +173,7 @@ function create_code_challenge(code_verifier) {
   return base64url(createHash("sha256").update(code_verifier).digest());
 }
 
-export async function createDashboardkuSsoStart({ return_to } = {}) {
+export async function createDashboardkuSsoStart({ return_to, menu_scope } = {}) {
   const metadata = await get_openid_configuration();
   const code_verifier = create_code_verifier();
   const authorization_endpoint = resolve_endpoint(
@@ -172,6 +187,7 @@ export async function createDashboardkuSsoStart({ return_to } = {}) {
     nonce: base64url(randomBytes(32)),
     code_verifier,
     return_to: resolveDashboardkuSsoRedirect(return_to),
+    menu_scope_keys: resolveDashboardkuMenuScope(menu_scope),
   };
   const state_token = await new SignJWT(state_payload)
     .setProtectedHeader({ alg: "HS256" })
@@ -205,6 +221,7 @@ export async function verifyDashboardkuSsoState(state_token) {
       nonce: payload.nonce,
       code_verifier: payload.code_verifier,
       return_to: resolveDashboardkuSsoRedirect(payload.return_to),
+      menu_scope_keys: normalizeMenuAccessKeys(payload.menu_scope_keys),
     };
   } catch {
     throw new Error("Sesi SSO tidak valid atau sudah kedaluwarsa.");
@@ -338,7 +355,11 @@ export async function finishDashboardkuSsoLogin({ code, state, state_token }) {
   const session_payload = await get_session_payload_from_username(id_token_payload);
 
   return {
-    session_payload,
+    session_payload: {
+      ...session_payload,
+      auth_source: "dashboardku",
+      menu_scope_keys: state_payload.menu_scope_keys,
+    },
     return_to: state_payload.return_to,
   };
 }

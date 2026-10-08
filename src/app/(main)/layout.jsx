@@ -20,7 +20,10 @@ export default async function DashboardLayout({ children }) {
           "--header-height": "calc(var(--spacing) * 12)",
         }}
       >
-        <AppSidebar variant="inset" />
+        <AppSidebar
+          variant="inset"
+          dashboardkuHomeUrl={process.env.DASHBOARDKU_HOME_URL}
+        />
         <SidebarInset>
           <SiteHeader />
           <div className="flex min-w-0 flex-1 flex-col">

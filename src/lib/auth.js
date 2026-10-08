@@ -67,6 +67,8 @@ export const getCurrentUserFromToken = cache(async function get_current_user_fro
     username: user.username,
     name: user.name,
     role: is_admin_account ? normalizeRole(user.role) : "member",
+    auth_source: token_session.auth_source,
+    menu_scope_keys: token_session.menu_scope_keys,
     menu_access_keys: is_admin_account
       ? user.admin_menu_access.map((item) => item.key)
       : [],

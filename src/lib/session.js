@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
+import { normalizeMenuAccessKeys } from "@/lib/menu-access";
 import { normalizeRole } from "@/lib/role";
 
 export const session_cookie_name = "user_session";
@@ -35,6 +36,8 @@ export async function verifySessionToken(token) {
       username: payload.username,
       name: payload.name,
       role: normalizeRole(payload.role),
+      auth_source: payload.auth_source,
+      menu_scope_keys: normalizeMenuAccessKeys(payload.menu_scope_keys),
     };
   } catch {
     return null;
