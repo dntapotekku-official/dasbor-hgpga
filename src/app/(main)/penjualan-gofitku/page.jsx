@@ -791,7 +791,6 @@ export default function PenjualanGoFitKuPage() {
                   is_outlet_view={!is_admin}
                   selected_date={selected_date}
                   on_date_change={handle_selected_date_change}
-                  on_add_sale={handle_open_add_modal}
                 />
               </TabsContent>
 

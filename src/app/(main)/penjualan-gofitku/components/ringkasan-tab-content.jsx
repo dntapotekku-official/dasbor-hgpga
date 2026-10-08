@@ -1,14 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 
 import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import Pagination from "@/components/pagination";
 import SortableTableHead from "@/components/sortable-table-head";
 import { outlet_category_filter_options } from "@/lib/outletCategories";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -454,7 +453,6 @@ export default function RingkasanTabContent({
   is_outlet_view = false,
   selected_date,
   on_date_change,
-  on_add_sale,
 }) {
   const [sub_tab, setSubTab] = useState("outlet-insanku");
   const [search, setSearch] = useState("");
@@ -724,13 +722,6 @@ export default function RingkasanTabContent({
         </FilterField>
 
       </div>
-
-      {is_outlet_view ? (
-        <Button type="button" onClick={on_add_sale} className="w-full shrink-0 xl:w-auto">
-          <PlusIcon className="size-4" />
-          Tambah Penjualan
-        </Button>
-      ) : null}
     </div>
   );
 
