@@ -761,7 +761,19 @@ export default function PenjualanGoFitKuPage() {
                   Ekspor
                 </Button>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  onClick={handle_open_add_modal}
+                  disabled={!outlet_active_group?.rows?.some((row) => row.is_active)}
+                  className="w-full shrink-0 sm:w-auto"
+                >
+                  <PlusIcon className="size-4" />
+                  Tambah Penjualan
+                </Button>
+              </div>
+            )}
 
             <Tabs value={active_tab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full">
@@ -838,17 +850,7 @@ export default function PenjualanGoFitKuPage() {
                             Tambah Penjualan
                           </Button>
                         </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          onClick={handle_open_add_modal}
-                          disabled={!outlet_active_group?.rows?.some((row) => row.is_active)}
-                          className="w-full shrink-0 lg:w-auto"
-                        >
-                          <PlusIcon className="size-4" />
-                          Tambah Penjualan
-                        </Button>
-                      )}
+                      ) : null}
                     </div>
 
                     <DetailTab
