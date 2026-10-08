@@ -12,7 +12,9 @@ Dokumen ini menjelaskan implementasi login SSO dari DashboardKU ke Performance R
 6. Performance Report menukar `code` ke token melalui backend.
 7. Performance Report memvalidasi `id_token`, issuer, audience, expiry, nonce, dan signature JWKS.
 8. Performance Report membaca `preferred_username` dari `id_token`.
-9. Jika username cocok persis dengan `tbl_outlet.username` yang aktif, Performance Report membuat session lokal `user_session`. Jika `menu_scope` dikirim, session dibatasi ke menu tersebut.
+9. Jika username cocok persis dengan `tbl_admin.username` yang aktif, Performance Report membuat session lokal sesuai role admin tersebut.
+10. Jika tidak cocok dengan admin, Performance Report mencari username yang cocok persis dengan `tbl_outlet.username` yang aktif dan membuat session role `member`.
+11. Jika `menu_scope` dikirim, session dibatasi ke menu tersebut.
 
 ## Endpoint di Performance Report
 
@@ -46,17 +48,18 @@ DASHBOARDKU_OIDC_ALLOWED_REDIRECTS=/,/penjualan-gofitku
 
 ## Pencocokan Akun
 
-Performance Report tidak memakai tabel mapping SSO. Akun SSO dicocokkan langsung dari claim `preferred_username` DashboardKU ke `tbl_outlet.username`.
+Performance Report tidak memakai tabel mapping SSO. Akun SSO dicocokkan langsung dari claim `preferred_username` DashboardKU ke `tbl_admin.username`, lalu fallback ke `tbl_outlet.username`.
 
 Syarat login berhasil:
 
 1. DashboardKU mengirim claim `preferred_username`.
-2. Nilai `preferred_username` sama persis dengan `tbl_outlet.username`.
-3. Outlet lokal aktif.
-4. Outlet lokal tidak deleted.
-5. Outlet lokal tidak termasuk `excep`.
+2. Nilai `preferred_username` sama persis dengan `tbl_admin.username` yang tidak deleted; atau
+3. Nilai `preferred_username` sama persis dengan `tbl_outlet.username`.
+4. Outlet lokal aktif.
+5. Outlet lokal tidak deleted.
+6. Outlet lokal tidak termasuk `excep`.
 
-Jika username tidak ditemukan atau outlet tidak aktif, callback menolak login dan mengarahkan user kembali ke halaman login dengan pesan error.
+Jika username tidak ditemukan di admin maupun outlet aktif, callback menolak login dan mengarahkan user kembali ke halaman login dengan pesan error.
 
 ## Catatan Keamanan
 

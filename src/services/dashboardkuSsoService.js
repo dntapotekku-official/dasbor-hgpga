@@ -304,6 +304,28 @@ async function get_session_payload_from_username(id_token_payload) {
     throw new Error("Username SSO DashboardKU tidak ditemukan.");
   }
 
+  const admin = await prisma.tbl_admin.findFirst({
+    where: {
+      username,
+      deleted_at: null,
+    },
+    select: {
+      uuid: true,
+      username: true,
+      name: true,
+      role: true,
+    },
+  });
+
+  if (admin) {
+    return {
+      uuid: admin.uuid,
+      username: admin.username,
+      name: admin.name,
+      role: admin.role,
+    };
+  }
+
   const outlet = await prisma.tbl_outlet.findFirst({
     where: {
       username,
@@ -319,7 +341,7 @@ async function get_session_payload_from_username(id_token_payload) {
   });
 
   if (!outlet) {
-    throw new Error("Username SSO tidak cocok dengan outlet aktif Performance Report.");
+    throw new Error("Username SSO tidak cocok dengan admin atau outlet aktif Performance Report.");
   }
 
   return {
