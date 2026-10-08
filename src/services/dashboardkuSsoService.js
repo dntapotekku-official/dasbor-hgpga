@@ -91,6 +91,20 @@ export function resolveDashboardkuSsoRedirect(path) {
     : fallback_path;
 }
 
+export function resolveDashboardkuReturnPath(path) {
+  const normalized_path = String(path ?? "").trim();
+
+  if (!normalized_path || !normalized_path.startsWith("/")) {
+    return "";
+  }
+
+  if (normalized_path.startsWith("//")) {
+    return "";
+  }
+
+  return normalized_path;
+}
+
 export function resolveDashboardkuMenuScope(scope) {
   const raw_scopes = String(scope ?? "")
     .split(",")
@@ -173,7 +187,11 @@ function create_code_challenge(code_verifier) {
   return base64url(createHash("sha256").update(code_verifier).digest());
 }
 
-export async function createDashboardkuSsoStart({ return_to, menu_scope } = {}) {
+export async function createDashboardkuSsoStart({
+  return_to,
+  menu_scope,
+  dashboard_return_to,
+} = {}) {
   const metadata = await get_openid_configuration();
   const code_verifier = create_code_verifier();
   const authorization_endpoint = resolve_endpoint(
@@ -187,6 +205,7 @@ export async function createDashboardkuSsoStart({ return_to, menu_scope } = {}) 
     nonce: base64url(randomBytes(32)),
     code_verifier,
     return_to: resolveDashboardkuSsoRedirect(return_to),
+    dashboard_return_to: resolveDashboardkuReturnPath(dashboard_return_to),
     menu_scope_keys: resolveDashboardkuMenuScope(menu_scope),
   };
   const state_token = await new SignJWT(state_payload)
@@ -221,6 +240,7 @@ export async function verifyDashboardkuSsoState(state_token) {
       nonce: payload.nonce,
       code_verifier: payload.code_verifier,
       return_to: resolveDashboardkuSsoRedirect(payload.return_to),
+      dashboard_return_to: resolveDashboardkuReturnPath(payload.dashboard_return_to),
       menu_scope_keys: normalizeMenuAccessKeys(payload.menu_scope_keys),
     };
   } catch {
@@ -380,6 +400,7 @@ export async function finishDashboardkuSsoLogin({ code, state, state_token }) {
     session_payload: {
       ...session_payload,
       auth_source: "dashboardku",
+      dashboard_return_to: state_payload.dashboard_return_to,
       menu_scope_keys: state_payload.menu_scope_keys,
     },
     return_to: state_payload.return_to,

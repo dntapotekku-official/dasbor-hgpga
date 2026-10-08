@@ -19,9 +19,11 @@ export async function GET(request) {
   try {
     const return_to = request.nextUrl.searchParams.get("return_to");
     const menu_scope = request.nextUrl.searchParams.get("menu_scope");
+    const dashboard_return_to = request.nextUrl.searchParams.get("dashboard_return_to");
     const { authorization_url, state_token } = await createDashboardkuSsoStart({
       return_to,
       menu_scope,
+      dashboard_return_to,
     });
     const response = NextResponse.redirect(authorization_url);
 

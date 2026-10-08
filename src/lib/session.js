@@ -37,6 +37,7 @@ export async function verifySessionToken(token) {
       name: payload.name,
       role: normalizeRole(payload.role),
       auth_source: payload.auth_source,
+      dashboard_return_to: payload.dashboard_return_to,
       menu_scope_keys: normalizeMenuAccessKeys(payload.menu_scope_keys),
     };
   } catch {

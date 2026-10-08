@@ -161,6 +161,25 @@ const data = {
   ],
 }
 
+function resolve_dashboardku_href(base_url, return_path) {
+  const normalized_base_url = String(base_url ?? "").trim();
+  const normalized_return_path = String(return_path ?? "").trim();
+
+  if (!normalized_base_url) {
+    return "";
+  }
+
+  if (!normalized_return_path || !normalized_return_path.startsWith("/")) {
+    return normalized_base_url;
+  }
+
+  try {
+    return new URL(normalized_return_path, normalized_base_url).toString();
+  } catch {
+    return normalized_base_url;
+  }
+}
+
 export function AppSidebar({
   dashboardkuHomeUrl,
   ...props
@@ -169,6 +188,7 @@ export function AppSidebar({
   const current_user = {
     name: user?.name ?? "Performance Report User",
     username: user?.username ?? user?.role ?? "user",
+    auth_source: user?.auth_source,
   };
   const nav_items = data.navMain
     .map((item) => ({
@@ -189,7 +209,10 @@ export function AppSidebar({
       return !item.menuKey || canAccessMenu(user, item.menuKey, item.roles);
     });
   const home_href = nav_items[0]?.url ?? "/";
-  const dashboardku_home_url = String(dashboardkuHomeUrl ?? "").trim();
+  const dashboardku_home_url = resolve_dashboardku_href(
+    dashboardkuHomeUrl,
+    user?.dashboard_return_to,
+  );
   const should_show_dashboardku_link =
     user?.auth_source === "dashboardku" && dashboardku_home_url;
 

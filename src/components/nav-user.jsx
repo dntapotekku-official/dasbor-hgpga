@@ -26,6 +26,10 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const router = useRouter()
+  const is_dashboardku_session = user?.auth_source === "dashboardku"
+  const logout_label = is_dashboardku_session
+    ? "Keluar dari Performance Report"
+    : "Keluar"
 
   const logoutHandler = async () => {
     try {
@@ -38,7 +42,11 @@ export function NavUser({
         throw new Error(payload.message || "Logout gagal.")
       }
 
-      toast.success("Berhasil keluar.")
+      toast.success(
+        is_dashboardku_session
+          ? "Berhasil keluar dari Performance Report."
+          : "Berhasil keluar.",
+      )
       router.replace("/login")
       router.refresh()
     } catch (error) {
@@ -93,7 +101,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logoutHandler}>
               <LogOutIcon />
-              Keluar
+              {logout_label}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
