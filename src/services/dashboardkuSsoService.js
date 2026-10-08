@@ -112,7 +112,7 @@ export function resolveDashboardkuMenuScope(scope) {
     .filter(Boolean);
   const menu_scope_keys = normalizeMenuAccessKeys(raw_scopes);
 
-  if (raw_scopes.length > 0 && menu_scope_keys.length === 0) {
+  if (raw_scopes.length !== menu_scope_keys.length) {
     throw new Error("Scope menu SSO DashboardKU tidak valid.");
   }
 
