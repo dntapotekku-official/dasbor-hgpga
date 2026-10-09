@@ -14,6 +14,12 @@ Rekap produk:
 GET /api/external/penjualan-gofitku/produk
 ```
 
+Detail bulanan:
+
+```http
+GET /api/external/penjualan-gofitku/detail
+```
+
 ## Autentikasi
 
 Kirim API key melalui salah satu header berikut:
@@ -277,6 +283,69 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku/produk?date=
 - Semua produk master tetap dikembalikan walaupun total penjualan `0`.
 - `total` adalah akumulasi `qty` dari penjualan GoFitKu.
 - Jika `date=YYYY-MM` dikirim, perhitungan hanya mencakup tanggal dari awal bulan sampai sebelum awal bulan berikutnya.
+- Jika filter outlet dikirim, total hanya menghitung penjualan outlet yang cocok.
+- Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
+- Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.
+- Data penjualan yang `deleted_at` terisi tidak dihitung.
+
+## Endpoint Detail Bulanan
+
+Endpoint ini mengembalikan total qty penjualan GoFitKu per bulan. Parameter `date` wajib dikirim dan bisa berupa tanggal harian atau bulan.
+
+```http
+GET /api/external/penjualan-gofitku/detail
+```
+
+### Query Parameter Detail Bulanan
+
+| Parameter | Wajib | Format | Keterangan |
+| --- | --- | --- | --- |
+| `date` | Ya | `YYYY-MM` atau `YYYY-MM-DD` | Bulan atau tanggal acuan. Contoh: `2026-10` atau `2026-10-09`. Jika berisi tanggal harian, data tetap digroup ke bulan tanggal tersebut. Alias `tanggal` juga diterima. |
+| `uuid_outlet` | Tidak | UUID | Filter data untuk satu outlet. |
+| `outlet_name` | Tidak | String | Filter data berdasarkan nama outlet. Bisa diisi nama lengkap, sebagian nama, atau versi normalized tanpa spasi/simbol. |
+
+Jika `uuid_outlet` dan `outlet_name` dikirim bersamaan, data harus cocok dengan kedua filter tersebut.
+
+### Contoh Request Detail Bulanan
+
+```bash
+curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku/detail?uuid_outlet=<UUID_OUTLET>&date=2026-10-09" \
+  -H "x-api-key: <API_KEY>"
+```
+
+```bash
+curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku/detail?uuid_outlet=<UUID_OUTLET>&date=2026-10" \
+  -H "x-api-key: <API_KEY>"
+```
+
+### Response Sukses Detail Bulanan
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "date": "2026-10",
+      "qty": 12
+    }
+  ]
+}
+```
+
+### Struktur Response Detail Bulanan
+
+| Field | Tipe | Keterangan |
+| --- | --- | --- |
+| `success` | Boolean | Status request. |
+| `data` | Array | Daftar rekap bulan. |
+| `data[].date` | String | Bulan rekap dalam format `YYYY-MM`. |
+| `data[].qty` | Number | Total qty penjualan GoFitKu pada bulan tersebut. |
+
+### Aturan Perhitungan Detail Bulanan
+
+- `date` wajib dikirim.
+- Jika `date=YYYY-MM-DD` dikirim, sistem mengambil bulan dari tanggal tersebut.
+- `qty` adalah akumulasi `qty` dari semua produk GoFitKu pada bulan acuan.
 - Jika filter outlet dikirim, total hanya menghitung penjualan outlet yang cocok.
 - Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
 - Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.

@@ -86,6 +86,33 @@ function get_month_boundaries(month_value) {
   };
 }
 
+function get_required_month_boundaries_from_date_value(date_value) {
+  const normalized_date_value = String(date_value ?? "").trim();
+
+  if (!normalized_date_value) {
+    throw new Error("Date wajib diisi.");
+  }
+
+  if (/^\d{4}-\d{2}$/.test(normalized_date_value)) {
+    return get_month_boundaries(normalized_date_value);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized_date_value)) {
+    const { date } = get_date_boundaries(normalized_date_value);
+    const normalized_month = get_month_key_from_date(date);
+
+    return {
+      normalized_month,
+      month_start: get_month_start_from_key(normalized_month),
+      month_end: new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1),
+      ),
+    };
+  }
+
+  throw new Error("Format date harus YYYY-MM atau YYYY-MM-DD.");
+}
+
 function normalize_search_text(value) {
   return String(value ?? "")
     .trim()
@@ -780,6 +807,90 @@ export async function getExternalPenjualanGofitkuProduk({
       totals_by_product_name.get(normalize_search_text(product.name)) ??
       0,
   }));
+}
+
+export async function getExternalPenjualanGofitkuDetail({
+  date,
+  tanggal,
+  uuid_outlet,
+  outlet_name,
+}) {
+  const trimmed_uuid_outlet = String(uuid_outlet ?? "").trim();
+  const month_boundaries = get_required_month_boundaries_from_date_value(
+    date ?? tanggal,
+  );
+
+  if (trimmed_uuid_outlet) {
+    const outlet = await prisma.tbl_outlet.findFirst({
+      where: {
+        uuid: trimmed_uuid_outlet,
+        deleted_at: null,
+        is_active: true,
+        excep: false,
+      },
+      select: {
+        uuid: true,
+        name: true,
+      },
+    });
+
+    if (!outlet || !matches_search_text(outlet.name, outlet_name)) {
+      throw new Error("Outlet tidak ditemukan.");
+    }
+  }
+
+  const sales_rows = await prisma.tbl_penjualan_gofitku.findMany({
+    where: {
+      deleted_at: null,
+      date: {
+        gte: month_boundaries.month_start,
+        lt: month_boundaries.month_end,
+      },
+      outlet_insanku: {
+        ...(trimmed_uuid_outlet
+          ? {
+              uuid_outlet: trimmed_uuid_outlet,
+            }
+          : {}),
+        outlet: {
+          deleted_at: null,
+          is_active: true,
+          excep: false,
+        },
+        insanku: {
+          deleted_at: null,
+          is_active: true,
+        },
+      },
+    },
+    select: {
+      qty: true,
+      date: true,
+      outlet_insanku: {
+        select: report_relation_select,
+      },
+    },
+  });
+  const qty = sales_rows.reduce((total, sale) => {
+    const relation = sale.outlet_insanku;
+
+    if (
+      !relation ||
+      !matches_search_text(relation.outlet?.name, outlet_name) ||
+      !isGofitkuRelationAvailableOnDate(relation, sale.date)
+    ) {
+      return total;
+    }
+
+    return total + Number(sale.qty || 0);
+  }, 0);
+
+  return [
+    {
+      date: month_boundaries.normalized_month,
+      qty,
+    },
+  ];
 }
 
 export async function getPenjualanGofitkuExport({
