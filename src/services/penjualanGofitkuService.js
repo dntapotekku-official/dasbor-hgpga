@@ -86,7 +86,11 @@ function get_month_boundaries(month_value) {
   };
 }
 
-function get_required_month_boundaries_from_date_value(date_value) {
+function get_date_key_from_date(date) {
+  return new Date(date).toISOString().slice(0, 10);
+}
+
+function get_external_detail_date_scope(date_value) {
   const normalized_date_value = String(date_value ?? "").trim();
 
   if (!normalized_date_value) {
@@ -94,19 +98,19 @@ function get_required_month_boundaries_from_date_value(date_value) {
   }
 
   if (/^\d{4}-\d{2}$/.test(normalized_date_value)) {
-    return get_month_boundaries(normalized_date_value);
+    const month_boundaries = get_month_boundaries(normalized_date_value);
+
+    return {
+      type: "month",
+      start_date: month_boundaries.month_start,
+      end_date: month_boundaries.month_end,
+    };
   }
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(normalized_date_value)) {
-    const { date } = get_date_boundaries(normalized_date_value);
-    const normalized_month = get_month_key_from_date(date);
-
     return {
-      normalized_month,
-      month_start: get_month_start_from_key(normalized_month),
-      month_end: new Date(
-        Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1),
-      ),
+      type: "day",
+      ...get_date_boundaries(normalized_date_value),
     };
   }
 
@@ -816,9 +820,7 @@ export async function getExternalPenjualanGofitkuDetail({
   outlet_name,
 }) {
   const trimmed_uuid_outlet = String(uuid_outlet ?? "").trim();
-  const month_boundaries = get_required_month_boundaries_from_date_value(
-    date ?? tanggal,
-  );
+  const date_scope = get_external_detail_date_scope(date ?? tanggal);
 
   if (trimmed_uuid_outlet) {
     const outlet = await prisma.tbl_outlet.findFirst({
@@ -843,8 +845,14 @@ export async function getExternalPenjualanGofitkuDetail({
     where: {
       deleted_at: null,
       date: {
-        gte: month_boundaries.month_start,
-        lt: month_boundaries.month_end,
+        gte:
+          date_scope.type === "month"
+            ? date_scope.start_date
+            : date_scope.date,
+        lt:
+          date_scope.type === "month"
+            ? date_scope.end_date
+            : date_scope.day_end,
       },
       outlet_insanku: {
         ...(trimmed_uuid_outlet
@@ -871,7 +879,9 @@ export async function getExternalPenjualanGofitkuDetail({
       },
     },
   });
-  const qty = sales_rows.reduce((total, sale) => {
+  const qty_by_date = new Map();
+
+  for (const sale of sales_rows) {
     const relation = sale.outlet_insanku;
 
     if (
@@ -879,18 +889,40 @@ export async function getExternalPenjualanGofitkuDetail({
       !matches_search_text(relation.outlet?.name, outlet_name) ||
       !isGofitkuRelationAvailableOnDate(relation, sale.date)
     ) {
-      return total;
+      continue;
     }
 
-    return total + Number(sale.qty || 0);
-  }, 0);
+    const sale_date_key = get_date_key_from_date(sale.date);
 
-  return [
-    {
-      date: month_boundaries.normalized_month,
-      qty,
-    },
-  ];
+    qty_by_date.set(
+      sale_date_key,
+      (qty_by_date.get(sale_date_key) ?? 0) + Number(sale.qty || 0),
+    );
+  }
+
+  if (date_scope.type === "day") {
+    return [
+      {
+        date: date_scope.normalized_date,
+        qty: qty_by_date.get(date_scope.normalized_date) ?? 0,
+      },
+    ];
+  }
+
+  const rows = [];
+  const cursor = new Date(date_scope.start_date);
+
+  while (cursor < date_scope.end_date) {
+    const date_key = get_date_key_from_date(cursor);
+
+    rows.push({
+      date: date_key,
+      qty: qty_by_date.get(date_key) ?? 0,
+    });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return rows;
 }
 
 export async function getPenjualanGofitkuExport({

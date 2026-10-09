@@ -1,6 +1,6 @@
 # API Eksternal Detail Penjualan GoFitKu
 
-Dokumen ini menjelaskan endpoint untuk mengambil total qty penjualan GoFitKu per bulan.
+Dokumen ini menjelaskan endpoint untuk mengambil total qty penjualan GoFitKu per tanggal.
 
 ## Endpoint
 
@@ -31,7 +31,7 @@ Server membaca API key dari environment variable berikut:
 
 | Parameter | Wajib | Format | Keterangan |
 | --- | --- | --- | --- |
-| `date` | Ya | `YYYY-MM` atau `YYYY-MM-DD` | Bulan atau tanggal acuan. Jika berisi tanggal harian, data tetap dihitung untuk bulan tanggal tersebut. |
+| `date` | Ya | `YYYY-MM` atau `YYYY-MM-DD` | Bulan atau tanggal acuan. Jika berisi bulan, API mengembalikan seluruh tanggal di bulan tersebut. Jika berisi tanggal harian, API hanya mengembalikan tanggal tersebut. |
 | `uuid_outlet` | Tidak | UUID | Filter data untuk satu outlet berdasarkan UUID outlet. |
 | `outlet_name` | Tidak | String | Filter data berdasarkan nama outlet. Bisa diisi nama lengkap, sebagian nama, atau versi normalized tanpa spasi/simbol. |
 
@@ -64,26 +64,40 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku/detail?date=
 
 ## Response Sukses
 
+Jika `date=2026-10` dikirim, response berisi seluruh tanggal pada bulan tersebut:
+
 ```json
 {
   "success": true,
   "data": [
     {
-      "date": "2026-10",
+      "date": "2026-10-01",
+      "qty": 0
+    },
+    {
+      "date": "2026-10-02",
+      "qty": 4
+    },
+    {
+      "date": "2026-10-03",
+      "qty": 0
+    },
+    {
+      "date": "2026-10-31",
       "qty": 12
     }
   ]
 }
 ```
 
-Jika `date=2026-10-09` dikirim, response tetap memakai bulan:
+Jika `date=2026-10-09` dikirim, response hanya berisi tanggal tersebut:
 
 ```json
 {
   "success": true,
   "data": [
     {
-      "date": "2026-10",
+      "date": "2026-10-09",
       "qty": 12
     }
   ]
@@ -95,16 +109,18 @@ Jika `date=2026-10-09` dikirim, response tetap memakai bulan:
 | Field | Tipe | Keterangan |
 | --- | --- | --- |
 | `success` | Boolean | Status request. |
-| `data` | Array | Daftar rekap bulan. |
-| `data[].date` | String | Bulan rekap dalam format `YYYY-MM`. |
-| `data[].qty` | Number | Total qty penjualan GoFitKu pada bulan tersebut. |
+| `data` | Array | Daftar rekap tanggal. |
+| `data[].date` | String | Tanggal rekap dalam format `YYYY-MM-DD`. |
+| `data[].qty` | Number | Total qty penjualan GoFitKu pada tanggal tersebut. |
 
 ## Aturan Perhitungan
 
 - `date` wajib dikirim.
 - `date` boleh berformat `YYYY-MM` atau `YYYY-MM-DD`.
-- Jika `date=YYYY-MM-DD` dikirim, sistem mengambil bulan dari tanggal tersebut.
-- `qty` adalah akumulasi `qty` dari semua produk GoFitKu pada bulan acuan.
+- Jika `date=YYYY-MM` dikirim, response mengembalikan seluruh tanggal kalender pada bulan tersebut.
+- Jika `date=YYYY-MM-DD` dikirim, response hanya mengembalikan tanggal tersebut.
+- Tanggal tanpa transaksi tetap dikembalikan dengan `qty: 0`.
+- `qty` adalah akumulasi `qty` dari semua produk GoFitKu pada tanggal response.
 - Jika filter outlet dikirim, total hanya menghitung penjualan outlet yang cocok.
 - Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
 - Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.
