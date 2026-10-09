@@ -26,8 +26,12 @@ export async function GET(request) {
     }
 
     const selected_date = request.nextUrl.searchParams.get("selected_date");
+    const uuid_outlet = request.nextUrl.searchParams.get("uuid_outlet");
+    const outlet_name = request.nextUrl.searchParams.get("outlet_name");
     const data = await getNilaiTransaksiBasketSize({
       selected_date,
+      member_outlet_uuid: uuid_outlet,
+      outlet_name,
     });
 
     return NextResponse.json({

@@ -70,13 +70,19 @@ export async function GET(request) {
       return error_response(new Error("API key tidak valid."), 401);
     }
 
-    const tanggal = request.nextUrl.searchParams.get("tanggal");
+    const date = request.nextUrl.searchParams.get("date");
+    const uuid_outlet = request.nextUrl.searchParams.get("uuid_outlet");
+    const outlet_name = request.nextUrl.searchParams.get("outlet_name");
 
-    if (!tanggal) {
-      return error_response(new Error("Parameter tanggal wajib diisi."), 400);
+    if (!date) {
+      return error_response(new Error("Parameter date wajib diisi."), 400);
     }
 
-    const data = await getExternalNilaiTransaksiBasketSize({ tanggal });
+    const data = await getExternalNilaiTransaksiBasketSize({
+      date,
+      uuid_outlet,
+      outlet_name,
+    });
 
     return NextResponse.json({
       success: true,

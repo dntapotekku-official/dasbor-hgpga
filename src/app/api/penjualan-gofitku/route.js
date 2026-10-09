@@ -56,7 +56,12 @@ export const GET = async (request) => {
         return unauthorized_export_response;
       }
 
-      data = await getPenjualanGofitkuExport(user_context);
+      data = await getPenjualanGofitkuExport({
+        ...user_context,
+        date: searchParams.get("date"),
+        outlet_name: searchParams.get("outlet_name"),
+        insanku_name: searchParams.get("insanku_name"),
+      });
     } else if (is_outlet_chart) {
       data = await getPenjualanGofitkuTopOutletChart();
     } else if (is_product_chart) {
@@ -65,7 +70,9 @@ export const GET = async (request) => {
       data = await getPenjualanGofitku({
         ...user_context,
         date: searchParams.get("date"),
-        outlet_uuid: searchParams.get("outlet_uuid"),
+        outlet_uuid: searchParams.get("uuid_outlet"),
+        outlet_name: searchParams.get("outlet_name"),
+        insanku_name: searchParams.get("insanku_name"),
       });
     }
 

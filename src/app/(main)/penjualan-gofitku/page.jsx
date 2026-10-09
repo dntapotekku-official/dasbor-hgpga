@@ -220,7 +220,7 @@ export default function PenjualanGoFitKuPage() {
 
   const load_outlet_group = async (group_uuid, date) => {
     const result = await fetch(
-      `/api/penjualan-gofitku?date=${date}&outlet_uuid=${group_uuid}`,
+      `/api/penjualan-gofitku?date=${date}&uuid_outlet=${group_uuid}`,
     );
     const payload = await result.json();
 
@@ -663,7 +663,11 @@ export default function PenjualanGoFitKuPage() {
 
   const handle_export_sales = async () => {
     try {
-      const result = await fetch("/api/penjualan-gofitku?export=true");
+      const params = new URLSearchParams({
+        export: "true",
+        date: selected_date,
+      });
+      const result = await fetch(`/api/penjualan-gofitku?${params.toString()}`);
       const payload = await result.json();
 
       if (!result.ok || !payload.success) {

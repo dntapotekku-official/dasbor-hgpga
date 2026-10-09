@@ -75,6 +75,23 @@ function normalize_outlet_name(value) {
     .replace(/[^a-z0-9 ]/g, "");
 }
 
+function normalize_search_text(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function matches_search_text(value, search_value) {
+  const normalized_search = normalize_search_text(search_value);
+
+  if (!normalized_search) {
+    return true;
+  }
+
+  return normalize_search_text(value).includes(normalized_search);
+}
+
 /** Menandai baris impor yang memang diabaikan karena bukan outlet operasional utama. */
 function should_skip_import_outlet(value) {
   return /\(\s*ho\s*\)\s*$/i.test(String(value ?? "").trim());
@@ -772,6 +789,7 @@ function map_external_basket_size_summary(summary) {
 export async function getNilaiTransaksiBasketSize({
   selected_date,
   member_outlet_uuid,
+  outlet_name,
 }) {
   const trimmed_selected_date = String(selected_date ?? "").trim();
   const current_date = trimmed_selected_date
@@ -807,12 +825,31 @@ export async function getNilaiTransaksiBasketSize({
       previous_month_end.getUTCDate(),
     ),
   );
-  const outlet_scope = member_outlet_uuid
-    ? { uuid_outlet: member_outlet_uuid }
-    : {};
+  const outlets = (
+    await prisma.tbl_outlet.findMany({
+      where: {
+        deleted_at: null,
+        is_active: true,
+        excep: false,
+        ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
+      },
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        uuid: true,
+        name: true,
+        category: true,
+      },
+    })
+  ).filter((outlet) => matches_search_text(outlet.name, outlet_name));
+  const outlet_scope = {
+    uuid_outlet: {
+      in: outlets.map((outlet) => outlet.uuid),
+    },
+  };
 
   const [
-    outlets,
     current_nilai_transaksi,
     current_month_nilai_transaksi,
     last_nilai_transaksi,
@@ -831,22 +868,6 @@ export async function getNilaiTransaksiBasketSize({
     basket_size_ranges,
     global_targets,
   ] = await Promise.all([
-    prisma.tbl_outlet.findMany({
-      where: {
-        deleted_at: null,
-        is_active: true,
-        excep: false,
-        ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
-      },
-      orderBy: {
-        name: "asc",
-      },
-      select: {
-        uuid: true,
-        name: true,
-        category: true,
-      },
-    }),
     prisma.tbl_total_penerimaan_pendapatan.findMany({
       where: {
         deleted_at: null,
@@ -1085,13 +1106,19 @@ export async function getNilaiTransaksiBasketSize({
   };
 }
 
-export async function getExternalNilaiTransaksiBasketSize({ tanggal }) {
+export async function getExternalNilaiTransaksiBasketSize({
+  date,
+  uuid_outlet,
+  outlet_name,
+}) {
   const data = await getNilaiTransaksiBasketSize({
-    selected_date: tanggal,
+    selected_date: date,
+    member_outlet_uuid: uuid_outlet,
+    outlet_name,
   });
 
   return {
-    tanggal,
+    tanggal: date,
     summary_nt: map_external_nilai_transaksi_summary(data.overall_metrics),
     summary_bs: map_external_basket_size_summary(data.overall_metrics),
     rows: data.rows.map(map_external_nilai_transaksi_basket_size_row),
@@ -1306,10 +1333,12 @@ function add_export_total_row(sheet, metrics) {
 export async function exportNilaiTransaksiBasketSizeWorkbook({
   selected_date,
   member_outlet_uuid,
+  outlet_name,
 }) {
   const data = await getNilaiTransaksiBasketSize({
     selected_date,
     member_outlet_uuid,
+    outlet_name,
   });
   const workbook = new ExcelJS.Workbook();
   const sheet_name = `Share ${data.selected_month_label}`.slice(0, 31);

@@ -29,6 +29,8 @@ export async function GET(request) {
 
     const selected_date = request.nextUrl.searchParams.get("selected_date");
     const action = request.nextUrl.searchParams.get("action");
+    const uuid_outlet = request.nextUrl.searchParams.get("uuid_outlet");
+    const outlet_name = request.nextUrl.searchParams.get("outlet_name");
 
     if (action === "export") {
       const unauthorized_export_response = await requireMenuAccess(
@@ -42,6 +44,8 @@ export async function GET(request) {
 
       const { buffer, filename } = await exportNilaiTransaksiBasketSizeWorkbook({
         selected_date,
+        member_outlet_uuid: uuid_outlet,
+        outlet_name,
       });
 
       return new NextResponse(new Uint8Array(buffer), {
@@ -55,6 +59,8 @@ export async function GET(request) {
 
     const data = await getNilaiTransaksiBasketSize({
       selected_date,
+      member_outlet_uuid: uuid_outlet,
+      outlet_name,
     });
 
     return NextResponse.json({

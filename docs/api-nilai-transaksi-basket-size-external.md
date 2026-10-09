@@ -31,12 +31,49 @@ Server membaca API key dari environment variable berikut:
 
 | Parameter | Wajib | Format | Keterangan |
 | --- | --- | --- | --- |
-| `tanggal` | Ya | `YYYY-MM-DD` | Tanggal acuan data harian, bulan berjalan, dan pembanding bulan sebelumnya. Contoh: `2026-10-07`. |
+| `date` | Ya | `YYYY-MM-DD` | Tanggal acuan data harian, bulan berjalan, dan pembanding bulan sebelumnya. Contoh: `2026-10-07`. |
+| `uuid_outlet` | Tidak | UUID | Filter data untuk satu outlet berdasarkan UUID outlet. |
+| `outlet_name` | Tidak | String | Filter data berdasarkan nama outlet. Bisa diisi nama lengkap, sebagian nama, atau versi normalized tanpa spasi/simbol. |
+
+Jika `uuid_outlet` dan `outlet_name` dikirim bersamaan, data harus cocok dengan kedua filter tersebut.
+
+## Format Pencarian Nama
+
+`outlet_name` dinormalisasi sebelum dicocokkan:
+
+- huruf besar/kecil diabaikan
+- spasi diabaikan
+- simbol/tanda baca diabaikan
+- angka tetap dihitung
+
+Contoh berikut sama-sama bisa mencocokkan outlet `ApotekKu 9 Renon`:
+
+```text
+outlet_name=ApotekKu 9 Renon
+outlet_name=apotekku9renon
+outlet_name=Renon
+```
+
+Untuk integrasi sistem, tetap disarankan memakai `uuid_outlet` karena lebih stabil daripada nama.
 
 ## Contoh Request
 
 ```bash
-curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?tanggal=2026-10-07" \
+curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?date=2026-10-07" \
+  -H "x-api-key: <API_KEY>"
+```
+
+Filter satu outlet berdasarkan UUID:
+
+```bash
+curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?date=2026-10-07&uuid_outlet=<UUID_OUTLET>" \
+  -H "x-api-key: <API_KEY>"
+```
+
+Filter berdasarkan nama outlet:
+
+```bash
+curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?date=2026-10-07&outlet_name=apotekku9renon" \
   -H "x-api-key: <API_KEY>"
 ```
 
@@ -99,7 +136,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?ta
 | Field | Tipe | Keterangan |
 | --- | --- | --- |
 | `success` | Boolean | Status request. |
-| `tanggal` | String | Tanggal acuan sesuai query parameter. |
+| `tanggal` | String | Tanggal acuan sesuai query parameter `date`. |
 | `summary_nt` | Object | Ringkasan total/rata-rata nilai transaksi semua outlet. |
 | `summary_bs` | Object | Ringkasan total/rata-rata basket size semua outlet. |
 | `rows` | Array | Daftar outlet dengan kolom seperti laporan pemantauan. |
@@ -149,12 +186,12 @@ API key tidak valid:
 }
 ```
 
-Parameter tanggal tidak dikirim:
+Parameter date tidak dikirim:
 
 ```json
 {
   "success": false,
-  "message": "Parameter tanggal wajib diisi."
+  "message": "Parameter date wajib diisi."
 }
 ```
 

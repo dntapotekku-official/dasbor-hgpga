@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { getExternalPenjualanGofitku } from "@/services/penjualanGofitkuService";
+import { getExternalPenjualanGofitkuProduk } from "@/services/penjualanGofitkuService";
 
 function get_expected_api_key() {
   return (
@@ -57,7 +57,7 @@ function error_response(error, status = 500) {
   );
 }
 
-export const GET = async (request) => {
+export async function GET(request) {
   try {
     if (!get_expected_api_key()) {
       return error_response(
@@ -71,11 +71,10 @@ export const GET = async (request) => {
     }
 
     const { searchParams } = new URL(request.url);
-    const data = await getExternalPenjualanGofitku({
+    const data = await getExternalPenjualanGofitkuProduk({
+      date: searchParams.get("date"),
       uuid_outlet: searchParams.get("uuid_outlet"),
       outlet_name: searchParams.get("outlet_name"),
-      insanku_name: searchParams.get("insanku_name"),
-      tanggal: searchParams.get("date"),
     });
 
     return NextResponse.json({
@@ -85,4 +84,4 @@ export const GET = async (request) => {
   } catch (error) {
     return error_response(error, 400);
   }
-};
+}
