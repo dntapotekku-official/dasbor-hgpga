@@ -195,20 +195,20 @@ function PersonRows({ rows, start_index = 0 }) {
 function TotalRow({ totals, label = "TOTAL" }) {
   return (
     <TableRow className="font-semibold hover:bg-transparent">
-      <TableCell className="sticky bottom-0 z-10 w-14 border-t bg-muted text-center">
+      <TableCell className="w-14 border-t bg-muted text-center md:sticky md:bottom-0 md:z-10">
         {label}
       </TableCell>
-      <TableCell className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted">
+      <TableCell className="whitespace-normal border-t bg-muted md:sticky md:bottom-0 md:z-10">
         -
       </TableCell>
-      <TableCell className="sticky bottom-0 z-10 border-t bg-muted">{totals.today_input}</TableCell>
-      <TableCell className="sticky bottom-0 z-10 border-t bg-muted">{totals.weekly_total}</TableCell>
-      <TableCell className="sticky bottom-0 z-10 border-t bg-muted">{totals.monthly_total}</TableCell>
-      <TableCell className="sticky bottom-0 z-10 border-t bg-muted">{totals.target}</TableCell>
-      <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.today_input}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.weekly_total}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.monthly_total}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.target}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
         {format_percentage(totals.monthly_total, totals.target)}
       </TableCell>
-      <TableCell className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted text-muted-foreground">
+      <TableCell className="whitespace-normal border-t bg-muted text-muted-foreground md:sticky md:bottom-0 md:z-10">
         <StatusBadge
           total={totals.monthly_total}
           target={totals.target}
@@ -1009,34 +1009,34 @@ export default function RingkasanTabContent({
                         </TableRow>
                       ))}
                       <TableRow className="font-semibold hover:bg-transparent">
-                        <TableCell className="sticky bottom-0 z-10 w-14 border-t bg-muted text-center">
+                        <TableCell className="w-14 border-t bg-muted text-center md:sticky md:bottom-0 md:z-10">
                           TOTAL
                         </TableCell>
                         <TableCell
                           colSpan={2}
-                          className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted"
+                          className="whitespace-normal border-t bg-muted md:sticky md:bottom-0 md:z-10"
                         >
                           -
                         </TableCell>
-                        <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
                           {insanku_grand_totals.today_input}
                         </TableCell>
-                        <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
                           {insanku_grand_totals.weekly_total}
                         </TableCell>
-                        <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
                           {insanku_grand_totals.monthly_total}
                         </TableCell>
-                        <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
                           {insanku_grand_totals.target}
                         </TableCell>
-                        <TableCell className="sticky bottom-0 z-10 border-t bg-muted">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
                           {format_percentage(
                             insanku_grand_totals.monthly_total,
                             insanku_grand_totals.target,
                           )}
                         </TableCell>
-                        <TableCell className="sticky bottom-0 z-10 whitespace-normal border-t bg-muted text-muted-foreground">
+                        <TableCell className="whitespace-normal border-t bg-muted text-muted-foreground md:sticky md:bottom-0 md:z-10">
                           <StatusBadge
                             total={insanku_grand_totals.monthly_total}
                             target={insanku_grand_totals.target}

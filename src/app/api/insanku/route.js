@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   deleteInsanKuSlipGaji,
   getInsanKu,
+  resetInsanKuSlipGaji,
   syncInsanKu,
   updateInsanKu,
 } from "@/services/insanKuService";
@@ -62,6 +63,12 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
+    if (body?.action === "reset") {
+      return NextResponse.json(
+        await resetInsanKuSlipGaji(body?.uuid_insanku),
+      );
+    }
+
     const data = await updateInsanKu({
       uuid_insanku: body?.uuid_insanku,
       nik: body?.nik,

@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/button";
 
 function sticky_identity_class(column) {
   return column === "number"
-    ? "sticky left-0 z-20 w-24 min-w-24 max-w-24 bg-background"
-    : "sticky left-24 z-20 bg-background";
+    ? "w-24 min-w-24 max-w-24 bg-background md:sticky md:left-0 md:z-20"
+    : "bg-background md:sticky md:left-24 md:z-20";
 }
 
 function PeriodHeader({ label }) {
@@ -60,10 +60,10 @@ export default function NilaiTransaksiTab({
     >
       <TableHeader variant="none" className="sticky top-0 z-30">
         <TableRow>
-          <TableHead className="sticky top-0 left-0 z-40 w-24 min-w-24 max-w-24 bg-orange-100 text-center text-orange-950">
+          <TableHead className="sticky top-0 z-30 w-24 min-w-24 max-w-24 bg-orange-100 text-center text-orange-950 md:left-0 md:z-40">
             No.
           </TableHead>
-          <TableHead className="sticky top-0 left-24 z-40 min-w-[240px] bg-orange-100 text-orange-950">
+          <TableHead className="sticky top-0 z-30 min-w-[240px] bg-orange-100 text-orange-950 md:left-24 md:z-40">
             Outlet
           </TableHead>
           {[
@@ -179,60 +179,60 @@ export default function NilaiTransaksiTab({
         ))}
 
         <TableRow className="bg-muted font-semibold hover:bg-muted [&>td]:border-t [&>td]:!border-b-0 [&>td]:border-border">
-          <TableCell className="sticky bottom-0 left-0 z-40 w-24 min-w-24 max-w-24 bg-muted text-center">
+          <TableCell className="w-24 min-w-24 max-w-24 bg-muted text-center md:sticky md:bottom-0 md:left-0 md:z-40">
             Akumulasi
           </TableCell>
-          <TableCell className="sticky bottom-0 left-24 z-40 bg-muted">
+          <TableCell className="bg-muted md:sticky md:bottom-0 md:left-24 md:z-40">
             {rows.length} outlet
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted">
+          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_target} align="split" />
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             <CurrencyValue
               value={category_metrics.nt_daily_total_revenue}
               align="right"
             />
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatDecimal(category_metrics.nt_daily_kunjungan, 0)}
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             <CurrencyValue
               value={category_metrics.nt_current_month_total_revenue}
               align="right"
             />
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-right">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatDecimal(category_metrics.nt_current_month_kunjungan, 0)}
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted">
+          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_daily} align="split" />
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted">
+          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_current_month} align="split" />
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted">
+          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_last_month} align="split" />
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
+          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
             {formatPercentage(category_metrics.nt_growth)}
           </TableCell>
           <TableCell
-            className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.nt_gap_growth)}`}
+            className={`text-center md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.nt_gap_growth)}`}
           >
             {formatPercentage(category_metrics.nt_gap_growth)}
           </TableCell>
-          <TableCell className="sticky bottom-0 z-30 bg-muted text-center">
+          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
             {formatPercentage(category_metrics.nt_target_compare)}
           </TableCell>
           <TableCell
-            className={`sticky bottom-0 z-30 text-center ${gapClassName(category_metrics.nt_gap_target)}`}
+            className={`text-center md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.nt_gap_target)}`}
           >
             {formatPercentage(category_metrics.nt_gap_target)}
           </TableCell>
           {can_manage ? (
-            <TableCell className="sticky bottom-0 z-30 bg-muted" />
+            <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30" />
           ) : null}
         </TableRow>
       </TableBody>

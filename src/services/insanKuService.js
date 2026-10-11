@@ -3,6 +3,7 @@ import { hashPassword } from "@/lib/password";
 import { randomUUID } from "node:crypto";
 import { dedupeByUuid } from "@/lib/utils";
 import { normalizeNik, stripInvisibleCharacters } from "@/lib/nik";
+import { buildSlipGajiApiUrl } from "@/lib/slipGajiApi";
 import {
   closeInsanKuInactivePeriod,
   closeOutletInsanKuInactivePeriod,
@@ -46,6 +47,10 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
           uuid: String(placement?.uuid ?? "").trim(),
           outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
           active_start_date: String(placement?.active_start_date ?? "").trim(),
+          uuid_jabatan_master: String(
+            placement?.uuid_jabatan_master ?? "",
+          ).trim(),
+          jabatan_is_active: Boolean(placement?.jabatan_is_active ?? true),
         }))
         .filter((placement) => placement.outlet_uuid)
     : [];
@@ -57,6 +62,8 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
             uuid: "",
             outlet_uuid: String(outlet_uuid ?? "").trim(),
             active_start_date: "",
+            uuid_jabatan_master: "",
+            jabatan_is_active: true,
           }))
           .filter((placement) => placement.outlet_uuid)
       : [];
@@ -135,13 +142,75 @@ async function validateOutlets(database, outlet_uuids) {
   }
 }
 
-export async function fetchInsanKuPayload() {
-  const url = process.env.KARYAWAN_SLIP_GAJI_API_URL;
-  const api_key = process.env.APOTEKKU_API_KEY;
+async function validateJabatanMaster(database, jabatan_uuids) {
+  const unique_jabatan_uuids = Array.from(
+    new Set(jabatan_uuids.filter(Boolean)),
+  );
 
-  if (!url) {
-    throw new Error("Environment variable KARYAWAN_SLIP_GAJI_API_URL belum diatur.");
+  if (unique_jabatan_uuids.length === 0) {
+    return;
   }
+
+  const valid_jabatan = await database.tbl_jabatan_master.findMany({
+    where: {
+      uuid: { in: unique_jabatan_uuids },
+      deleted_at: null,
+    },
+    select: { uuid: true },
+  });
+
+  if (valid_jabatan.length !== unique_jabatan_uuids.length) {
+    throw new Error("Sebagian jabatan yang dipilih tidak ditemukan.");
+  }
+}
+
+async function savePlacementJabatan(database, placement, uuid_outlet_insanku) {
+  if (!placement.uuid_jabatan_master) {
+    await database.tbl_jabatan_insanku.updateMany({
+      where: { uuid_outlet_insanku },
+      data: {
+        uuid_jabatan_master: null,
+        is_active: placement.jabatan_is_active,
+        deleted_at: null,
+      },
+    });
+    return;
+  }
+
+  await database.tbl_jabatan_insanku.upsert({
+    where: { uuid_outlet_insanku },
+    update: {
+      uuid_jabatan_master: placement.uuid_jabatan_master,
+      is_active: placement.jabatan_is_active,
+      deleted_at: null,
+    },
+    create: {
+      uuid: randomUUID(),
+      uuid_outlet_insanku,
+      uuid_jabatan_master: placement.uuid_jabatan_master,
+      is_active: placement.jabatan_is_active,
+    },
+  });
+}
+
+async function getJabatanMasterData() {
+  return prisma.tbl_jabatan_master.findMany({
+    where: { deleted_at: null },
+    orderBy: { name: "asc" },
+    select: {
+      uuid: true,
+      name: true,
+    },
+  });
+}
+
+export async function fetchInsanKuPayload() {
+  const url = buildSlipGajiApiUrl({
+    legacy_env_name: "KARYAWAN_SLIP_GAJI_API_URL",
+    path_env_name: "KARYAWAN_SLIP_GAJI_API_PATH_URL",
+    fallback_path: "karyawan",
+  });
+  const api_key = process.env.APOTEKKU_API_KEY;
 
   if (!api_key) {
     throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
@@ -155,7 +224,7 @@ export async function fetchInsanKuPayload() {
 
   if (!result.ok) {
     throw new Error(
-      `Gagal menyinkronkan KARYAWAN_SLIP_GAJI_API_URL: ${result.status}`,
+      `Gagal menyinkronkan data karyawan Slip Gaji: ${result.status}`,
     );
   }
 
@@ -164,7 +233,7 @@ export async function fetchInsanKuPayload() {
 
   if (!Array.isArray(payload)) {
     throw new Error(
-      "Response KARYAWAN_SLIP_GAJI_API_URL harus berupa array data InsanKu.",
+      "Response data karyawan Slip Gaji harus berupa array data InsanKu.",
     );
   }
 
@@ -172,14 +241,12 @@ export async function fetchInsanKuPayload() {
 }
 
 export async function fetchOutletInsanKuPayload() {
-  const url = process.env.OUTLET_KARYAWAN_SLIPGAJI_API_URL;
+  const url = buildSlipGajiApiUrl({
+    legacy_env_name: "OUTLET_KARYAWAN_SLIPGAJI_API_URL",
+    path_env_name: "OUTLET_KARYAWAN_SLIPGAJI_API_PATH_URL",
+    fallback_path: "cabang_karyawan",
+  });
   const api_key = process.env.APOTEKKU_API_KEY;
-
-  if (!url) {
-    throw new Error(
-      "Environment variable OUTLET_KARYAWAN_SLIPGAJI_API_URL belum diatur.",
-    );
-  }
 
   if (!api_key) {
     throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
@@ -193,7 +260,70 @@ export async function fetchOutletInsanKuPayload() {
 
   if (!result.ok) {
     throw new Error(
-      `Gagal menyinkronkan OUTLET_KARYAWAN_SLIPGAJI_API_URL: ${result.status}`,
+      `Gagal menyinkronkan data cabang-karyawan Slip Gaji: ${result.status}`,
+    );
+  }
+
+  const response = await result.json();
+
+  return response.data ?? response;
+}
+
+export async function fetchJabatanPayload() {
+  const url = buildSlipGajiApiUrl({
+    legacy_env_name: "JABATAN_SLIP_GAJI_API_URL",
+    path_env_name: "JABATAN_SLIP_GAJI_API_PATH_URL",
+    fallback_path: "jabatan",
+  });
+  const api_key = process.env.APOTEKKU_API_KEY;
+
+  if (!api_key) {
+    throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
+  }
+
+  const result = await fetch(url, {
+    headers: {
+      "x-api-key": api_key,
+    },
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      `Gagal menyinkronkan data jabatan Slip Gaji: ${result.status}`,
+    );
+  }
+
+  const response = await result.json();
+  const payload = response.data ?? response;
+
+  if (!Array.isArray(payload)) {
+    throw new Error("Response data jabatan Slip Gaji harus berupa array data jabatan.");
+  }
+
+  return payload;
+}
+
+export async function fetchJabatanInsanKuPayload() {
+  const url = buildSlipGajiApiUrl({
+    legacy_env_name: "JABATAN_KARYAWAN_SLIP_GAJI_API_URL",
+    path_env_name: "JABATAN_KARYAWAN_SLIP_GAJI_API_PATH_URL",
+    fallback_path: "jb-karyawan",
+  });
+  const api_key = process.env.APOTEKKU_API_KEY;
+
+  if (!api_key) {
+    throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
+  }
+
+  const result = await fetch(url, {
+    headers: {
+      "x-api-key": api_key,
+    },
+  });
+
+  if (!result.ok) {
+    throw new Error(
+      `Gagal menyinkronkan data jabatan-karyawan Slip Gaji: ${result.status}`,
     );
   }
 
@@ -313,9 +443,29 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
         },
         select: {
           uuid: true,
+          is_active: true,
           is_skip_sync: true,
           outlet: {
             select: { uuid: true, name: true },
+          },
+          jabatan_insanku: {
+            where: {
+              deleted_at: null,
+            },
+            orderBy: {
+              updated_at: "desc",
+            },
+            take: 1,
+            select: {
+              uuid: true,
+              is_active: true,
+              jabatan_master: {
+                select: {
+                  uuid: true,
+                  name: true,
+                },
+              },
+            },
           },
         },
       },
@@ -353,11 +503,19 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
           : [],
       outlet_placements:
         item.outlet_insanku.length > 0
-          ? item.outlet_insanku.map((outlet_insanku) => ({
-              uuid: outlet_insanku.uuid,
-              outlet_uuid: outlet_insanku.outlet.uuid,
-              outlet_name: outlet_insanku.outlet.name,
-            }))
+          ? item.outlet_insanku.map((outlet_insanku) => {
+              const jabatan_insanku = outlet_insanku.jabatan_insanku[0] ?? null;
+
+              return {
+                uuid: outlet_insanku.uuid,
+                outlet_uuid: outlet_insanku.outlet.uuid,
+                outlet_name: outlet_insanku.outlet.name,
+                is_active: Boolean(outlet_insanku.is_active),
+                uuid_jabatan_master: jabatan_insanku?.jabatan_master?.uuid ?? "",
+                jabatan_name: jabatan_insanku?.jabatan_master?.name ?? "",
+                jabatan_is_active: Boolean(jabatan_insanku?.is_active),
+              };
+            })
           : [],
     };
   });
@@ -595,8 +753,14 @@ export async function syncInsanKu() {
 }
 
 export async function getInsanKu() {
+  const [data_insanku, data_jabatan] = await Promise.all([
+    getInsanKuSettingsData(true),
+    getJabatanMasterData(),
+  ]);
+
   return {
-    data_insanku: await getInsanKuSettingsData(true),
+    data_insanku,
+    data_jabatan,
   };
 }
 
@@ -708,6 +872,12 @@ export async function updateInsanKu({
   }
 
   await validateOutlets(prisma, unique_outlet_uuids);
+  await validateJabatanMaster(
+    prisma,
+    resolved_outlet_placements.map(
+      (placement) => placement.uuid_jabatan_master,
+    ),
+  );
 
   const hashed_password = trimmed_password
     ? await hashPassword(trimmed_password)
@@ -833,6 +1003,17 @@ export async function updateInsanKu({
           is_active: false,
         },
       });
+      await tx.tbl_jabatan_insanku.updateMany({
+        where: {
+          uuid_outlet_insanku: {
+            in: relation_uuids_to_remove,
+          },
+          deleted_at: null,
+        },
+        data: {
+          is_active: false,
+        },
+      });
       await Promise.all(
         relation_uuids_to_remove.map((uuid_outlet_insanku) =>
           openOutletInsanKuInactivePeriod(
@@ -884,6 +1065,7 @@ export async function updateInsanKu({
             placement.uuid,
             placement_active_start_date ?? undefined,
           );
+          await savePlacementJabatan(tx, placement, placement.uuid);
           continue;
         }
 
@@ -907,6 +1089,11 @@ export async function updateInsanKu({
             existing_target_relation.uuid,
             placement_active_start_date ?? undefined,
           );
+          await savePlacementJabatan(
+            tx,
+            placement,
+            existing_target_relation.uuid,
+          );
 
           await tx.tbl_outlet_insanku.update({
             where: {
@@ -915,6 +1102,13 @@ export async function updateInsanKu({
             data: {
               is_active: false,
             },
+          });
+          await tx.tbl_jabatan_insanku.updateMany({
+            where: {
+              uuid_outlet_insanku: placement.uuid,
+              deleted_at: null,
+            },
+            data: { is_active: false },
           });
           await openOutletInsanKuInactivePeriod(
             tx,
@@ -932,6 +1126,13 @@ export async function updateInsanKu({
         if (sale_count > 0) {
           await tx.tbl_outlet_insanku.update({
             where: { uuid: placement.uuid },
+            data: { is_active: false },
+          });
+          await tx.tbl_jabatan_insanku.updateMany({
+            where: {
+              uuid_outlet_insanku: placement.uuid,
+              deleted_at: null,
+            },
             data: { is_active: false },
           });
           await openOutletInsanKuInactivePeriod(
@@ -955,6 +1156,7 @@ export async function updateInsanKu({
             created_relation_uuid,
             placement_active_start_date,
           );
+          await savePlacementJabatan(tx, placement, created_relation_uuid);
         } else {
           await tx.tbl_outlet_insanku.update({
             where: { uuid: placement.uuid },
@@ -970,6 +1172,7 @@ export async function updateInsanKu({
             placement.uuid,
             placement_active_start_date ?? undefined,
           );
+          await savePlacementJabatan(tx, placement, placement.uuid);
         }
         continue;
       }
@@ -994,6 +1197,11 @@ export async function updateInsanKu({
           existing_target_relation.uuid,
           placement_active_start_date ?? undefined,
         );
+        await savePlacementJabatan(
+          tx,
+          placement,
+          existing_target_relation.uuid,
+        );
         continue;
       }
 
@@ -1013,6 +1221,7 @@ export async function updateInsanKu({
         created_relation_uuid,
         placement_active_start_date,
       );
+      await savePlacementJabatan(tx, placement, created_relation_uuid);
     }
   });
 
@@ -1031,8 +1240,14 @@ export async function updateInsanKu({
 }
 
 export async function getInsanKuNonSlipGaji() {
+  const [data_insanku, data_jabatan] = await Promise.all([
+    getInsanKuSettingsData(false),
+    getJabatanMasterData(),
+  ]);
+
   return {
-    data_insanku: await getInsanKuSettingsData(false),
+    data_insanku,
+    data_jabatan,
   };
 }
 
@@ -1056,6 +1271,12 @@ export async function createInsanKuNonSlipGaji({
   }
 
   await validateOutlets(prisma, normalized_placements.outlet_uuids);
+  await validateJabatanMaster(
+    prisma,
+    normalized_placements.placements.map(
+      (placement) => placement.uuid_jabatan_master,
+    ),
+  );
 
   const created_insanku = await prisma.$transaction(async (transaction) => {
     const insanku = await transaction.tbl_insanku.create({
@@ -1070,14 +1291,21 @@ export async function createInsanKuNonSlipGaji({
       },
     });
 
-    if (normalized_placements.outlet_uuids.length > 0) {
-      await transaction.tbl_outlet_insanku.createMany({
-        data: normalized_placements.outlet_uuids.map((uuid_outlet) => ({
-          uuid: randomUUID(),
-          uuid_outlet,
+    for (const placement of normalized_placements.placements) {
+      const uuid_outlet_insanku = randomUUID();
+
+      await transaction.tbl_outlet_insanku.create({
+        data: {
+          uuid: uuid_outlet_insanku,
+          uuid_outlet: placement.outlet_uuid,
           uuid_insanku: insanku.uuid,
-        })),
+        },
       });
+      await savePlacementJabatan(
+        transaction,
+        placement,
+        uuid_outlet_insanku,
+      );
     }
 
     return insanku;
@@ -1099,6 +1327,84 @@ export async function updateInsanKuNonSlipGaji(payload) {
     ...payload,
     expected_is_slip_gaji_account: false,
   });
+}
+
+export async function resetInsanKuSlipGaji(uuid_insanku) {
+  const normalized_uuid = String(uuid_insanku ?? "").trim();
+
+  if (!normalized_uuid) {
+    throw new Error("UUID InsanKu wajib diisi.");
+  }
+
+  const existing_insanku = await prisma.tbl_insanku.findFirst({
+    where: {
+      uuid: normalized_uuid,
+      is_slip_gaji_account: true,
+      deleted_at: null,
+    },
+    select: { uuid: true },
+  });
+
+  if (!existing_insanku) {
+    throw new Error("Data InsanKu Slip Gaji tidak ditemukan.");
+  }
+
+  const [insanku_payload, outlet_insanku_payload] = await Promise.all([
+    fetchInsanKuPayload(),
+    fetchOutletInsanKuPayload(),
+  ]);
+  const source_insanku = insanku_payload.find(
+    (item) => getInsanKuPayloadUuid(item) === normalized_uuid,
+  );
+  const username_map = normalizeOutletInsanKuUsernames(
+    outlet_insanku_payload,
+  );
+  const default_name = String(
+    source_insanku?.nama ?? source_insanku?.name ?? "",
+  ).trim();
+  const default_username = stripInvisibleCharacters(
+    username_map.get(normalized_uuid) ?? "",
+  ).trim();
+
+  if (!source_insanku || !default_name) {
+    throw new Error("Nama InsanKu tidak ditemukan pada endpoint karyawan.");
+  }
+
+  if (!default_username) {
+    throw new Error(
+      "Username InsanKu tidak ditemukan pada endpoint cabang_karyawan.",
+    );
+  }
+
+  const username_owner = await prisma.tbl_insanku.findFirst({
+    where: {
+      username: default_username,
+      uuid: { not: normalized_uuid },
+    },
+    select: { uuid: true },
+  });
+
+  if (username_owner) {
+    throw new Error("Username default sudah digunakan oleh akun InsanKu lain.");
+  }
+
+  await prisma.tbl_insanku.update({
+    where: { uuid: normalized_uuid },
+    data: {
+      name: default_name,
+      username: default_username,
+      is_skip_sync: false,
+      is_username_change: false,
+    },
+  });
+
+  const refreshed_insanku = await getInsanKuSettingsData(true);
+
+  return {
+    success: true,
+    data: refreshed_insanku.find((item) => item.uuid === normalized_uuid) ?? null,
+    message: "Nama dan username InsanKu berhasil direset dari Slip Gaji.",
+  };
 }
 
 async function deleteInsanKuAccount({

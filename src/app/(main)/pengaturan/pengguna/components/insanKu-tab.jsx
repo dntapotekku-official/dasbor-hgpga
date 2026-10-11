@@ -1,11 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
+  FilterIcon,
   PencilIcon,
   PlusIcon,
+  RotateCcwIcon,
   Trash2Icon,
   TriangleAlertIcon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +19,7 @@ import OptionDropdown from "@/components/option-dropdown";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
+import FieldLabel from "@/components/field-label";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
@@ -31,6 +36,13 @@ import {
 } from "@/components/ui/table";
 
 const PAGE_SIZE = 50;
+const EMPTY_ADVANCED_FILTERS = {
+  skip_identity: false,
+  skip_placement: false,
+  exclude_gofitku: false,
+  exclusion_start_date: "",
+  exclusion_end_date: "",
+};
 
 function has_selected_outlet_placement(outlet_placements) {
   return (
@@ -47,7 +59,12 @@ function build_insanku_sheet_key(item) {
   }
 
   const placement_key = (item.outlet_placements ?? [])
-    .map((placement) => `${placement.uuid ?? ""}:${placement.outlet_uuid ?? ""}`)
+    .map((placement) => [
+      placement.uuid ?? "",
+      placement.outlet_uuid ?? "",
+      placement.uuid_jabatan_master ?? "",
+      Boolean(placement.jabatan_is_active),
+    ].join(":"))
     .join("|");
 
   return [
@@ -64,16 +81,25 @@ function build_insanku_sheet_key(item) {
 export default function InsanKuTab({ is_non_slip_gaji = false }) {
   const [sync_status, setSyncStatus] = useState("idle");
   const [outlet, setOutlet] = useState([]);
+  const [jabatan, setJabatan] = useState([]);
   const [insanku, setInsanKu] = useState([]);
   const { search, setSearch, filtered_items } = useSearch(insanku, ["name"]);
   const [selected_outlet, setSelectedOutlet] = useState("all");
   const [selected_insanku, setSelectedInsanKu] = useState(null);
-  const [deleting_insanku, setDeletingInsanKu] = useState(null);
-  const [is_deleting_insanku, setIsDeletingInsanKu] = useState(false);
+  const [account_action_insanku, setAccountActionInsanKu] = useState(null);
+  const [is_processing_account_action, setIsProcessingAccountAction] =
+    useState(false);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_creating, setIsCreating] = useState(false);
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
+  const [is_filter_modal_open, setIsFilterModalOpen] = useState(false);
+  const [advanced_filters, setAdvancedFilters] = useState(
+    EMPTY_ADVANCED_FILTERS,
+  );
+  const [draft_advanced_filters, setDraftAdvancedFilters] = useState(
+    EMPTY_ADVANCED_FILTERS,
+  );
   const outlet_options = useMemo(
     () => [
       { value: "all", label: "Semua outlet" },
@@ -81,15 +107,64 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     ],
     [outlet],
   );
+  const advanced_filtered_items = useMemo(
+    () => filtered_items.filter((item) => {
+      if (advanced_filters.skip_identity && !item.is_skip_sync_insanku) {
+        return false;
+      }
+
+      if (
+        advanced_filters.skip_placement &&
+        !item.is_skip_sync_outlet_insanku
+      ) {
+        return false;
+      }
+
+      if (!advanced_filters.exclude_gofitku) {
+        return true;
+      }
+
+      if (!item.is_exclude_penjualan_gofitku) {
+        return false;
+      }
+
+      const item_start_date = item.gofitku_exclusion_start_date ?? "";
+      const item_end_date = item.gofitku_exclusion_end_date ?? "";
+
+      if (
+        advanced_filters.exclusion_start_date &&
+        item_end_date &&
+        item_end_date < advanced_filters.exclusion_start_date
+      ) {
+        return false;
+      }
+
+      if (
+        advanced_filters.exclusion_end_date &&
+        item_start_date &&
+        item_start_date > advanced_filters.exclusion_end_date
+      ) {
+        return false;
+      }
+
+      return true;
+    }),
+    [advanced_filters, filtered_items],
+  );
   const outlet_filtered_items = useMemo(
     () =>
       selected_outlet === "all"
-        ? filtered_items
-        : filtered_items.filter((item) =>
+        ? advanced_filtered_items
+        : advanced_filtered_items.filter((item) =>
             item.outlet_uuids?.includes(selected_outlet),
           ),
-    [filtered_items, selected_outlet],
+    [advanced_filtered_items, selected_outlet],
   );
+  const active_advanced_filter_count = [
+    advanced_filters.skip_identity,
+    advanced_filters.skip_placement,
+    advanced_filters.exclude_gofitku,
+  ].filter(Boolean).length;
   const sorted_items = useMemo(() => {
     return [...outlet_filtered_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
@@ -157,6 +232,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     return {
       outlet: outlet_data.data.data_outlet,
       insanku: insanku_data.data.data_insanku,
+      jabatan: insanku_data.data.data_jabatan ?? [],
     };
   }, [is_non_slip_gaji]);
 
@@ -172,6 +248,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         }
 
         setOutlet(data.outlet);
+        setJabatan(data.jabatan);
         setInsanKu(data.insanku);
       } catch (error) {
         if (!should_ignore) {
@@ -193,7 +270,36 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, selected_outlet, setCurrentPage]);
+  }, [advanced_filters, search, selected_outlet, setCurrentPage]);
+
+  const handle_filter_modal_open_change = (next_open) => {
+    setIsFilterModalOpen(next_open);
+
+    if (next_open) {
+      setDraftAdvancedFilters({ ...advanced_filters });
+    }
+  };
+
+  const apply_advanced_filters = () => {
+    if (
+      draft_advanced_filters.exclusion_start_date &&
+      draft_advanced_filters.exclusion_end_date &&
+      draft_advanced_filters.exclusion_end_date <
+        draft_advanced_filters.exclusion_start_date
+    ) {
+      toast.error("Tanggal selesai tidak boleh sebelum tanggal mulai.");
+      return;
+    }
+
+    setAdvancedFilters({ ...draft_advanced_filters });
+    setIsFilterModalOpen(false);
+  };
+
+  const reset_advanced_filters = () => {
+    setAdvancedFilters({ ...EMPTY_ADVANCED_FILTERS });
+    setDraftAdvancedFilters({ ...EMPTY_ADVANCED_FILTERS });
+    setIsFilterModalOpen(false);
+  };
 
   const sync_insanku_handler = async () => {
     try {
@@ -222,6 +328,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
       const latest_data = await fetch_insanku();
       setOutlet(latest_data.outlet);
+      setJabatan(latest_data.jabatan);
       setInsanKu(latest_data.insanku);
       toast.success("Sinkronisasi data InsanKu berhasil.");
     } catch (error) {
@@ -293,8 +400,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     );
   };
 
-  const handle_delete = async () => {
-    if (!deleting_insanku) {
+  const handle_account_action = async () => {
+    if (!account_action_insanku) {
       return;
     }
 
@@ -304,37 +411,52 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     const account_label = is_non_slip_gaji
       ? "InsanKu Non Slip Gaji"
       : "InsanKu Slip Gaji";
+    const action_label = is_non_slip_gaji ? "menghapus" : "mereset";
     try {
-      setIsDeletingInsanKu(true);
+      setIsProcessingAccountAction(true);
 
       const response = await fetch(api_endpoint, {
-        method: "DELETE",
+        method: is_non_slip_gaji ? "DELETE" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uuid_insanku: deleting_insanku.uuid }),
+        body: JSON.stringify({
+          uuid_insanku: account_action_insanku.uuid,
+          ...(!is_non_slip_gaji ? { action: "reset" } : {}),
+        }),
       });
       const payload = await response.json();
 
-      if (!response.ok || !payload.success) {
+      if (
+        !response.ok ||
+        !payload.success ||
+        (!is_non_slip_gaji && !payload.data)
+      ) {
         throw new Error(
-          payload.message || `Gagal menghapus data ${account_label}.`,
+          payload.message || `Gagal ${action_label} data ${account_label}.`,
         );
       }
 
-      setInsanKu((current) =>
-        current.filter((row) => row.uuid !== deleting_insanku.uuid),
+      setInsanKu((current) => is_non_slip_gaji
+        ? current.filter((row) => row.uuid !== account_action_insanku.uuid)
+        : current.map((row) =>
+            row.uuid === payload.data.uuid ? payload.data : row,
+          ));
+      setSelectedInsanKu((current) =>
+        current?.uuid === account_action_insanku.uuid
+          ? (is_non_slip_gaji ? null : payload.data)
+          : current,
       );
-      setDeletingInsanKu(null);
+      setAccountActionInsanKu(null);
       toast.success(
-        payload.message || `Data ${account_label} berhasil dihapus.`,
+        payload.message || `Data ${account_label} berhasil direset.`,
       );
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : `Gagal menghapus data ${account_label}.`,
+          : `Gagal ${action_label} data ${account_label}.`,
       );
     } finally {
-      setIsDeletingInsanKu(false);
+      setIsProcessingAccountAction(false);
     }
   };
 
@@ -388,6 +510,20 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   />
                 </FilterField>
               ) : null}
+              {!is_non_slip_gaji ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handle_filter_modal_open_change(true)}
+                  className="w-full shrink-0 lg:w-auto"
+                >
+                  <FilterIcon className="size-4" />
+                  <span>Filter Lanjutan</span>
+                  {active_advanced_filter_count > 0 ? (
+                    <span>({active_advanced_filter_count})</span>
+                  ) : null}
+                </Button>
+              ) : null}
               {is_non_slip_gaji ? (
                 <Button
                   type="button"
@@ -416,11 +552,11 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
             <div className="overflow-hidden rounded-lg border">
               <div className="max-h-[560px] overflow-auto">
-                <Table containerClassName="overflow-visible">
+                <Table className="min-w-max" containerClassName="overflow-visible">
                   <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
-                      <TableHead className="w-14">No.</TableHead>
-                      <TableHead>
+                      <TableHead className="w-14 min-w-14">No.</TableHead>
+                      <TableHead className="w-44 min-w-44">
                         <SortableTableHead
                           label="NIK"
                           sortKey="nik"
@@ -429,7 +565,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           onSort={toggle_sort}
                         />
                       </TableHead>
-                      <TableHead>
+                      <TableHead className="min-w-64">
                         <SortableTableHead
                           label="Nama"
                           sortKey="name"
@@ -471,19 +607,45 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   <TableBody>
                     {paginated_rows.map((row, index) => (
                       <TableRow key={row.uuid}>
-                        <TableCell>
+                        <TableCell className="w-14 min-w-14">
                           {(current_page - 1) * PAGE_SIZE + index + 1}
                         </TableCell>
-                        <TableCell>{row.nik || "-"}</TableCell>
-                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell className="w-44 min-w-44">
+                          {row.nik || "-"}
+                        </TableCell>
+                        <TableCell className="min-w-64 font-medium">
+                          {row.name}
+                        </TableCell>
                         <TableCell>{row.username}</TableCell>
                         <TableCell>
-                          {Array.isArray(row.outlet_names) &&
-                          row.outlet_names.length > 0 ? (
+                          {Array.isArray(row.outlet_placements) &&
+                          row.outlet_placements.length > 0 ? (
                             <ul className="list-disc space-y-1 pl-4">
-                              {row.outlet_names.map((outlet_name) => (
-                                <li key={`${row.uuid}-${outlet_name}`}>
-                                  {outlet_name}
+                              {row.outlet_placements.map((placement) => (
+                                <li
+                                  key={`${row.uuid}-${placement.uuid || placement.outlet_uuid}`}
+                                >
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-medium">
+                                      {placement.outlet_name || "-"}
+                                    </span>
+                                    <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                                      {placement.jabatan_name ||
+                                        placement.uuid_jabatan_master ||
+                                        "-"}
+                                    </span>
+                                    <span
+                                      className={
+                                        placement.jabatan_is_active
+                                          ? "inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                          : "inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                                      }
+                                    >
+                                      {placement.jabatan_is_active
+                                        ? "Aktif"
+                                        : "Tidak Aktif"}
+                                    </span>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
@@ -519,12 +681,16 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           </Button>
                           <Button
                             type="button"
-                            variant="delete"
+                            variant={is_non_slip_gaji ? "delete" : "outline"}
                             size="sm"
-                            onClick={() => setDeletingInsanKu(row)}
+                            onClick={() => setAccountActionInsanKu(row)}
                           >
-                            <Trash2Icon className="size-4" />
-                            Hapus
+                            {is_non_slip_gaji ? (
+                              <Trash2Icon className="size-4" />
+                            ) : (
+                              <RotateCcwIcon className="size-4" />
+                            )}
+                            {is_non_slip_gaji ? "Hapus" : "Reset"}
                           </Button>
                           </div>
                         </TableCell>
@@ -618,6 +784,10 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   value: item.uuid,
                   label: item.name,
                 })),
+                jabatan_options: jabatan.map((item) => ({
+                  value: item.uuid,
+                  label: item.name,
+                })),
                 on_change: (draft) =>
                   has_selected_outlet_placement(draft.outlet_placements)
                     ? {}
@@ -677,19 +847,168 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               ]}
               on_save={handle_save}
             />
+            {!is_non_slip_gaji ? (
+              <DialogPrimitive.Root
+                open={is_filter_modal_open}
+                onOpenChange={handle_filter_modal_open_change}
+              >
+                <DialogPrimitive.Portal>
+                  <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />
+                  <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl">
+                    <div className="flex items-start justify-between gap-4 border-b p-5">
+                      <div>
+                        <DialogPrimitive.Title className="font-heading text-xl font-semibold">
+                          Filter Lanjutan
+                        </DialogPrimitive.Title>
+                        <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                          Saring data berdasarkan pengaturan sinkronisasi dan pengecualian.
+                        </DialogPrimitive.Description>
+                      </div>
+                      <DialogPrimitive.Close
+                        render={
+                          <Button type="button" variant="ghost" size="icon-sm" />
+                        }
+                      >
+                        <XIcon className="size-4" />
+                        <span className="sr-only">Tutup</span>
+                      </DialogPrimitive.Close>
+                    </div>
+
+                    <div className="grid gap-4 overflow-y-auto p-5">
+                      <label className="flex items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={draft_advanced_filters.skip_identity}
+                          onChange={(event) =>
+                            setDraftAdvancedFilters((current) => ({
+                              ...current,
+                              skip_identity: event.target.checked,
+                            }))
+                          }
+                          className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
+                        />
+                        <span>Nama dan username yang dilewati</span>
+                      </label>
+                      <label className="flex items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={draft_advanced_filters.skip_placement}
+                          onChange={(event) =>
+                            setDraftAdvancedFilters((current) => ({
+                              ...current,
+                              skip_placement: event.target.checked,
+                            }))
+                          }
+                          className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
+                        />
+                        <span>Penempatan yang dilewati</span>
+                      </label>
+                      <label className="flex items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={draft_advanced_filters.exclude_gofitku}
+                          onChange={(event) =>
+                            setDraftAdvancedFilters((current) => ({
+                              ...current,
+                              exclude_gofitku: event.target.checked,
+                              ...(!event.target.checked
+                                ? {
+                                    exclusion_start_date: "",
+                                    exclusion_end_date: "",
+                                  }
+                                : {}),
+                            }))
+                          }
+                          className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
+                        />
+                        <span>Dikecualikan pada penjualan GoFitKu</span>
+                      </label>
+
+                      {draft_advanced_filters.exclude_gofitku ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <FieldLabel
+                              htmlFor="filter-gofitku-start-date"
+                              label="Mulai"
+                              variant="filter"
+                            />
+                            <Input
+                              id="filter-gofitku-start-date"
+                              type="date"
+                              value={
+                                draft_advanced_filters.exclusion_start_date
+                              }
+                              max={
+                                draft_advanced_filters.exclusion_end_date ||
+                                undefined
+                              }
+                              onChange={(event) =>
+                                setDraftAdvancedFilters((current) => ({
+                                  ...current,
+                                  exclusion_start_date: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <FieldLabel
+                              htmlFor="filter-gofitku-end-date"
+                              label="Selesai"
+                              variant="filter"
+                            />
+                            <Input
+                              id="filter-gofitku-end-date"
+                              type="date"
+                              value={draft_advanced_filters.exclusion_end_date}
+                              min={
+                                draft_advanced_filters.exclusion_start_date ||
+                                undefined
+                              }
+                              onChange={(event) =>
+                                setDraftAdvancedFilters((current) => ({
+                                  ...current,
+                                  exclusion_end_date: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="flex justify-end gap-2 border-t p-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={reset_advanced_filters}
+                      >
+                        Reset
+                      </Button>
+                      <Button type="button" onClick={apply_advanced_filters}>
+                        Terapkan
+                      </Button>
+                    </div>
+                  </DialogPrimitive.Popup>
+                </DialogPrimitive.Portal>
+              </DialogPrimitive.Root>
+            ) : null}
             <ConfirmActionDialog
-              open={Boolean(deleting_insanku)}
+              open={Boolean(account_action_insanku)}
               onOpenChange={(next_open) => {
-                if (!next_open && !is_deleting_insanku) {
-                  setDeletingInsanKu(null);
+                if (!next_open && !is_processing_account_action) {
+                  setAccountActionInsanKu(null);
                 }
               }}
-              title={`Hapus ${is_non_slip_gaji ? "InsanKu Non Slip Gaji" : "InsanKu Slip Gaji"}`}
-              description={`Data ${deleting_insanku?.name ?? ""} akan dihapus beserta relasi aktifnya. Lanjutkan?`}
-              confirmLabel="Ya, hapus"
-              confirmVariant="delete"
-              onConfirm={handle_delete}
-              isPending={is_deleting_insanku}
+              title={is_non_slip_gaji
+                ? "Hapus InsanKu Non Slip Gaji"
+                : "Reset InsanKu Slip Gaji"}
+              description={is_non_slip_gaji
+                ? `Data ${account_action_insanku?.name ?? ""} akan dihapus beserta relasi aktifnya. Lanjutkan?`
+                : `Nama dan username ${account_action_insanku?.name ?? ""} akan dikembalikan dari data Slip Gaji. Lanjutkan?`}
+              confirmLabel={is_non_slip_gaji ? "Ya, hapus" : "Ya, reset"}
+              confirmVariant={is_non_slip_gaji ? "delete" : "default"}
+              onConfirm={handle_account_action}
+              isPending={is_processing_account_action}
             />
           </div>
         </CardContent>

@@ -1202,10 +1202,10 @@ export default function AtributInsanKuPage() {
                   <Table containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-20 bg-card">
                     <TableRow>
-                      <TableHead className="sticky top-0 left-0 z-30 min-w-14 bg-card text-center shadow-[1px_0_0_0_hsl(var(--border))]">
+                      <TableHead className="sticky top-0 z-20 min-w-14 bg-card text-center md:left-0 md:z-30 md:shadow-[1px_0_0_0_hsl(var(--border))]">
                         No.
                       </TableHead>
-                      <TableHead className="sticky top-0 left-14 z-30 min-w-[160px] bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
+                      <TableHead className="sticky top-0 z-20 min-w-[160px] bg-card md:left-14 md:z-30 md:shadow-[1px_0_0_0_hsl(var(--border))]">
                           <SortableTableHead
                             label="NIK"
                             sortKey="nik"
@@ -1214,7 +1214,7 @@ export default function AtributInsanKuPage() {
                             onSort={toggle_sort}
                           />
                         </TableHead>
-                        <TableHead className="sticky top-0 left-[216px] z-30 min-w-[240px] bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
+                        <TableHead className="sticky top-0 z-20 min-w-[240px] bg-card md:left-[216px] md:z-30 md:shadow-[1px_0_0_0_hsl(var(--border))]">
                           <SortableTableHead
                             label="Nama"
                             sortKey="name"
@@ -1260,13 +1260,13 @@ export default function AtributInsanKuPage() {
                       ) : paginated_rows.length ? (
                         paginated_rows.map((employee, index) => (
                           <TableRow key={employee.uuid}>
-                            <TableCell className="sticky left-0 z-10 bg-card text-center shadow-[1px_0_0_0_hsl(var(--border))]">
+                            <TableCell className="bg-card text-center md:sticky md:left-0 md:z-10 md:shadow-[1px_0_0_0_hsl(var(--border))]">
                               {(current_page - 1) * PAGE_SIZE + index + 1}
                             </TableCell>
-                            <TableCell className="sticky left-14 z-10 bg-card shadow-[1px_0_0_0_hsl(var(--border))]">
+                            <TableCell className="bg-card md:sticky md:left-14 md:z-10 md:shadow-[1px_0_0_0_hsl(var(--border))]">
                               {employee.nik || "-"}
                             </TableCell>
-                            <TableCell className="sticky left-[216px] z-10 bg-card font-medium shadow-[1px_0_0_0_hsl(var(--border))]">
+                            <TableCell className="bg-card font-medium md:sticky md:left-[216px] md:z-10 md:shadow-[1px_0_0_0_hsl(var(--border))]">
                               {employee.name}
                             </TableCell>
                             {display_attribute_columns.map((column) => (

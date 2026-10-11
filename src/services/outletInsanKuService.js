@@ -7,6 +7,8 @@ import {
 } from "@/services/inactivePeriodService";
 import {
   fetchInsanKuPayload,
+  fetchJabatanInsanKuPayload,
+  fetchJabatanPayload,
   fetchOutletInsanKuPayload,
   getInsanKuSettingsData,
   normalizeInsanKuRows,
@@ -16,24 +18,141 @@ function buildRelationKey({ uuid_outlet, uuid_insanku }) {
   return `${uuid_outlet}:${uuid_insanku}`;
 }
 
+function getOutletInsanKuPayloadOutletUuid(outlet_key, item) {
+  const [uuid_from_key] = String(outlet_key ?? "").split("_");
+
+  return String(
+    item?.cabangs_id ??
+      item?.id_cabang ??
+      item?.uuid_outlet ??
+      item?.outlet_uuid ??
+      uuid_from_key ??
+      "",
+  ).trim();
+}
+
+function getOutletInsanKuPayloadInsanKuUuid(item) {
+  return String(
+    item?.karyawans_id ??
+      item?.id_karyawans ??
+      item?.id_karyawan ??
+      item?.uuid_insanku ??
+      item?.uuid ??
+      item?.id ??
+      "",
+  ).trim();
+}
+
+function getOutletInsanKuPayloadJabatanUuid(item) {
+  return String(
+    item?.jabatans_id ??
+      item?.id_jabatan ??
+      item?.uuid_jabatan ??
+      item?.jabatan_uuid ??
+      "",
+  ).trim();
+}
+
+function getJabatanPayloadUuid(item) {
+  return String(
+    item?.id_jabatans ??
+      item?.jabatans_id ??
+      item?.id_jabatan ??
+      item?.uuid ??
+      item?.id ??
+      "",
+  ).trim();
+}
+
+function getJabatanPayloadName(item, uuid) {
+  return String(
+    item?.nama_jabatan ??
+      item?.nama ??
+      item?.name ??
+      item?.jabatan ??
+      uuid ??
+      "",
+  ).trim();
+}
+
+function normalizeJabatanRows(jabatan_payload) {
+  if (!Array.isArray(jabatan_payload)) {
+    return [];
+  }
+
+  return dedupeByKey(
+    jabatan_payload
+      .map((item) => {
+        const uuid = getJabatanPayloadUuid(item);
+
+        if (!uuid) {
+          return null;
+        }
+
+        return {
+          uuid,
+          name: getJabatanPayloadName(item, uuid) || uuid,
+        };
+      })
+      .filter(Boolean),
+    (item) => item.uuid,
+  );
+}
+
+function flattenPayloadLists(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  return Object.values(payload ?? {}).flatMap((value) =>
+    Array.isArray(value) ? value : [],
+  );
+}
+
+function buildJabatanRelationMap(jabatan_insanku_payload) {
+  const rows = flattenPayloadLists(jabatan_insanku_payload);
+  const relation_map = new Map();
+
+  for (const item of rows) {
+    const uuid_outlet = getOutletInsanKuPayloadOutletUuid("", item);
+    const uuid_insanku = getOutletInsanKuPayloadInsanKuUuid(item);
+    const uuid_jabatan_master = getOutletInsanKuPayloadJabatanUuid(item);
+
+    if (!uuid_outlet || !uuid_insanku || !uuid_jabatan_master) {
+      continue;
+    }
+
+    relation_map.set(buildRelationKey({ uuid_outlet, uuid_insanku }), {
+      uuid_outlet,
+      uuid_insanku,
+      uuid_jabatan_master,
+    });
+  }
+
+  return relation_map;
+}
+
 function normalizeOutletInsanKuRows({
   outlet_insanku_payload,
   valid_outlet_uuid_set,
   valid_insanku_uuid_set,
 }) {
-  const placement_rows = Object.entries(outlet_insanku_payload).flatMap(
+  const payload_entries = Array.isArray(outlet_insanku_payload)
+    ? [["", outlet_insanku_payload]]
+    : Object.entries(outlet_insanku_payload ?? {});
+  const placement_rows = payload_entries.flatMap(
     ([outlet_key, insanku_list]) => {
-      const [uuid_outlet] = outlet_key.split("_");
-
       if (!Array.isArray(insanku_list)) {
         return [];
       }
 
       return insanku_list
         .map((item) => {
-          const uuid_insanku = String(
-            item?.id_karyawans ?? item?.id_karyawan ?? item?.uuid ?? item?.id ?? "",
-          ).trim();
+          const uuid_outlet = getOutletInsanKuPayloadOutletUuid(
+            outlet_key,
+            item,
+          );
+          const uuid_insanku = getOutletInsanKuPayloadInsanKuUuid(item);
 
           if (!uuid_outlet || !uuid_insanku) {
             return null;
@@ -63,11 +182,59 @@ function normalizeOutletInsanKuRows({
   };
 }
 
+async function upsertJabatanInsanKu(
+  transaction,
+  { jabatan_master_map, uuid_outlet_insanku, uuid_jabatan_master },
+) {
+  if (!uuid_outlet_insanku || !uuid_jabatan_master) {
+    return false;
+  }
+
+  const jabatan_master = jabatan_master_map.get(uuid_jabatan_master);
+
+  await transaction.tbl_jabatan_master.upsert({
+    where: { uuid: uuid_jabatan_master },
+    update: {
+      ...(jabatan_master?.name ? { name: jabatan_master.name } : {}),
+      deleted_at: null,
+    },
+    create: {
+      uuid: uuid_jabatan_master,
+      name: jabatan_master?.name || uuid_jabatan_master,
+    },
+  });
+
+  await transaction.tbl_jabatan_insanku.upsert({
+    where: { uuid_outlet_insanku },
+    update: {
+      uuid_jabatan_master,
+      is_active: true,
+      deleted_at: null,
+    },
+    create: {
+      uuid: randomUUID(),
+      uuid_outlet_insanku,
+      uuid_jabatan_master,
+      is_active: true,
+    },
+  });
+
+  return true;
+}
+
 export async function syncOutletInsanKu() {
-  const [insanku_payload, outlet_insanku_payload, existing_outlets] =
+  const [
+    insanku_payload,
+    outlet_insanku_payload,
+    jabatan_payload,
+    jabatan_insanku_payload,
+    existing_outlets,
+  ] =
     await Promise.all([
       fetchInsanKuPayload(),
       fetchOutletInsanKuPayload(),
+      fetchJabatanPayload(),
+      fetchJabatanInsanKuPayload(),
       prisma.tbl_outlet.findMany({
         where: {
           deleted_at: null,
@@ -79,6 +246,11 @@ export async function syncOutletInsanKu() {
         },
       }),
     ]);
+  const jabatan_master_rows = normalizeJabatanRows(jabatan_payload);
+  const jabatan_master_map = new Map(
+    jabatan_master_rows.map((item) => [item.uuid, item]),
+  );
+  const jabatan_relation_map = buildJabatanRelationMap(jabatan_insanku_payload);
   const unique_insanku = normalizeInsanKuRows(insanku_payload);
   const valid_outlet_uuid_set = new Set(
     existing_outlets.map((item) => item.uuid),
@@ -122,6 +294,7 @@ export async function syncOutletInsanKu() {
   const syncable_outlet_insanku = unique_rows
     .filter((item) => existing_insanku_uuid_set.has(item.uuid_insanku))
     .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
+  let synced_jabatan_insanku = 0;
 
   await prisma.$transaction(async (tx) => {
     for (const item of syncable_outlet_insanku) {
@@ -156,6 +329,17 @@ export async function syncOutletInsanKu() {
 
       if (active_relation) {
         await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
+
+        const is_jabatan_synced = await upsertJabatanInsanKu(tx, {
+          jabatan_master_map,
+          uuid_outlet_insanku: active_relation.uuid,
+          uuid_jabatan_master: jabatan_relation_map.get(buildRelationKey(item))
+            ?.uuid_jabatan_master,
+        });
+
+        if (is_jabatan_synced) {
+          synced_jabatan_insanku += 1;
+        }
       }
     }
 
@@ -202,11 +386,24 @@ export async function syncOutletInsanKu() {
               select: { uuid: true },
             })
             .then(async (relations) => {
+              const relation_uuids = relations.map((item) => item.uuid);
+
               await tx.tbl_outlet_insanku.updateMany({
                 where: {
                   uuid: {
-                    in: relations.map((item) => item.uuid),
+                    in: relation_uuids,
                   },
+                },
+                data: {
+                  is_active: false,
+                },
+              });
+              await tx.tbl_jabatan_insanku.updateMany({
+                where: {
+                  uuid_outlet_insanku: {
+                    in: relation_uuids,
+                  },
+                  deleted_at: null,
                 },
                 data: {
                   is_active: false,
@@ -236,6 +433,7 @@ export async function syncOutletInsanKu() {
         valid_rows.length +
         skipped_placement_insanku_uuid_set.size +
         (unique_rows.length - syncable_outlet_insanku.length),
+      synced_jabatan_insanku,
     },
   };
 }

@@ -39,6 +39,10 @@ function normalize_placements(value, include_key = false, field_key = "") {
       uuid: String(placement?.uuid ?? "").trim(),
       outlet_uuid: String(placement?.outlet_uuid ?? "").trim(),
       active_start_date: String(placement?.active_start_date ?? "").trim(),
+      is_active: Boolean(placement?.is_active ?? true),
+      uuid_jabatan_master: String(placement?.uuid_jabatan_master ?? "").trim(),
+      jabatan_name: String(placement?.jabatan_name ?? "").trim(),
+      jabatan_is_active: Boolean(placement?.jabatan_is_active ?? true),
       ...(include_key
         ? {
             key: String(
@@ -143,7 +147,6 @@ export default function PengaturanRowSheet({
   const [draft, setDraft] = useState(() => build_draft(item, fields));
   const [open_field_key, setOpenFieldKey] = useState(null);
   const [field_search, setFieldSearch] = useState({});
-  const [placement_add_action, setPlacementAddAction] = useState(null);
   const [placement_delete_action, setPlacementDeleteAction] = useState(null);
   const [is_submitting, setIsSubmitting] = useState(false);
 
@@ -151,7 +154,6 @@ export default function PengaturanRowSheet({
     setDraft(build_draft(item, fields));
     setOpenFieldKey(null);
     setFieldSearch({});
-    setPlacementAddAction(null);
     setPlacementDeleteAction(null);
   };
 
@@ -168,6 +170,19 @@ export default function PengaturanRowSheet({
   };
 
   const handle_save = async () => {
+    const incomplete_placement_field = fields.find(
+      (field) =>
+        field.type === "placement-list" &&
+        (draft[field.key] ?? []).some(
+          (placement) => !String(placement?.outlet_uuid ?? "").trim(),
+        ),
+    );
+
+    if (incomplete_placement_field) {
+      toast.error("Outlet pada penempatan baru wajib dipilih.");
+      return;
+    }
+
     const missing_required_field = fields.find(
       (field) =>
         field.required &&
@@ -229,25 +244,16 @@ export default function PengaturanRowSheet({
     }
   };
 
-  const confirm_add_placement = () => {
-    if (!placement_add_action?.outlet_uuid) {
-      toast.error("Outlet wajib dipilih.");
-      return;
-    }
-
-    if (!placement_add_action?.active_start_date) {
-      toast.error("Tanggal mulai penempatan wajib diisi.");
-      return;
-    }
-
+  const add_placement = (field) => {
     setDraft((current) => {
-      const field = placement_add_action.field;
       const next_placements = [
         ...(current[field.key] ?? []),
         {
           uuid: "",
-          outlet_uuid: placement_add_action.outlet_uuid,
-          active_start_date: placement_add_action.active_start_date,
+          outlet_uuid: "",
+          active_start_date: get_today_input_value(),
+          uuid_jabatan_master: "",
+          jabatan_is_active: true,
           key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         },
       ];
@@ -258,7 +264,6 @@ export default function PengaturanRowSheet({
 
       return apply_field_change(field, next_draft, next_placements);
     });
-    setPlacementAddAction(null);
   };
 
   const confirm_delete_placement = () => {
@@ -470,9 +475,9 @@ export default function PengaturanRowSheet({
                       return (
                         <div
                           key={placement.key ?? `${field.key}-${index}`}
-                          className="flex items-center gap-2 rounded-lg border bg-muted/20 p-3"
+                          className="flex items-start gap-2 rounded-lg border bg-muted/20 p-3"
                         >
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 space-y-2">
                             <OptionDropdown
                               id={`${field.key}-${index}`}
                               value={current_value}
@@ -515,20 +520,106 @@ export default function PengaturanRowSheet({
                               searchPlaceholder="Cari outlet..."
                               emptyMessage="Outlet tidak ditemukan."
                             />
+                            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                              <div>
+                                <OptionDropdown
+                                  id={`${field.key}-${index}-jabatan`}
+                                  value={String(
+                                    placement.uuid_jabatan_master ?? "",
+                                  )}
+                                  options={[
+                                    { value: "", label: "Pilih jabatan" },
+                                    ...(field.jabatan_options ?? []),
+                                  ]}
+                                  onValueChange={(next_value) =>
+                                    setDraft((current) => {
+                                      const next_placements = (
+                                        current[field.key] ?? []
+                                      ).map((item, item_index) =>
+                                        item_index === index
+                                          ? {
+                                              ...item,
+                                              uuid_jabatan_master: next_value,
+                                              jabatan_name:
+                                                field.jabatan_options?.find(
+                                                  (option) =>
+                                                    option.value === next_value,
+                                                )?.label ?? "",
+                                            }
+                                          : item,
+                                      );
+
+                                      return {
+                                        ...current,
+                                        [field.key]: next_placements,
+                                      };
+                                    })
+                                  }
+                                  ariaLabel={`Pilih jabatan penempatan ${index + 1}`}
+                                  searchable
+                                  searchPlaceholder="Cari jabatan..."
+                                  emptyMessage="Jabatan tidak ditemukan."
+                                />
+                              </div>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(placement.jabatan_is_active)}
+                                  onChange={(event) =>
+                                    setDraft((current) => ({
+                                      ...current,
+                                      [field.key]: (current[field.key] ?? []).map(
+                                        (item, item_index) =>
+                                          item_index === index
+                                            ? {
+                                                ...item,
+                                                jabatan_is_active:
+                                                  event.target.checked,
+                                              }
+                                            : item,
+                                      ),
+                                    }))
+                                  }
+                                  className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
+                                />
+                                <span>Aktif</span>
+                              </label>
+                            </div>
                           </div>
                           <Button
                             type="button"
                             variant="delete"
                             size="icon-sm"
                             className="shrink-0"
-                            onClick={() =>
+                            onClick={() => {
+                              if (!placement.uuid) {
+                                setDraft((current) => {
+                                  const next_placements = (
+                                    current[field.key] ?? []
+                                  ).filter(
+                                    (_, item_index) => item_index !== index,
+                                  );
+                                  const next_draft = {
+                                    ...current,
+                                    [field.key]: next_placements,
+                                  };
+
+                                  return apply_field_change(
+                                    field,
+                                    next_draft,
+                                    next_placements,
+                                  );
+                                });
+                                return;
+                              }
+
                               setPlacementDeleteAction({
                                 field,
                                 index,
                                 placement,
                                 inactive_start_date: get_today_input_value(),
-                              })
-                            }
+                              });
+                            }}
                           >
                             <Trash2Icon className="size-4" />
                             <span className="sr-only">Hapus penempatan</span>
@@ -544,13 +635,7 @@ export default function PengaturanRowSheet({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() =>
-                      setPlacementAddAction({
-                        field,
-                        outlet_uuid: "",
-                        active_start_date: get_today_input_value(),
-                      })
-                    }
+                    onClick={() => add_placement(field)}
                     className="w-full"
                   >
                     <PlusIcon className="size-4" />
@@ -667,92 +752,6 @@ export default function PengaturanRowSheet({
           </Button>
         </div>
       </SheetContent>
-      <DialogPrimitive.Root
-        open={Boolean(placement_add_action)}
-        onOpenChange={(next_open) => {
-          if (!next_open) {
-            setPlacementAddAction(null);
-          }
-        }}
-      >
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />
-          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <DialogPrimitive.Title className="font-heading text-lg font-semibold">
-                  Tambah Penempatan
-                </DialogPrimitive.Title>
-                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                  Pilih outlet dan tanggal mulai efektif penempatan.
-                </DialogPrimitive.Description>
-              </div>
-              <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
-                <XIcon className="size-4" />
-                <span className="sr-only">Tutup</span>
-              </DialogPrimitive.Close>
-            </div>
-            <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <FieldLabel htmlFor="placement-add-outlet" label="Outlet" required />
-                <OptionDropdown
-                  id="placement-add-outlet"
-                  value={placement_add_action?.outlet_uuid ?? ""}
-                  onValueChange={(next_value) =>
-                    setPlacementAddAction((current) =>
-                      current ? { ...current, outlet_uuid: next_value } : current,
-                    )
-                  }
-                  options={[
-                    { value: "", label: "Pilih outlet" },
-                    ...(placement_add_action?.field?.options?.filter((option) => {
-                      const selected_outlet_values = new Set(
-                        (draft[placement_add_action.field.key] ?? [])
-                          .map((item) => String(item?.outlet_uuid ?? "").trim())
-                          .filter(Boolean),
-                      );
-
-                      return !selected_outlet_values.has(option.value);
-                    }) ?? []),
-                  ]}
-                  searchable
-                  searchPlaceholder="Cari outlet..."
-                  emptyMessage="Outlet tidak ditemukan."
-                />
-              </div>
-              <div className="space-y-2">
-                <FieldLabel
-                  htmlFor="placement-add-date"
-                  label="Tanggal mulai penempatan"
-                  required
-                />
-                <Input
-                  id="placement-add-date"
-                  type="date"
-                  value={placement_add_action?.active_start_date ?? ""}
-                  onChange={(event) =>
-                    setPlacementAddAction((current) =>
-                      current
-                        ? { ...current, active_start_date: event.target.value }
-                        : current,
-                    )
-                  }
-                />
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <DialogPrimitive.Close asChild>
-                <Button type="button" variant="outline">
-                  Batal
-                </Button>
-              </DialogPrimitive.Close>
-              <Button type="button" onClick={confirm_add_placement}>
-                Tambah
-              </Button>
-            </div>
-          </DialogPrimitive.Popup>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
       <DialogPrimitive.Root
         open={Boolean(placement_delete_action)}
         onOpenChange={(next_open) => {

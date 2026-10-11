@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
+import { buildSlipGajiApiUrl } from "@/lib/slipGajiApi";
 
 const ALL = "all";
 
@@ -81,14 +82,12 @@ function summarize(rows) {
 }
 
 async function fetch_slip_gaji_rows(period, selected_outlet) {
-  const api_url = process.env.NILAI_MAGANG_SLIP_GAJI_API_URL;
+  const api_url = buildSlipGajiApiUrl({
+    legacy_env_name: "NILAI_MAGANG_SLIP_GAJI_API_URL",
+    path_env_name: "NILAI_MAGANG_SLIP_GAJI_API_PATH_URL",
+    fallback_path: "rekap-nilai-rapot-mentee",
+  });
   const api_key = process.env.APOTEKKU_API_KEY;
-
-  if (!api_url) {
-    throw new Error(
-      "Environment variable NILAI_MAGANG_SLIP_GAJI_API_URL belum diatur.",
-    );
-  }
 
   if (!api_key) {
     throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");

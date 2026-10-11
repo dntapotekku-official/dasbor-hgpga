@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { dedupeByUuid } from "@/lib/utils";
+import { buildSlipGajiApiUrl } from "@/lib/slipGajiApi";
 
 const DEFAULT_OUTLET_PASSWORD = "apotekku";
 
@@ -17,12 +18,12 @@ function normalizeOutletMatchName(value) {
 }
 
 export async function fetchOutletPayload() {
-  const url = process.env.OUTLET_SLIP_GAJI_API_URL;
+  const url = buildSlipGajiApiUrl({
+    legacy_env_name: "OUTLET_SLIP_GAJI_API_URL",
+    path_env_name: "CABANG_SLIP_GAJI_API_PATH_URL",
+    fallback_path: "cabang",
+  });
   const api_key = process.env.APOTEKKU_API_KEY;
-
-  if (!url) {
-    throw new Error("Environment variable OUTLET_SLIP_GAJI_API_URL belum diatur.");
-  }
 
   if (!api_key) {
     throw new Error("Environment variable APOTEKKU_API_KEY belum diatur.");
@@ -35,14 +36,14 @@ export async function fetchOutletPayload() {
   });
 
   if (!result.ok) {
-    throw new Error(`Gagal menyinkronkan OUTLET_SLIP_GAJI_API_URL: ${result.status}`);
+    throw new Error(`Gagal menyinkronkan data cabang Slip Gaji: ${result.status}`);
   }
 
   const response = await result.json();
   const payload = response.data ?? response;
 
   if (!Array.isArray(payload)) {
-    throw new Error("Response OUTLET_SLIP_GAJI_API_URL harus berupa array data outlet.");
+    throw new Error("Response data cabang Slip Gaji harus berupa array data outlet.");
   }
 
   return payload;
