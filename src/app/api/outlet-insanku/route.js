@@ -48,6 +48,8 @@ export const POST = async () => {
       data: data.data,
     });
   } catch (error) {
+    console.error("Sinkronisasi penempatan InsanKu gagal:", error);
+
     return NextResponse.json(
       buildApiErrorResponse(
         error,

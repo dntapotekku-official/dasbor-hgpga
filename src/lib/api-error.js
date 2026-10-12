@@ -42,6 +42,14 @@ export function getFriendlyApiErrorMessage(
     return "Data relasi belum lengkap. Pastikan master outlet dan InsanKu sudah disinkronkan terlebih dahulu.";
   }
 
+  if (code === "P2021" || code === "P2022") {
+    return "Struktur database belum sesuai versi aplikasi. Jalankan migration database terbaru.";
+  }
+
+  if (code === "P2028" || message.includes("Transaction already closed")) {
+    return "Sinkronisasi melebihi batas waktu transaksi. Silakan jalankan sinkronisasi kembali.";
+  }
+
   if (message.includes("Environment variable")) {
     return "Konfigurasi sinkronisasi belum lengkap. Periksa pengaturan API di environment.";
   }

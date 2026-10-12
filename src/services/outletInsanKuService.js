@@ -296,130 +296,135 @@ export async function syncOutletInsanKu() {
     .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
   let synced_jabatan_insanku = 0;
 
-  await prisma.$transaction(async (tx) => {
-    for (const item of syncable_outlet_insanku) {
-      await tx.tbl_outlet_insanku.upsert({
-        where: {
-          uuid_outlet_uuid_insanku: {
+  await prisma.$transaction(
+    async (tx) => {
+      for (const item of syncable_outlet_insanku) {
+        const active_relation = await tx.tbl_outlet_insanku.upsert({
+          where: {
+            uuid_outlet_uuid_insanku: {
+              uuid_outlet: item.uuid_outlet,
+              uuid_insanku: item.uuid_insanku,
+            },
+          },
+          update: {
+            deleted_at: null,
+            is_active: true,
+            is_skip_sync: false,
+          },
+          create: {
+            uuid: randomUUID(),
             uuid_outlet: item.uuid_outlet,
             uuid_insanku: item.uuid_insanku,
+            is_active: true,
           },
-        },
-        update: {
-          deleted_at: null,
-          is_active: true,
-          is_skip_sync: false,
-        },
-        create: {
-          uuid: randomUUID(),
-          uuid_outlet: item.uuid_outlet,
-          uuid_insanku: item.uuid_insanku,
-          is_active: true,
-        },
-      });
-      const active_relation = await tx.tbl_outlet_insanku.findUnique({
-        where: {
-          uuid_outlet_uuid_insanku: {
-            uuid_outlet: item.uuid_outlet,
-            uuid_insanku: item.uuid_insanku,
-          },
-        },
-        select: { uuid: true },
-      });
-
-      if (active_relation) {
-        await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
-
-        const is_jabatan_synced = await upsertJabatanInsanKu(tx, {
-          jabatan_master_map,
-          uuid_outlet_insanku: active_relation.uuid,
-          uuid_jabatan_master: jabatan_relation_map.get(buildRelationKey(item))
-            ?.uuid_jabatan_master,
+          select: { uuid: true },
         });
 
-        if (is_jabatan_synced) {
-          synced_jabatan_insanku += 1;
+        if (active_relation) {
+          await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
+
+          const is_jabatan_synced = await upsertJabatanInsanKu(tx, {
+            jabatan_master_map,
+            uuid_outlet_insanku: active_relation.uuid,
+            uuid_jabatan_master: jabatan_relation_map.get(
+              buildRelationKey(item),
+            )?.uuid_jabatan_master,
+          });
+
+          if (is_jabatan_synced) {
+            synced_jabatan_insanku += 1;
+          }
         }
       }
-    }
 
-    const current_relations = await tx.tbl_outlet_insanku.findMany({
-      where: {
-        uuid_insanku: {
-          notIn: Array.from(skipped_placement_insanku_uuid_set),
-          in: Array.from(valid_insanku_uuid_set),
+      const current_relations = await tx.tbl_outlet_insanku.findMany({
+        where: {
+          uuid_insanku: {
+            notIn: Array.from(skipped_placement_insanku_uuid_set),
+            in: Array.from(valid_insanku_uuid_set),
+          },
+          uuid_outlet: {
+            in: Array.from(valid_outlet_uuid_set),
+          },
+          deleted_at: null,
         },
-        uuid_outlet: {
-          in: Array.from(valid_outlet_uuid_set),
+        select: {
+          uuid_outlet: true,
+          uuid_insanku: true,
+          is_skip_sync: true,
         },
-        deleted_at: null,
-      },
-      select: {
-        uuid_outlet: true,
-        uuid_insanku: true,
-        is_skip_sync: true,
-      },
-    });
-    const incoming_relation_key_set = new Set(
-      syncable_outlet_insanku.map((item) => buildRelationKey(item)),
-    );
-    const removed_relation_keys = current_relations
-      .filter((item) => !item.is_skip_sync)
-      .filter((item) => !incoming_relation_key_set.has(buildRelationKey(item)))
-      .map((item) => buildRelationKey(item));
-
-    if (removed_relation_keys.length > 0) {
-      const deleted_at = new Date();
-
-      await Promise.all(
-        removed_relation_keys.map((relation_key) => {
-          const [uuid_outlet, uuid_insanku] = relation_key.split(":");
-
-          return tx.tbl_outlet_insanku
-            .findMany({
-              where: {
-                uuid_outlet,
-                uuid_insanku,
-                deleted_at: null,
-                is_skip_sync: false,
-              },
-              select: { uuid: true },
-            })
-            .then(async (relations) => {
-              const relation_uuids = relations.map((item) => item.uuid);
-
-              await tx.tbl_outlet_insanku.updateMany({
-                where: {
-                  uuid: {
-                    in: relation_uuids,
-                  },
-                },
-                data: {
-                  is_active: false,
-                },
-              });
-              await tx.tbl_jabatan_insanku.updateMany({
-                where: {
-                  uuid_outlet_insanku: {
-                    in: relation_uuids,
-                  },
-                  deleted_at: null,
-                },
-                data: {
-                  is_active: false,
-                },
-              });
-
-              await Promise.all(
-                relations.map((relation) =>
-                  openOutletInsanKuInactivePeriod(tx, relation.uuid, deleted_at),
-                ),
-              );
-            });
-        }),
+      });
+      const incoming_relation_key_set = new Set(
+        syncable_outlet_insanku.map((item) => buildRelationKey(item)),
       );
-    }
-  });
+      const removed_relation_keys = current_relations
+        .filter((item) => !item.is_skip_sync)
+        .filter(
+          (item) => !incoming_relation_key_set.has(buildRelationKey(item)),
+        )
+        .map((item) => buildRelationKey(item));
+
+      if (removed_relation_keys.length > 0) {
+        const deleted_at = new Date();
+
+        await Promise.all(
+          removed_relation_keys.map((relation_key) => {
+            const [uuid_outlet, uuid_insanku] = relation_key.split(":");
+
+            return tx.tbl_outlet_insanku
+              .findMany({
+                where: {
+                  uuid_outlet,
+                  uuid_insanku,
+                  deleted_at: null,
+                  is_skip_sync: false,
+                },
+                select: { uuid: true },
+              })
+              .then(async (relations) => {
+                const relation_uuids = relations.map((item) => item.uuid);
+
+                await tx.tbl_outlet_insanku.updateMany({
+                  where: {
+                    uuid: {
+                      in: relation_uuids,
+                    },
+                  },
+                  data: {
+                    is_active: false,
+                  },
+                });
+                await tx.tbl_jabatan_insanku.updateMany({
+                  where: {
+                    uuid_outlet_insanku: {
+                      in: relation_uuids,
+                    },
+                    deleted_at: null,
+                  },
+                  data: {
+                    is_active: false,
+                  },
+                });
+
+                await Promise.all(
+                  relations.map((relation) =>
+                    openOutletInsanKuInactivePeriod(
+                      tx,
+                      relation.uuid,
+                      deleted_at,
+                    ),
+                  ),
+                );
+              });
+          }),
+        );
+      }
+    },
+    {
+      maxWait: 10_000,
+      timeout: 120_000,
+    },
+  );
 
   return {
     success: true,

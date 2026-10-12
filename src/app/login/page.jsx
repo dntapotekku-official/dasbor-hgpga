@@ -83,7 +83,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1">
-              <CardTitle className="my-2">Performance Report</CardTitle>
+              <CardTitle className="my-2">PERFORMANCE REPORT</CardTitle>
               <CardDescription>
                 Silahkan Masuk
               </CardDescription>
@@ -148,7 +148,7 @@ export default function LoginPage() {
               Masuk dengan DashboardKU
             </a>
             <CardDescription className="mt-3 text-center">
-              Lupa kata sandi? hubungi administrator.
+              Lupa kata sandi? <strong>hubungi administrator.</strong>
             </CardDescription>
           </CardContent>
         </Card>
