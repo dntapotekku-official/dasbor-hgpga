@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Performance Report",
-  description: "Performance Report",
+  description: "Platform pelaporan dan analisis kinerja outlet ApotekKu yang terintegrasi untuk memantau pencapaian target, mengevaluasi performa, dan mendukung pengambilan keputusan berbasis data.",
   icons: {
     icon: "/apotekku-logo-legal.png",
   },
