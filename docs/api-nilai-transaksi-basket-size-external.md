@@ -105,6 +105,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
   "rows": [
     {
       "no": 1,
+      "uuid_outlet": "2f90f2bf-ff4a-4c31-9b0f-0123456789ab",
       "outlet": "ApotekKu No. 52 Ampenan Mataram",
       "jenis": "Non Pariwisata",
       "nilai_transaksi": {
@@ -140,6 +141,17 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
 | `summary_nt` | Object | Ringkasan total/rata-rata nilai transaksi semua outlet. |
 | `summary_bs` | Object | Ringkasan total/rata-rata basket size semua outlet. |
 | `rows` | Array | Daftar outlet dengan kolom seperti laporan pemantauan. |
+
+## Field Row
+
+| Field | Keterangan |
+| --- | --- |
+| `no` | Nomor urut baris. |
+| `uuid_outlet` | UUID outlet. |
+| `outlet` | Nama outlet. |
+| `jenis` | Kategori/jenis outlet. |
+| `nilai_transaksi` | Data nilai transaksi outlet. |
+| `basket_size` | Data basket size outlet. |
 
 ## Field Nilai Transaksi
 

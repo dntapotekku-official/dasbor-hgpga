@@ -736,6 +736,7 @@ function get_external_category_label(row) {
 function map_external_nilai_transaksi_basket_size_row(row, index) {
   return {
     no: index + 1,
+    uuid_outlet: row.uuid,
     outlet: row.outlet_name,
     jenis: get_external_category_label(row),
     nilai_transaksi: {

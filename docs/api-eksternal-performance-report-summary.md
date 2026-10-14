@@ -54,7 +54,16 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
   "tanggal": "2026-10-09",
   "summary_nt": {},
   "summary_bs": {},
-  "rows": []
+  "rows": [
+    {
+      "no": 1,
+      "uuid_outlet": "2f90f2bf-ff4a-4c31-9b0f-0123456789ab",
+      "outlet": "ApotekKu No. 52 Ampenan Mataram",
+      "jenis": "Non Pariwisata",
+      "nilai_transaksi": {},
+      "basket_size": {}
+    }
+  ]
 }
 ```
 
