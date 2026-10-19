@@ -621,7 +621,7 @@ function map_metric_rows({
   });
 }
 
-/** Mengambil outlet aktif yang memiliki data metrik pada periode terpilih. */
+/** Mengambil outlet aktif yang memiliki data metrik pada periode terpilih atau pembanding. */
 function filter_outlets_by_metric_period(outlets, metric_rows) {
   const metric_outlet_uuids = new Set(
     metric_rows
@@ -1056,8 +1056,10 @@ export async function getNilaiTransaksiBasketSize({
     [
       ...current_nilai_transaksi,
       ...current_month_nilai_transaksi,
+      ...last_nilai_transaksi,
       ...current_basket_size,
       ...current_month_basket_size,
+      ...last_basket_size,
     ],
   );
 
@@ -2457,6 +2459,31 @@ export async function bulkDeleteBasketSizeRange(payload) {
 // Import data NS/BS
 // ============================================================================
 
+/** Mengosongkan data aktif pada rentang impor sebelum diisi ulang dalam transaksi yang sama. */
+async function reset_import_metric_period(tx, {
+  model,
+  metric,
+  from_date,
+  to_date,
+  member_outlet_uuid,
+}) {
+  const where = {
+    deleted_at: null,
+    ...build_exact_range_where(from_date, to_date),
+    ...(member_outlet_uuid ? { uuid_outlet: member_outlet_uuid } : {}),
+  };
+  const data = {
+    active_key: null,
+    deleted_at: new Date(),
+  };
+
+  await tx[model].updateMany({ where, data });
+  await tx.tbl_kunjungan.updateMany({
+    where: { ...where, metric },
+    data,
+  });
+}
+
 /** Mengimpor data Nilai Transaksi dari laporan outlet. */
 export function importNilaiTransaksi({
   file_path,
@@ -2560,6 +2587,14 @@ export async function importNilaiTransaksiBulanan({
   );
 
   await prisma.$transaction(async (tx) => {
+    await reset_import_metric_period(tx, {
+      model: "tbl_total_penerimaan_pendapatan",
+      metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
+      from_date: parsed_from_date,
+      to_date,
+      member_outlet_uuid,
+    });
+
     for (const row of aggregated_rows) {
       const monthly_key = build_active_range_key(
         row.uuid_outlet,
@@ -2698,7 +2733,7 @@ export async function importNilaiTransaksiBulanan({
 
   return {
     success: true,
-    message: `Impor nilai transaksi berhasil untuk ${aggregated_rows.length} outlet pada periode ${period_key}.`,
+    message: `Impor nilai transaksi berhasil. Data periode ${period_key} diganti dengan ${aggregated_rows.length} outlet dari file.`,
     data: {
       imported_count: aggregated_rows.length,
       imported_outlet_count: aggregated_rows.length,
@@ -2805,6 +2840,14 @@ export async function importBasketSize({
   );
 
   await prisma.$transaction(async (tx) => {
+    await reset_import_metric_period(tx, {
+      model: "tbl_jumlah_sku",
+      metric: KUNJUNGAN_METRIC_BASKET_SIZE,
+      from_date,
+      to_date,
+      member_outlet_uuid,
+    });
+
     for (const row of aggregated_rows) {
       const active_key = build_active_range_key(
         row.uuid_outlet,
@@ -2944,7 +2987,7 @@ export async function importBasketSize({
 
   return {
     success: true,
-    message: `Impor basket size berhasil untuk ${aggregated_rows.length} outlet pada periode ${range_key}.`,
+    message: `Impor basket size berhasil. Data periode ${range_key} diganti dengan ${aggregated_rows.length} outlet dari file.`,
     data: {
       imported_count: aggregated_rows.length,
       imported_outlet_count: aggregated_rows.length,

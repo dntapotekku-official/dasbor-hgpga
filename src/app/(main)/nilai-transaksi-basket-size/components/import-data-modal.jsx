@@ -92,9 +92,9 @@ export default function ImportDataModal({
   const helper_text = import_type === "kunjungan"
     ? "Pastikan file memiliki kolom Outlet dan Kunjungan."
     : import_type === "nilai-transaksi"
-      ? "File dipakai untuk kolom harian atau periode berjalan sesuai rentang tanggal yang dipilih."
+      ? "Data Nilai Transaksi pada rentang tanggal yang sama akan diganti sesuai file. Outlet yang tidak ada di file akan dikeluarkan dari periode tersebut."
       : import_type === "basket-size"
-      ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, Jumlah Sku, dan Jumlah Transaksi sebagai kunjungan dilayani."
+      ? "Pastikan sheet Rekap Penjualan memiliki kolom Outlet, Tanggal Penjualan, Jumlah Sku, dan Jumlah Transaksi. Data Basket Size pada rentang tanggal yang sama akan diganti sesuai file, termasuk mengeluarkan outlet yang tidak ada di file."
       : "Pastikan file memiliki sheet Laporan Penjualan dan Statistik Kunjungan.";
 
   return (
