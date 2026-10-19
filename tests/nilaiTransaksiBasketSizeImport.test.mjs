@@ -15,7 +15,7 @@ const loadService = new Function(
 const date = (value) => new Date(`${value}T00:00:00.000Z`);
 const models = ["tbl_total_penerimaan_pendapatan", "tbl_jumlah_sku", "tbl_kunjungan"];
 const outlets = Array.from({ length: 90 }, (_, i) => ({
-  uuid: `outlet-${i}`, name: `Outlet ${i}`, deleted_at: null, is_active: true, excep: false,
+  uuid: `outlet-${i}`, name: `Outlet ${i}`, deleted_at: null, is_active: true, is_excluded: false,
 }));
 
 function matches(row, where) {

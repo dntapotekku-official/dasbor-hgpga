@@ -59,7 +59,7 @@ function serialize_row(row, index) {
     rank: index + 1,
     uuid: row.uuid,
     uuid_insanku: row.uuid_insanku,
-    employee_name: row.insanku?.name ?? "InsanKu tidak ditemukan",
+    employee_name: row.insanku?.name ?? "InsanKU tidak ditemukan",
     uuid_outlet: row.uuid_outlet,
     outlet_name: row.outlet?.name ?? "Outlet tidak ditemukan",
     value: Number(row.value),
@@ -201,7 +201,7 @@ async function save_rows(rows, period, selected_outlet) {
         data: non_slip_employees.map((row) => ({
           uuid: row.uuid_insanku,
           nik: null,
-          name: row.employee_name || "InsanKu Nilai Rapor",
+          name: row.employee_name || "InsanKU Nilai Rapor",
           username: `rapor-${randomUUID()}@internal`,
           password: null,
           is_slip_gaji_account: false,
@@ -279,7 +279,7 @@ export async function getNilaiMagang({ month, year, outlet_uuid } = {}) {
       },
     }),
     prisma.tbl_outlet.findMany({
-      where: { deleted_at: null, is_active: true, excep: false },
+      where: { deleted_at: null, is_active: true, is_excluded: false },
       orderBy: { name: "asc" },
       select: { uuid: true, name: true },
     }),

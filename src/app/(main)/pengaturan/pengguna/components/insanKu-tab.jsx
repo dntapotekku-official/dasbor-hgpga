@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
   FilterIcon,
+  ListChecksIcon,
   PencilIcon,
   PlusIcon,
   RotateCcwIcon,
@@ -23,6 +24,7 @@ import FieldLabel from "@/components/field-label";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
+import BulkGofitkuExclusionModal from "./bulk-gofitku-exclusion-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,6 +93,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     useState(false);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_creating, setIsCreating] = useState(false);
+  const [is_bulk_open, setIsBulkOpen] = useState(false);
+  const [is_bulk_saving, setIsBulkSaving] = useState(false);
   const [sort_key, setSortKey] = useState("name");
   const [sort_direction, setSortDirection] = useState("asc");
   const [is_filter_modal_open, setIsFilterModalOpen] = useState(false);
@@ -206,6 +210,31 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     setSortDirection("asc");
   };
 
+  const pending_gofitku_rows = useMemo(() => insanku
+    .filter((item) => item.is_active && item.is_gofitku_setup_pending)
+    .sort((a, b) => a.name.localeCompare(b.name, "id-ID")), [insanku]);
+
+  const handle_bulk_gofitku_save = async (settings) => {
+    setIsBulkSaving(true);
+    try {
+      const response = await fetch("/api/insanku", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "bulk_gofitku_exclusion", ...settings }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message || "Gagal menyimpan pengaturan GoFitKu.");
+      const selected = new Set(settings.uuid_insanku);
+      setInsanKu((current) => current.map((item) => selected.has(item.uuid) ? {
+        ...item, is_gofitku_setup_pending: false,
+        is_exclude_penjualan_gofitku: settings.is_exclude_penjualan_gofitku,
+        gofitku_exclusion_start_date: settings.gofitku_exclusion_start_date,
+        gofitku_exclusion_end_date: settings.gofitku_exclusion_end_date,
+      } : item));
+      setIsBulkOpen(false);
+      toast.success(payload.message);
+    } finally { setIsBulkSaving(false); }
+  };
+
   const fetch_insanku = useCallback(async () => {
     const api_endpoint = is_non_slip_gaji
       ? "/api/insanku-non-slip-gaji"
@@ -225,7 +254,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
     if (!insanku_result.ok || !insanku_data.success) {
       throw new Error(
-        insanku_data.message || "Gagal mengambil data InsanKu.",
+        insanku_data.message || "Gagal mengambil data InsanKU.",
       );
     }
 
@@ -255,7 +284,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
           toast.error(
             error instanceof Error
               ? error.message
-              : "Gagal mengambil data InsanKu.",
+              : "Gagal mengambil data InsanKU.",
           );
         }
       }
@@ -310,7 +339,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
       if (!insanku_result.ok || !insanku_payload.success) {
         throw new Error(
-          insanku_payload.message || "Sinkronisasi data InsanKu gagal dijalankan.",
+          insanku_payload.message || "Sinkronisasi data InsanKU gagal dijalankan.",
         );
       }
 
@@ -322,7 +351,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       if (!outlet_insanku_result.ok || !outlet_insanku_payload.success) {
         throw new Error(
           outlet_insanku_payload.message ||
-            "Sinkronisasi penempatan InsanKu gagal dijalankan.",
+            "Sinkronisasi penempatan InsanKU gagal dijalankan.",
         );
       }
 
@@ -330,12 +359,12 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       setOutlet(latest_data.outlet);
       setJabatan(latest_data.jabatan);
       setInsanKu(latest_data.insanku);
-      toast.success("Sinkronisasi data InsanKu berhasil.");
+      toast.success("Sinkronisasi data InsanKU berhasil.");
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Terjadi kesalahan saat sinkronisasi InsanKu.",
+          : "Terjadi kesalahan saat sinkronisasi InsanKU.",
       );
     } finally {
       setSyncStatus("idle");
@@ -378,8 +407,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       throw new Error(
         payload.message ||
           (is_new
-            ? "Gagal menambahkan data InsanKu."
-            : "Gagal memperbarui data InsanKu."),
+            ? "Gagal menambahkan data InsanKU."
+            : "Gagal memperbarui data InsanKU."),
       );
     }
 
@@ -395,8 +424,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     toast.success(
       payload.message ||
         (is_new
-          ? "Data InsanKu Non Slip Gaji berhasil ditambahkan."
-          : "Data InsanKu berhasil diperbarui."),
+          ? "Data InsanKU Non Slip Gaji berhasil ditambahkan."
+          : "Data InsanKU berhasil diperbarui."),
     );
   };
 
@@ -409,8 +438,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       ? "/api/insanku-non-slip-gaji"
       : "/api/insanku";
     const account_label = is_non_slip_gaji
-      ? "InsanKu Non Slip Gaji"
-      : "InsanKu Slip Gaji";
+      ? "InsanKU Non Slip Gaji"
+      : "InsanKU Slip Gaji";
     const action_label = is_non_slip_gaji ? "menghapus" : "mereset";
     try {
       setIsProcessingAccountAction(true);
@@ -466,7 +495,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
           <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
           <p className="text-sm leading-5">
-            Sebelum menekan <strong>Sinkron InsanKu</strong>, {" "}
+            Sebelum menekan <strong>Sinkron InsanKU</strong>, {" "}
             <strong>sinkronkan Outlet terlebih dahulu</strong> melalui menu Outlet.
           </p>
         </div>
@@ -476,37 +505,37 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         <CardHeader className="border-b">
           <CardTitle>
             {is_non_slip_gaji
-              ? "InsanKu (Non Slip Gaji)"
-              : "InsanKu (Slip Gaji)"}
+              ? "InsanKU (Non Slip Gaji)"
+              : "InsanKU (Slip Gaji)"}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-start">
+            <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-start">
               <FilterField
                 label="Pencarian"
                 htmlFor="filter-pencarian-insanku"
-                className="w-full lg:max-w-sm"
+                className="w-full lg:min-w-48 lg:max-w-sm lg:flex-1"
               >
                 <Input
                   id="filter-pencarian-insanku"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari nama InsanKu..."
+                  placeholder="Cari nama InsanKU..."
                 />
               </FilterField>
               {!is_non_slip_gaji ? (
-                <FilterField label="Outlet" htmlFor="filter-outlet-insanku">
+                <FilterField label="Outlet" htmlFor="filter-outlet-insanku" className="w-full lg:w-64 lg:shrink-0">
                   <OptionDropdown
                     id="filter-outlet-insanku"
                     value={selected_outlet}
                     onValueChange={setSelectedOutlet}
                     options={outlet_options}
                     searchable
-                    ariaLabel="Filter outlet InsanKu"
+                    ariaLabel="Filter outlet InsanKU"
                     searchPlaceholder="Cari outlet..."
                     emptySearchMessage="Outlet tidak ditemukan."
-                    triggerClassName="w-full lg:w-64"
+                    triggerClassName="w-full"
                   />
                 </FilterField>
               ) : null}
@@ -535,18 +564,23 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   className="w-full shrink-0 lg:ml-auto lg:w-auto"
                 >
                   <PlusIcon className="size-4" />
-                  Tambah InsanKu Non Slip Gaji
+                  Tambah InsanKU Non Slip Gaji
                 </Button>
               ) : (
+                <div className="flex w-full flex-col gap-3 sm:flex-row lg:ml-auto lg:w-auto">
+                <Button type="button" className="w-full shrink-0 sm:w-auto" disabled={sync_status === "syncing" || is_bulk_saving} onClick={() => setIsBulkOpen(true)}>
+                  <ListChecksIcon className="size-4" />Atur Banyak{pending_gofitku_rows.length > 0 ? ` (${pending_gofitku_rows.length})` : ""}
+                </Button>
                 <SyncActionButton
                   onConfirm={sync_insanku_handler}
-                  title="Konfirmasi sinkronisasi InsanKu"
-                  description="Sinkronisasi akan memperbarui data InsanKu beserta penempatan outlet terbaru dari sumber utama."
-                  confirmLabel="Ya, sinkronkan InsanKu"
+                  title="Konfirmasi sinkronisasi InsanKU"
+                  description="Sinkronisasi akan memperbarui data InsanKU beserta penempatan outlet terbaru dari sumber utama."
+                  confirmLabel="Ya, sinkronkan InsanKU"
                   idleLabel="Sinkron"
                   isPending={sync_status === "syncing"}
-                  className="w-full shrink-0 lg:ml-auto lg:w-auto"
+                  className="w-full shrink-0 sm:w-auto"
                 />
+                </div>
               )}
             </div>
 
@@ -702,7 +736,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
               {outlet_filtered_items.length === 0 ? (
                 <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
-                  Tidak ada InsanKu yang cocok dengan pencarian.
+                  Tidak ada InsanKU yang cocok dengan pencarian.
                 </div>
               ) : (
                 <Pagination
@@ -710,7 +744,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   page_size={PAGE_SIZE}
                   total_items={outlet_filtered_items.length}
                   total_pages={total_pages}
-                  item_label="InsanKu"
+                  item_label="InsanKU"
                   on_previous={previous_page}
                   on_next={next_page}
                 />
@@ -723,13 +757,13 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               on_open_change={setIsSheetOpen}
               title={
                 is_creating
-                  ? "Tambah InsanKu Non Slip Gaji"
-                  : `Edit InsanKu (${is_non_slip_gaji ? "Non Slip Gaji" : "Slip Gaji"})`
+                  ? "Tambah InsanKU Non Slip Gaji"
+                  : `Edit InsanKU (${is_non_slip_gaji ? "Non Slip Gaji" : "Slip Gaji"})`
               }
               description={
                 is_creating
-                  ? "Tambahkan akun InsanKu Non Slip Gaji secara manual."
-                  : "Perbarui data InsanKu pada tampilan pengaturan."
+                  ? "Tambahkan akun InsanKU Non Slip Gaji secara manual."
+                  : "Perbarui data InsanKU pada tampilan pengaturan."
               }
               item={selected_insanku}
 	              fields={[
@@ -739,7 +773,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 type: "tabs",
                 disabled: !is_non_slip_gaji,
                 helper: !is_non_slip_gaji
-                  ? "Status mengikuti hasil sinkronisasi API. Jika InsanKu tidak ada dari API, status otomatis menjadi Tidak Aktif."
+                  ? "Status mengikuti hasil sinkronisasi API. Jika InsanKU tidak ada dari API, status otomatis menjadi Tidak Aktif."
                   : undefined,
                 options: [
                   { value: "true", label: "Aktif" },
@@ -759,7 +793,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               {
                 key: "name",
                 label: "Nama",
-                placeholder: "Masukkan nama InsanKu",
+                placeholder: "Masukkan nama InsanKU",
               },
               {
                 key: "username",
@@ -806,8 +840,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                         !has_selected_outlet_placement(draft.outlet_placements),
                       helper: (draft) =>
                         !has_selected_outlet_placement(draft.outlet_placements)
-                          ? "Checkbox ini aktif setelah InsanKu memiliki minimal satu outlet."
-                          : "Checkbox ini berlaku untuk semua penempatan outlet milik InsanKu ini.",
+                          ? "Checkbox ini aktif setelah InsanKU memiliki minimal satu outlet."
+                          : "Checkbox ini berlaku untuk semua penempatan outlet milik InsanKU ini.",
                     },
                     {
                       key: "is_exclude_penjualan_gofitku",
@@ -822,8 +856,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                             },
                       helper: (draft) =>
                         draft.is_exclude_penjualan_gofitku
-                          ? "Isi periode agar InsanKu dikecualikan hanya pada rentang tanggal tersebut."
-                          : "Aktifkan jika InsanKu tidak ikut dihitung pada periode tertentu.",
+                          ? "Isi periode agar InsanKU dikecualikan hanya pada rentang tanggal tersebut."
+                          : "Aktifkan jika InsanKU tidak ikut dihitung pada periode tertentu.",
                     },
                     {
                       key: "gofitku_exclusion_start_date",
@@ -847,6 +881,9 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               ]}
               on_save={handle_save}
             />
+            {!is_non_slip_gaji && is_bulk_open && (
+              <BulkGofitkuExclusionModal rows={pending_gofitku_rows} is_saving={is_bulk_saving} on_open_change={setIsBulkOpen} on_save={handle_bulk_gofitku_save} />
+            )}
             {!is_non_slip_gaji ? (
               <DialogPrimitive.Root
                 open={is_filter_modal_open}
@@ -1000,8 +1037,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 }
               }}
               title={is_non_slip_gaji
-                ? "Hapus InsanKu Non Slip Gaji"
-                : "Reset InsanKu Slip Gaji"}
+                ? "Hapus InsanKU Non Slip Gaji"
+                : "Reset InsanKU Slip Gaji"}
               description={is_non_slip_gaji
                 ? `Data ${account_action_insanku?.name ?? ""} akan dihapus beserta relasi aktifnya. Lanjutkan?`
                 : `Nama dan username ${account_action_insanku?.name ?? ""} akan dikembalikan dari data Slip Gaji. Lanjutkan?`}

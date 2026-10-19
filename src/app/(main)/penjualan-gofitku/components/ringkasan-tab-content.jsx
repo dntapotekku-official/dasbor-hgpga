@@ -39,8 +39,8 @@ function get_percentage_value(total, target) {
   return Number(total || 0) / Number(target);
 }
 
-function get_status(total, target, input = null) {
-  if ((input ?? total) <= 0) {
+function get_status(total, target) {
+  if (total <= 0) {
     return {
       label: "Belum input",
       class_name: "bg-amber-100 text-amber-700",
@@ -155,8 +155,8 @@ function sort_by_key(rows, sort_key, sort_direction, get_value) {
   });
 }
 
-function StatusBadge({ total, target, input, bordered = false }) {
-  const status = get_status(total, target, input);
+function StatusBadge({ total, target, bordered = false }) {
+  const status = get_status(total, target);
 
   return (
     <span
@@ -185,7 +185,6 @@ function PersonRows({ rows, start_index = 0 }) {
         <StatusBadge
           total={row.monthly_total}
           target={row.target}
-          input={row.today_input}
         />
       </TableCell>
     </TableRow>
@@ -212,7 +211,6 @@ function TotalRow({ totals, label = "TOTAL" }) {
         <StatusBadge
           total={totals.monthly_total}
           target={totals.target}
-          input={totals.today_input}
           bordered
         />
       </TableCell>
@@ -419,21 +417,21 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
 }
 
 const RINGKASAN_SUB_TABS = [
-  { value: "outlet-insanku", label: "Outlet & InsanKu" },
+  { value: "outlet-insanku", label: "Outlet & InsanKU" },
   { value: "outlet", label: "Outlet" },
-  { value: "insanku", label: "InsanKu" },
+  { value: "insanku", label: "InsanKU" },
 ];
 
 const SUB_TAB_TITLES = {
-  "outlet-insanku": "Ringkasan Outlet & InsanKu",
+  "outlet-insanku": "Ringkasan Outlet & InsanKU",
   outlet: "Ringkasan Outlet",
-  insanku: "Ringkasan InsanKu",
+  insanku: "Ringkasan InsanKU",
 };
 
 const SEARCH_PLACEHOLDERS = {
-  "outlet-insanku": "Cari nama InsanKu...",
+  "outlet-insanku": "Cari nama InsanKU...",
   outlet: "Cari outlet...",
-  insanku: "Cari nama InsanKu...",
+  insanku: "Cari nama InsanKU...",
 };
 
 function normalize_category(value) {
@@ -795,7 +793,7 @@ export default function RingkasanTabContent({
         <CardContent className="space-y-5">
           {filter_controls}
 
-          {/* Outlet & InsanKu: per outlet dengan rincian per orang */}
+          {/* Outlet & InsanKU: per outlet dengan rincian per orang */}
           <TabsContent
             value="outlet-insanku"
             className="space-y-3"
@@ -927,7 +925,6 @@ export default function RingkasanTabContent({
                             <StatusBadge
                               total={outlet.monthly_total}
                               target={outlet.target}
-                              input={outlet.today_input}
                             />
                           </TableCell>
                         </TableRow>
@@ -959,7 +956,7 @@ export default function RingkasanTabContent({
               ) : null}
           </TabsContent>
 
-          {/* InsanKu: 1 baris per orang */}
+          {/* InsanKU: 1 baris per orang */}
           <TabsContent value="insanku">
             <Table
               className="min-w-[980px]"
@@ -1003,7 +1000,6 @@ export default function RingkasanTabContent({
                             <StatusBadge
                               total={row.monthly_total}
                               target={row.target}
-                              input={row.today_input}
                             />
                           </TableCell>
                         </TableRow>
@@ -1040,7 +1036,6 @@ export default function RingkasanTabContent({
                           <StatusBadge
                             total={insanku_grand_totals.monthly_total}
                             target={insanku_grand_totals.target}
-                            input={insanku_grand_totals.today_input}
                             bordered
                           />
                         </TableCell>
@@ -1064,7 +1059,7 @@ export default function RingkasanTabContent({
                   page_size={PAGE_SIZE}
                   total_items={filtered_sorted_insanku.length}
                   total_pages={insanku_total_pages}
-                  item_label="InsanKu"
+                  item_label="InsanKU"
                   on_previous={previous_insanku_page}
                   on_next={next_insanku_page}
                 />

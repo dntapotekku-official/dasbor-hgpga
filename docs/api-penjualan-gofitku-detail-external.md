@@ -122,10 +122,10 @@ Jika `date=2026-10-09` dikirim, response hanya berisi tanggal tersebut:
 - Tanggal tanpa transaksi tetap dikembalikan dengan `qty: 0`.
 - `qty` adalah akumulasi `qty` dari semua produk GoFitKu pada tanggal response.
 - Jika filter outlet dikirim, total hanya menghitung penjualan outlet yang cocok.
-- Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
-- Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.
+- Penjualan pada tanggal ketika penempatan atau InsanKU sedang nonaktif tidak dihitung.
+- Penjualan pada tanggal ketika InsanKU sedang masuk periode pengecualian GoFitKu tidak dihitung.
 - Data penjualan yang `deleted_at` terisi tidak dihitung.
-- Outlet, penempatan, atau InsanKu yang tidak aktif, deleted, atau outlet `excep` tidak dihitung.
+- Outlet, penempatan, atau InsanKU yang tidak aktif, deleted, atau outlet `is_excluded` tidak dihitung.
 
 ## Response Error
 

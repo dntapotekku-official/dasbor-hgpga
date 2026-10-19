@@ -39,7 +39,7 @@ export function getFriendlyApiErrorMessage(
   }
 
   if (code === "P2003" || message.includes("Foreign key constraint violated")) {
-    return "Data relasi belum lengkap. Pastikan master outlet dan InsanKu sudah disinkronkan terlebih dahulu.";
+    return "Data relasi belum lengkap. Pastikan master outlet dan InsanKU sudah disinkronkan terlebih dahulu.";
   }
 
   if (code === "P2021" || code === "P2022") {

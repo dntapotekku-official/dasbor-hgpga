@@ -9,6 +9,7 @@ import {
 } from "@/lib/number";
 import { outlet_category_slugs } from "@/lib/outletCategories";
 import { prisma } from "@/lib/prisma";
+import { applySummaryExclusions, prepareMetricSummaryRows, summaryTargetCount, summaryExclusionLabel } from "@/lib/ntBsSummaryExclusion";
 
 // ============================================================================
 // Konfigurasi dasar
@@ -348,7 +349,7 @@ function build_basket_size_metrics({
  * Target dirata-ratakan per outlet, sedangkan aktual dihitung dari total dasar.
  */
 function summarize_metric_rows(rows, target_override = {}) {
-  const summary = rows.reduce(
+  const summary = prepareMetricSummaryRows(rows).reduce(
     // rumus all category / per category
     (current, row) => ({
       nt_target: current.nt_target + row.nt_target,
@@ -384,7 +385,6 @@ function summarize_metric_rows(rows, target_override = {}) {
     },
   );
 
-  const row_count = rows.length || 1;
   const nt_daily = summary.nt_daily_kunjungan ? summary.nt_daily_total_revenue / summary.nt_daily_kunjungan : 0;
   const nt_last_month = summary.nt_last_month_kunjungan ? summary.nt_last_month_total_revenue / summary.nt_last_month_kunjungan : 0;
   const nt_current_month = summary.nt_current_month_kunjungan ? summary.nt_current_month_total_revenue / summary.nt_current_month_kunjungan : 0;
@@ -407,7 +407,7 @@ function summarize_metric_rows(rows, target_override = {}) {
     ...build_nilai_transaksi_metrics({
       target: Object.hasOwn(target_override, "nilai_transaksi")
         ? target_override.nilai_transaksi
-        : summary.nt_target / row_count,
+        : summary.nt_target / summaryTargetCount(rows, KUNJUNGAN_METRIC_NILAI_TRANSAKSI),
       daily: nt_daily,
       last_month: nt_last_month,
       current_month: nt_current_month,
@@ -415,7 +415,7 @@ function summarize_metric_rows(rows, target_override = {}) {
     ...build_basket_size_metrics({
       target: Object.hasOwn(target_override, "basket_size")
         ? target_override.basket_size
-        : summary.bs_target / row_count,
+        : summary.bs_target / summaryTargetCount(rows, KUNJUNGAN_METRIC_BASKET_SIZE),
       last_month: bs_last_month,
       current_month: bs_current_month,
     }),
@@ -831,7 +831,7 @@ export async function getNilaiTransaksiBasketSize({
       where: {
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
         ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
       },
       orderBy: {
@@ -868,6 +868,7 @@ export async function getNilaiTransaksiBasketSize({
     nilai_transaksi_ranges,
     basket_size_ranges,
     global_targets,
+    summary_exclusions,
   ] = await Promise.all([
     prisma.tbl_total_penerimaan_pendapatan.findMany({
       where: {
@@ -1043,6 +1044,15 @@ export async function getNilaiTransaksiBasketSize({
       selected_day_start: current_day_start,
       selected_day_end: current_day_end,
     }),
+    prisma.tbl_nt_bs_summary_exclusion.findMany({
+      where: {
+        deleted_at: null,
+        ...outlet_scope,
+        start_date: { lte: current_day_start },
+        end_date: { gte: current_day_start },
+      },
+      select: { uuid_outlet: true, start_date: true, end_date: true, metric: true },
+    }),
   ]);
 
   const current_nilai_transaksi_map = build_nilai_transaksi_map(current_nilai_transaksi, current_kunjungan_nilai_transaksi);
@@ -1063,7 +1073,7 @@ export async function getNilaiTransaksiBasketSize({
     ],
   );
 
-  const rows = map_metric_rows({
+  const rows = applySummaryExclusions(map_metric_rows({
     outlets: metric_outlets,
     current_nilai_transaksi_map,
     current_month_nilai_transaksi_map,
@@ -1073,7 +1083,7 @@ export async function getNilaiTransaksiBasketSize({
     last_basket_size_map,
     nilai_transaksi_target_map,
     basket_size_target_map,
-  });
+  }), summary_exclusions, current_day_start);
 
   // Ringkasan per kategori.
   const category_metrics = Object.fromEntries(
@@ -1230,6 +1240,11 @@ function add_export_data_row(
   ]);
 
   write_export_metric_formulas(row, item);
+  const exclusion_notes = ["nilai_transaksi", "basket_size"].map((metric) => {
+    const label = summaryExclusionLabel(item, metric);
+    return label ? `${metric === "nilai_transaksi" ? "NT" : "BS"}: ${label}` : "";
+  }).filter(Boolean);
+  if (exclusion_notes.length) row.getCell("B").note = exclusion_notes.join("\n");
 
   if (is_highest_daily) {
     row.getCell("E").fill = {
@@ -1246,8 +1261,6 @@ function add_export_average_row({
   sheet,
   category_label,
   metrics,
-  start_row,
-  end_row,
 }) {
   const row = sheet.addRow([
     `RATA-RATA NILAI TRANSAKSI OUTLET ${category_label.toUpperCase()}`,
@@ -1255,18 +1268,8 @@ function add_export_average_row({
   const row_number = row.number;
 
   sheet.mergeCells(`A${row_number}:C${row_number}`);
-  ["D", "L"].forEach((column) => {
-    const metric_key = {
-      D: "nt_target",
-      L: "bs_target",
-    }[column];
-
-    set_export_formula(
-      row.getCell(column),
-      `AVERAGE(${column}${start_row}:${column}${end_row})`,
-      metrics[metric_key],
-    );
-  });
+  row.getCell("D").value = metrics.nt_target;
+  row.getCell("L").value = metrics.bs_target;
 
   ["E", "F", "G", "M", "N"].forEach((column) => {
     const metric_key = {
@@ -1451,7 +1454,6 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
     }
 
     const category_label = export_category_labels[category_key] ?? category_key;
-    const start_row = sheet.rowCount + 1;
     const highest_daily = Math.max(
       ...category_rows.map((row) => to_number(row.nt_daily)),
     );
@@ -1470,8 +1472,6 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
       sheet,
       category_label,
       metrics: data.category_metrics[category_key],
-      start_row,
-      end_row: sheet.rowCount,
     }));
   });
 
@@ -1509,10 +1509,10 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
     sheet.getColumn(column).numFmt = '0.00"%"';
   });
   ["O", "P", "Q", "R"].forEach((column) => {
-    sheet.getColumn(column).numFmt = '0.000"%"';
+    sheet.getColumn(column).numFmt = '0.00"%"';
   });
   ["L", "M", "N"].forEach((column) => {
-    sheet.getColumn(column).numFmt = "0.000";
+    sheet.getColumn(column).numFmt = "0.00";
   });
   sheet.pageSetup.printArea = `A1:R${sheet.rowCount}`;
 
@@ -1545,7 +1545,7 @@ async function assert_active_outlet(uuid_outlet) {
       uuid: normalized_uuid_outlet,
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: {
       uuid: true,
@@ -2520,7 +2520,7 @@ export async function importNilaiTransaksiBulanan({
     where: {
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
       ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
     },
     select: {
@@ -2755,7 +2755,7 @@ export async function importBasketSize({
     where: {
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
       ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
     },
     select: {
@@ -3076,7 +3076,7 @@ async function get_target_outlet_maps() {
     where: {
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     orderBy: {
       name: "asc",

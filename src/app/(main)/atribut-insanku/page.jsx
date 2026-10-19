@@ -283,7 +283,7 @@ export default function AtributInsanKuPage() {
       }
 
       await load_attributes();
-      toast.success(payload.message || "Data atribut InsanKu berhasil disinkronkan.");
+      toast.success(payload.message || "Data atribut InsanKU berhasil disinkronkan.");
     } catch (error) {
       throw new Error(
         error instanceof Error
@@ -613,7 +613,7 @@ export default function AtributInsanKuPage() {
       });
 
       if (!rows.length) {
-        throw new Error("File Excel tidak memiliki data InsanKu.");
+        throw new Error("File Excel tidak memiliki data InsanKU.");
       }
 
       const response = await fetch("/api/atribut-insanku", {
@@ -630,7 +630,7 @@ export default function AtributInsanKuPage() {
       const payload = await response.json();
 
       if (!response.ok || !payload.success) {
-        throw new Error(payload.message || "Impor atribut InsanKu gagal.");
+        throw new Error(payload.message || "Impor atribut InsanKU gagal.");
       }
 
       await load_attributes();
@@ -990,11 +990,11 @@ export default function AtributInsanKuPage() {
     <>
       <div className="px-4 lg:px-6">
         <PageHeading
-          title="Atribut InsanKu"
+          title="Atribut InsanKU"
           description={
             is_member_view
-              ? "Lihat atribut InsanKu yang terhubung dengan outlet Anda."
-              : "Pantau dan kelola kelengkapan atribut InsanKu."
+              ? "Lihat atribut InsanKU yang terhubung dengan outlet Anda."
+              : "Pantau dan kelola kelengkapan atribut InsanKU."
           }
         />
       </div>
@@ -1011,8 +1011,8 @@ export default function AtributInsanKuPage() {
               <InfoIcon className="mt-0.5 size-4 shrink-0 text-sky-600" />
               <p className="text-sm leading-5">
                 {is_member_view
-                  ? "Data atribut InsanKu outlet diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja."
-                  : "Data atribut InsanKu diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja."}
+                  ? "Data atribut InsanKU outlet diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja."
+                  : "Data atribut InsanKU diperbarui otomatis. Anda juga dapat memuat ulang data kapan saja."}
               </p>
             </div>
 
@@ -1020,10 +1020,10 @@ export default function AtributInsanKuPage() {
               <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
                 <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
                 <p className="text-sm leading-5">
-                  Data InsanKu bersumber dari <strong>SlipGaji</strong>. Jika belum
+                  Data InsanKU bersumber dari <strong>SlipGaji</strong>. Jika belum
                   terbaru, {" "}
                   <strong>
-                    sinkronkan melalui menu Pengguna pada tab InsanKu (Slip Gaji)
+                    sinkronkan melalui menu Pengguna pada tab InsanKU (Slip Gaji)
                   </strong>
                   .
                 </p>
@@ -1037,10 +1037,10 @@ export default function AtributInsanKuPage() {
                 <Tabs value={active_category} onValueChange={handle_category_change}>
                   <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl bg-muted/80 p-1">
                   <TabsTrigger value="slip-gaji" className="min-w-max flex-1 px-4 py-2">
-                    InsanKu (Slip Gaji)
+                    InsanKU (Slip Gaji)
                     </TabsTrigger>
                     <TabsTrigger value="non-slip-gaji" className="min-w-max flex-1 px-4 py-2">
-                      InsanKu (Non Slip Gaji)
+                      InsanKU (Non Slip Gaji)
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -1090,7 +1090,7 @@ export default function AtributInsanKuPage() {
                           {summary.filled_count.toLocaleString("id-ID")} / {summary.total_count.toLocaleString("id-ID")}
                         </p>
                         <p className="text-xs opacity-70">
-                          InsanKu sudah memiliki atribut
+                          InsanKU sudah memiliki atribut
                         </p>
                       </Card>
                     ))}
@@ -1105,10 +1105,10 @@ export default function AtributInsanKuPage() {
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
                 <CardTitle className="min-w-0 flex-1">
                   {is_member_view
-                    ? "Data Atribut InsanKu Outlet"
+                    ? "Data Atribut InsanKU Outlet"
                     : `${active_category === "non-slip-gaji"
-                        ? "Data Atribut InsanKu (Non Slip Gaji)"
-                        : "Data Atribut InsanKu (Slip Gaji)"} ${
+                        ? "Data Atribut InsanKU (Non Slip Gaji)"
+                        : "Data Atribut InsanKU (Slip Gaji)"} ${
                         active_tab === "aktif" ? "Aktif" : "Non-Aktif"
                       }`}
                 </CardTitle>
@@ -1163,7 +1163,7 @@ export default function AtributInsanKuPage() {
                       id="filter-pencarian-atribut-insanku"
                       value={search}
                       onChange={handle_search_change}
-                      placeholder="Cari nama InsanKu..."
+                      placeholder="Cari nama InsanKU..."
                       className="pl-9"
                     />
                   </div>
@@ -1182,13 +1182,13 @@ export default function AtributInsanKuPage() {
                     onConfirm={handle_sync_attributes}
                     title={
                       is_member_view
-                        ? "Konfirmasi sinkronisasi InsanKu outlet"
-                        : "Konfirmasi sinkronisasi atribut InsanKu"
+                        ? "Konfirmasi sinkronisasi InsanKU outlet"
+                        : "Konfirmasi sinkronisasi atribut InsanKU"
                     }
                     description={
                       is_member_view
-                        ? "Sistem akan memperbarui data InsanKu dan penempatan outlet. Lanjutkan?"
-                        : "Sistem juga akan mencocokkan NIK InsanKu Non Slip Gaji dengan Slip Gaji. Data atribut dengan NIK yang sama akan otomatis dioper ke akun Slip Gaji dan akun Non Slip Gaji dihapus permanen. Lanjutkan?"
+                        ? "Sistem akan memperbarui data InsanKU dan penempatan outlet. Lanjutkan?"
+                        : "Sistem juga akan mencocokkan NIK InsanKU Non Slip Gaji dengan Slip Gaji. Data atribut dengan NIK yang sama akan otomatis dioper ke akun Slip Gaji dan akun Non Slip Gaji dihapus permanen. Lanjutkan?"
                     }
                     confirmLabel="Ya, sinkronkan atribut"
                     isPending={sync_status === "syncing"}
@@ -1295,7 +1295,7 @@ export default function AtributInsanKuPage() {
                     page_size={PAGE_SIZE}
                     total_items={sorted_employees.length}
                     total_pages={total_pages}
-                    item_label="InsanKu"
+                    item_label="InsanKU"
                     on_previous={previous_page}
                     on_next={next_page}
                   />
@@ -1317,10 +1317,10 @@ export default function AtributInsanKuPage() {
             <div className="flex items-start justify-between gap-4 border-b p-5">
               <div>
                 <DialogPrimitive.Title className="font-heading text-xl font-semibold">
-                  Ekspor Atribut InsanKu
+                  Ekspor Atribut InsanKU
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                  Pilih daftar InsanKu yang ingin diekspor. Seluruh kolom atribut tetap disertakan.
+                  Pilih daftar InsanKU yang ingin diekspor. Seluruh kolom atribut tetap disertakan.
                 </DialogPrimitive.Description>
               </div>
               <DialogPrimitive.Close
@@ -1344,7 +1344,7 @@ export default function AtributInsanKuPage() {
                 <span>
                   <span className="block font-semibold">Sudah mendapatkan semua atribut</span>
                   <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                    {complete_export_employees.length} InsanKu
+                    {complete_export_employees.length} InsanKU
                   </span>
                 </span>
                 <FileSpreadsheetIcon className="size-4" />
@@ -1359,7 +1359,7 @@ export default function AtributInsanKuPage() {
                 <span>
                   <span className="block font-semibold">Belum mendapatkan semua atribut</span>
                   <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                    {incomplete_export_employees.length} InsanKu
+                    {incomplete_export_employees.length} InsanKU
                   </span>
                 </span>
                 <FileSpreadsheetIcon className="size-4" />
@@ -1382,7 +1382,7 @@ export default function AtributInsanKuPage() {
                   Filter Lanjutan
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                  Pilih status atau rentang atribut untuk menyaring data InsanKu.
+                  Pilih status atau rentang atribut untuk menyaring data InsanKU.
                 </DialogPrimitive.Description>
               </div>
               <DialogPrimitive.Close

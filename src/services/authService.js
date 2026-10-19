@@ -21,7 +21,7 @@ export default async function authenticateUser({ username, password }) {
         username: normalized_username,
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
     });
   }

@@ -93,7 +93,7 @@ export function NavMain({ items }) {
                           <SidebarMenuButton
                             tooltip={child_item.title}
                             isActive={is_active_item(child_item.url, { exact: true })}
-                            className="h-auto min-h-10 items-start px-3 py-2.5 text-white/75 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
+                            className="h-auto min-h-10 items-center px-3 py-2.5 text-white/75 hover:bg-white/10 hover:text-white data-active:bg-white/14 data-active:text-white data-active:font-medium [&>span:last-child]:overflow-visible [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words"
                             render={<Link href={child_item.url} />}
                           >
                             {child_item.icon ?? null}

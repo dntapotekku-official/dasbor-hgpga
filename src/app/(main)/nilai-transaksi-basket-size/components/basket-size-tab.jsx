@@ -1,3 +1,4 @@
+import { summaryExclusionLabel } from "@/lib/ntBsSummaryExclusion";
 import {
   formatDecimal,
   gapClassName,
@@ -14,8 +15,8 @@ import { PencilIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-const BS_DECIMAL_PLACES = 3;
-const BS_PERCENT_DECIMAL_PLACES = 3;
+const BS_DECIMAL_PLACES = 2;
+const BS_PERCENT_DECIMAL_PLACES = 2;
 
 function formatBsDecimal(value) {
   return Number(value ?? 0).toLocaleString("id-ID", {
@@ -71,10 +72,11 @@ export default function BasketSizeTab({
 
   return (
     <Table
-      containerClassName="max-h-[70vh] overflow-auto rounded-lg border"
+      fixedColumns="none"
+      containerClassName="isolate max-h-[70vh] overflow-auto rounded-lg border"
       className="border-separate border-spacing-0 [&_td]:border-r [&_td]:border-b [&_th]:border-r [&_th]:border-b [&_tr>*:last-child]:border-r-0"
     >
-      <TableHeader variant="none" className="sticky top-0 z-30">
+      <TableHeader sticky={false} variant="none" className="sticky top-0 z-50">
         <TableRow>
           <TableHead className="sticky top-0 z-30 w-24 min-w-24 max-w-24 bg-blue-200 text-center text-blue-950 md:left-0 md:z-40">
             No.
@@ -139,6 +141,9 @@ export default function BasketSizeTab({
             </TableCell>
             <TableCell className={`${sticky_identity_class("outlet")} font-medium`}>
               {row.outlet_name}
+              {summaryExclusionLabel(row, "basket_size") && (
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">{summaryExclusionLabel(row, "basket_size")}</span>
+              )}
             </TableCell>
             <TableCell className="text-center">
               {formatBsDecimal(row.bs_target)}

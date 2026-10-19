@@ -48,7 +48,7 @@ const ROLE_META = {
   member: {
     label: "Outlet",
     description:
-      "Lihat ringkasan data InsanKu dan performa outlet Anda dalam satu tempat.",
+      "Lihat ringkasan data InsanKU dan performa outlet Anda dalam satu tempat.",
     icon: IdCardIcon,
   },
   admin: {

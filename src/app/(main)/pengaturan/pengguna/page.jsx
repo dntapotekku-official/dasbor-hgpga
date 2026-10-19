@@ -11,8 +11,8 @@ import InsanKuTab from "./components/insanKu-tab";
 
 const TAB_LABELS = {
   admin: "Admin",
-  insanku: "InsanKu (Slip Gaji)",
-  insanku_non_slip_gaji: "InsanKu (Non Slip Gaji)",
+  insanku: "InsanKU (Slip Gaji)",
+  insanku_non_slip_gaji: "InsanKU (Non Slip Gaji)",
 };
 
 export default function PenggunaPage() {
@@ -41,7 +41,7 @@ export default function PenggunaPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Kelola akun admin, superadmin, dan data InsanKu dalam satu halaman."
+          description="Kelola akun admin, superadmin, dan data InsanKU dalam satu halaman."
         />
       </div>
 

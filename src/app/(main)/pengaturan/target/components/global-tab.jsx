@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -253,16 +252,17 @@ function GlobalTargetTable({ metric_key }) {
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
             <CardTitle>Target Global {config.label}</CardTitle>
-            <CardDescription className="mt-1">{config.description}</CardDescription>
           </div>
-          <Button type="button" className="shrink-0" onClick={() => setIsCreateOpen(true)}>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="flex justify-end">
+          <Button type="button" className="w-full shrink-0 sm:w-auto" onClick={() => setIsCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Tambah Target
           </Button>
         </div>
-      </CardHeader>
-
-      <CardContent>
         <div className="overflow-hidden rounded-lg border">
           <div className="max-h-[560px] overflow-auto">
             <Table containerClassName="overflow-visible">

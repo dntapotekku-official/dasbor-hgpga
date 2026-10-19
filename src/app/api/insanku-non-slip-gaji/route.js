@@ -37,7 +37,7 @@ async function read_body(request) {
 export function GET() {
   return handle_request(
     async () => ({ success: true, data: await getInsanKuNonSlipGaji() }),
-    "Gagal mengambil data InsanKu Non Slip Gaji.",
+    "Gagal mengambil data InsanKU Non Slip Gaji.",
     500,
   );
 }
@@ -45,14 +45,14 @@ export function GET() {
 export function POST(request) {
   return handle_request(
     async () => createInsanKuNonSlipGaji(await read_body(request)),
-    "Gagal menambahkan InsanKu Non Slip Gaji.",
+    "Gagal menambahkan InsanKU Non Slip Gaji.",
   );
 }
 
 export function PATCH(request) {
   return handle_request(
     async () => updateInsanKuNonSlipGaji(await read_body(request)),
-    "Gagal memperbarui InsanKu Non Slip Gaji.",
+    "Gagal memperbarui InsanKU Non Slip Gaji.",
   );
 }
 
@@ -62,6 +62,6 @@ export function DELETE(request) {
       const body = await read_body(request);
       return deleteInsanKuNonSlipGaji(body?.uuid_insanku);
     },
-    "Gagal menghapus InsanKu Non Slip Gaji.",
+    "Gagal menghapus InsanKU Non Slip Gaji.",
   );
 }

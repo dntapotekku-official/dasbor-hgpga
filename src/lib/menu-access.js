@@ -25,7 +25,7 @@ export const menu_access_options = [
   { value: "nilai-magang", label: "Nilai Magang", path: "/nilai-magang" },
   {
     value: "atribut-insanku",
-    label: "Atribut InsanKu",
+    label: "Atribut InsanKU",
     path: "/atribut-insanku",
   },
   {
@@ -37,6 +37,11 @@ export const menu_access_options = [
     value: "pengaturan-outlet",
     label: "Pengaturan Outlet",
     path: "/pengaturan/outlet",
+  },
+  {
+    value: "pengaturan-pengecualian",
+    label: "Pengecualian Nilai Transaksi dan Basket Size",
+    path: "/pengaturan/pengecualian-nilai-transaksi-basket-size",
   },
   {
     value: "pengaturan-produk-gofitku",

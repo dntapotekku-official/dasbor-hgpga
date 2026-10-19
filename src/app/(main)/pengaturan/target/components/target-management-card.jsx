@@ -201,7 +201,7 @@ export default function TargetManagementCard({
     }
 
     return [
-      { value: "all", label: "Semua InsanKu" },
+      { value: "all", label: "Semua InsanKU" },
       ...Array.from(insanku_map.entries())
         .map(([value, label]) => ({ value, label }))
         .sort((left, right) => left.label.localeCompare(right.label, "id-ID")),
@@ -706,7 +706,7 @@ export default function TargetManagementCard({
                     />
                   </FilterField>
                   <FilterField
-                    label="InsanKu"
+                    label="InsanKU"
                     htmlFor={insanku_filter_id}
                     className="w-full sm:w-64"
                   >
@@ -716,9 +716,9 @@ export default function TargetManagementCard({
                       onValueChange={setSelectedInsanku}
                       options={insanku_filter_options}
                       searchable
-                      ariaLabel={`Filter InsanKu ${target_label}`}
-                      searchPlaceholder="Cari InsanKu..."
-                      emptySearchMessage="InsanKu tidak ditemukan."
+                      ariaLabel={`Filter InsanKU ${target_label}`}
+                      searchPlaceholder="Cari InsanKU..."
+                      emptySearchMessage="InsanKU tidak ditemukan."
                       triggerClassName="w-full"
                     />
                   </FilterField>

@@ -99,13 +99,13 @@ async function getOutletSettingsData({
     where: {
       deleted_at: null,
       ...(member_outlet_uuid ? { uuid: member_outlet_uuid } : {}),
-      ...(include_excluded ? {} : { excep: false }),
+      ...(include_excluded ? {} : { is_excluded: false }),
     },
     select: {
       uuid: true,
       name: true,
       category: true,
-      excep: true,
+      is_excluded: true,
       is_active: true,
       is_skip_sync: true,
       username: true,
@@ -132,7 +132,7 @@ async function getOutletSettingsData({
     uuid: item.uuid,
     name: item.name,
     kategori: item.category,
-    excep: Boolean(item.excep),
+    is_excluded: Boolean(item.is_excluded),
     is_active: Boolean(item.is_active),
     is_skip_sync: Boolean(item.is_skip_sync),
     username: item.username,
@@ -377,7 +377,7 @@ export async function updateOutlet({
 
 export async function updateOutletException({
   uuid_outlet,
-  excep,
+  is_excluded,
 }) {
   if (!uuid_outlet) {
     throw new Error("UUID outlet wajib diisi.");
@@ -402,7 +402,7 @@ export async function updateOutletException({
       uuid: uuid_outlet,
     },
     data: {
-      excep: Boolean(excep),
+      is_excluded: Boolean(is_excluded),
     },
   });
 
@@ -414,7 +414,7 @@ export async function updateOutletException({
   return {
     success: true,
     data: updated_outlet ?? null,
-    message: Boolean(excep)
+    message: Boolean(is_excluded)
       ? "Outlet berhasil dikecualikan dari sistem."
       : "Outlet berhasil diaktifkan kembali.",
   };

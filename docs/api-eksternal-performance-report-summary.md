@@ -86,7 +86,7 @@ Semua parameter bersifat opsional.
 | `date` | Tidak | `YYYY-MM` | Filter bulan dan tahun penjualan. |
 | `uuid_outlet` | Tidak | UUID | Filter outlet berdasarkan UUID. |
 | `outlet_name` | Tidak | String | Filter outlet berdasarkan nama. Mendukung normalized search. |
-| `insanku_name` | Tidak | String | Filter InsanKu berdasarkan nama. Mendukung normalized search. |
+| `insanku_name` | Tidak | String | Filter InsanKU berdasarkan nama. Mendukung normalized search. |
 
 ### Contoh Request
 
@@ -113,7 +113,7 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku?date=2026-10
       "insanku": [
         {
           "uuid_insanku": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-          "nama": "Nama InsanKu",
+          "nama": "Nama InsanKU",
           "total": 10
         }
       ]
@@ -195,7 +195,7 @@ outlet_name=apotekku9renon
 outlet_name=Renon
 ```
 
-Contoh InsanKu `I Made Adi`:
+Contoh InsanKU `I Made Adi`:
 
 ```text
 insanku_name=I Made Adi

@@ -55,7 +55,7 @@ model tbl_outlet {
   is_username_change Boolean   @default(false)
   is_password_change Boolean   @default(false)
   category           Category
-  excep              Boolean   @default(false)
+  is_excluded        Boolean   @default(false)
   is_active          Boolean   @default(true)
   is_skip_sync       Boolean   @default(false)
   created_at         DateTime  @default(now())
@@ -68,25 +68,43 @@ model tbl_outlet {
   basket_size        tbl_jumlah_sku[]
   kunjungan          tbl_kunjungan[]
   nilai_magang       tbl_nilai_magang[]
+  summary_exclusions tbl_nt_bs_summary_exclusion[]
+}
+
+model tbl_nt_bs_summary_exclusion {
+  id          Int             @id @default(autoincrement())
+  uuid        String          @unique @db.Char(36)
+  uuid_outlet String          @db.Char(36)
+  start_date  DateTime        @db.Date
+  end_date    DateTime        @db.Date
+  metric      KunjunganMetric
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  deleted_at  DateTime?
+
+  outlet tbl_outlet @relation(fields: [uuid_outlet], references: [uuid], onDelete: Cascade)
+
+  @@index([uuid_outlet, metric, start_date, end_date, deleted_at], map: "idx_nt_bs_summary_exclusion_range")
 }
 
 model tbl_insanku {
-  id                   Int       @id @default(autoincrement())
-  uuid                 String    @unique @db.Char(36)
-  nik                  String?   @db.VarChar(20)
-  name                 String    @db.VarChar(100)
-  username             String    @unique @db.VarChar(100)
-  password             String?   @db.Text
-  is_username_change   Boolean   @default(false)
-  is_password_change   Boolean   @default(false)
-  avatar               String?   @db.Text
-  is_active            Boolean   @default(true)
-  is_slip_gaji_account Boolean   @default(false)
-  is_skip_sync         Boolean   @default(false)
-  role                 Role
-  created_at           DateTime  @default(now())
-  updated_at           DateTime  @updatedAt
-  deleted_at           DateTime?
+  id                        Int       @id @default(autoincrement())
+  uuid                      String    @unique @db.Char(36)
+  nik                       String?   @db.VarChar(20)
+  name                      String    @db.VarChar(100)
+  username                  String    @unique @db.VarChar(100)
+  password                  String?   @db.Text
+  is_username_change        Boolean   @default(false)
+  avatar                    String?   @db.Text
+  is_password_change        Boolean   @default(false)
+  is_active                 Boolean   @default(true)
+  is_slip_gaji_account      Boolean   @default(false)
+  is_gofitku_setup_pending  Boolean   @default(false)
+  is_skip_sync              Boolean   @default(false)
+  role                      Role
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+  deleted_at                DateTime?
 
   outlet_insanku            tbl_outlet_insanku[]
   atribut_insanku           tbl_atribut_insanku[]

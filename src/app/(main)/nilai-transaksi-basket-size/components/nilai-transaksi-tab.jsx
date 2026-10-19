@@ -5,6 +5,7 @@ import {
   gapClassName,
 } from "@/lib/nilaiTransaksiBasketSizeTable";
 import CurrencyValue from "@/components/currency-value";
+import { summaryExclusionLabel } from "@/lib/ntBsSummaryExclusion";
 import {
   Table,
   TableBody,
@@ -55,10 +56,11 @@ export default function NilaiTransaksiTab({
 
   return (
     <Table
-      containerClassName="max-h-[70vh] overflow-auto rounded-lg border"
+      fixedColumns="none"
+      containerClassName="isolate max-h-[70vh] overflow-auto rounded-lg border"
       className="border-separate border-spacing-0 [&_td]:border-r [&_td]:border-b [&_th]:border-r [&_th]:border-b [&_tr>*:last-child]:border-r-0"
     >
-      <TableHeader variant="none" className="sticky top-0 z-30">
+      <TableHeader sticky={false} variant="none" className="sticky top-0 z-50">
         <TableRow>
           <TableHead className="sticky top-0 z-30 w-24 min-w-24 max-w-24 bg-orange-100 text-center text-orange-950 md:left-0 md:z-40">
             No.
@@ -110,6 +112,9 @@ export default function NilaiTransaksiTab({
             </TableCell>
             <TableCell className={`${sticky_identity_class("outlet")} font-medium`}>
               {row.outlet_name}
+              {summaryExclusionLabel(row, "nilai_transaksi") && (
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">{summaryExclusionLabel(row, "nilai_transaksi")}</span>
+              )}
             </TableCell>
             <TableCell>
               <CurrencyValue value={row.nt_target} align="split" />

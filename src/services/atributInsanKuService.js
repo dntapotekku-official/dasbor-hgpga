@@ -202,7 +202,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
                 some: {
                   uuid_outlet: user_uuid,
                   deleted_at: null,
-                  outlet: { deleted_at: null, is_active: true, excep: false },
+                  outlet: { deleted_at: null, is_active: true, is_excluded: false },
                 },
               },
             }
@@ -291,7 +291,7 @@ export async function updateAtributInsanKu({
   actor_role,
 }) {
   if (!uuid_insanku) {
-    throw new Error("UUID InsanKu wajib diisi.");
+    throw new Error("UUID InsanKU wajib diisi.");
   }
 
   if (!uuid_atribut) {
@@ -317,7 +317,7 @@ export async function updateAtributInsanKu({
 	                some: {
 	                  uuid_outlet: actor_uuid,
 	                  deleted_at: null,
-	                  outlet: { deleted_at: null, is_active: true, excep: false },
+	                  outlet: { deleted_at: null, is_active: true, is_excluded: false },
 	                },
 	              },
             }
@@ -344,7 +344,7 @@ export async function updateAtributInsanKu({
   ]);
 
   if (!employee || employee.deleted_at) {
-    throw new Error("Data InsanKu tidak ditemukan.");
+    throw new Error("Data InsanKU tidak ditemukan.");
   }
 
   if (!attribute || attribute.deleted_at) {
@@ -352,7 +352,7 @@ export async function updateAtributInsanKu({
   }
 
   if (is_member && (!attribute.is_view || !attribute.is_edit)) {
-    throw new Error("Atribut ini tidak dapat diubah dari InsanKu.");
+    throw new Error("Atribut ini tidak dapat diubah dari InsanKU.");
   }
 
   const next_value = normalize_attribute_value_by_type(attribute.type, value);
@@ -387,7 +387,7 @@ export async function updateAtributInsanKu({
       uuid_atribut,
       value: response_value,
     },
-    message: "Atribut InsanKu berhasil diperbarui.",
+    message: "Atribut InsanKU berhasil diperbarui.",
   };
 }
 
@@ -513,7 +513,7 @@ export async function syncAtributInsanKuData({ actor_role }) {
     normalized_role === "superadmin";
 
   if (!can_sync) {
-    throw new Error("Tidak memiliki akses untuk menyinkronkan data atribut InsanKu.");
+    throw new Error("Tidak memiliki akses untuk menyinkronkan data atribut InsanKU.");
   }
 
   const insanku_result = await syncInsanKu();
@@ -532,7 +532,7 @@ export async function syncAtributInsanKuData({ actor_role }) {
       insanku: insanku_result?.summary ?? null,
       outlet_insanku: outlet_insanku_result?.summary ?? null,
     },
-    message: "Data InsanKu dan penempatan outlet berhasil disinkronkan.",
+    message: "Data InsanKU dan penempatan outlet berhasil disinkronkan.",
   };
 }
 
@@ -640,7 +640,7 @@ export async function importAtributInsanKu({
       const attribute = attribute_map.get(uuid_atribut);
 
       if (is_member && (!attribute.is_view || !attribute.is_edit)) {
-        throw new Error("File memuat atribut yang tidak dapat diubah oleh InsanKu.");
+        throw new Error("File memuat atribut yang tidak dapat diubah oleh InsanKU.");
       }
 
       if (!is_attribute_value_valid_for_type(attribute.type, raw_value)) {
@@ -692,7 +692,7 @@ export async function importAtributInsanKu({
       imported_employees: normalized_rows.length,
       updated_attributes: updates.length,
     },
-    message: `Impor atribut berhasil untuk ${normalized_rows.length} InsanKu ${category_label} pada tab ${active_tab}.`,
+    message: `Impor atribut berhasil untuk ${normalized_rows.length} InsanKU ${category_label} pada tab ${active_tab}.`,
   };
 }
 
@@ -906,7 +906,7 @@ export async function updateAtribut({
 
   if (invalid_value_count > 0) {
     throw new Error(
-      `Jenis atribut tidak bisa diubah karena ada ${invalid_value_count} data InsanKu yang tidak cocok dengan jenis baru.`,
+      `Jenis atribut tidak bisa diubah karena ada ${invalid_value_count} data InsanKU yang tidak cocok dengan jenis baru.`,
     );
   }
 

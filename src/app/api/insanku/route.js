@@ -8,6 +8,8 @@ import {
 } from "@/services/insanKuService";
 import { requireMenuAccess } from "@/lib/auth";
 import { buildApiErrorResponse } from "@/lib/api-error";
+import { prisma } from "@/lib/prisma";
+import { bulkSetGofitkuExclusion } from "@/services/bulkGofitkuExclusionService";
 
 export const GET = async () => {
   try {
@@ -48,7 +50,7 @@ export const POST = async () => {
     });
   } catch (error) {
     return NextResponse.json(
-      buildApiErrorResponse(error, "Terjadi kesalahan saat sinkronisasi InsanKu."),
+      buildApiErrorResponse(error, "Terjadi kesalahan saat sinkronisasi InsanKU."),
       { status: 500 },
     );
   }
@@ -63,6 +65,9 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
+    if (body?.action === "bulk_gofitku_exclusion") {
+      return NextResponse.json(await bulkSetGofitkuExclusion(prisma, body));
+    }
     if (body?.action === "reset") {
       return NextResponse.json(
         await resetInsanKuSlipGaji(body?.uuid_insanku),
@@ -89,8 +94,8 @@ export const PATCH = async (request) => {
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      buildApiErrorResponse(error, "Terjadi kesalahan saat menyimpan data InsanKu."),
-      { status: 500 },
+      buildApiErrorResponse(error, "Terjadi kesalahan saat menyimpan data InsanKU."),
+      { status: error.status === 409 ? 409 : 400 },
     );
   }
 };
@@ -109,7 +114,7 @@ export const DELETE = async (request) => {
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      buildApiErrorResponse(error, "Terjadi kesalahan saat menghapus data InsanKu."),
+      buildApiErrorResponse(error, "Terjadi kesalahan saat menghapus data InsanKU."),
       { status: 500 },
     );
   }

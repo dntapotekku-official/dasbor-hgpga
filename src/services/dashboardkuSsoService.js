@@ -351,7 +351,7 @@ async function get_session_payload_from_username(id_token_payload) {
       username,
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: {
       uuid: true,

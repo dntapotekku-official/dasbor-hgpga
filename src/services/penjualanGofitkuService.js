@@ -183,7 +183,7 @@ async function get_member_outlet_uuids(account_uuid) {
       uuid: trimmed_account_uuid,
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: {
       uuid: true,
@@ -265,7 +265,7 @@ async function get_outlet_insanku_rows(
       outlet: {
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       insanku: {
         deleted_at: null,
@@ -314,7 +314,7 @@ async function get_report_sales(
           ? { uuid_outlet: { in: accessible_outlet_uuids } }
           : {}),
         outlet: {
-          excep: false,
+          is_excluded: false,
         },
       },
     },
@@ -505,7 +505,7 @@ export async function getExternalPenjualanGofitku({
         uuid: trimmed_uuid_outlet,
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       select: {
         uuid: true,
@@ -530,7 +530,7 @@ export async function getExternalPenjualanGofitku({
       outlet: {
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       insanku: {
         deleted_at: null,
@@ -719,7 +719,7 @@ export async function getExternalPenjualanGofitkuProduk({
         uuid: trimmed_uuid_outlet,
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       select: {
         uuid: true,
@@ -752,7 +752,7 @@ export async function getExternalPenjualanGofitkuProduk({
         outlet: {
           deleted_at: null,
           is_active: true,
-          excep: false,
+          is_excluded: false,
         },
         insanku: {
           deleted_at: null,
@@ -828,7 +828,7 @@ export async function getExternalPenjualanGofitkuDetail({
         uuid: trimmed_uuid_outlet,
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       select: {
         uuid: true,
@@ -863,7 +863,7 @@ export async function getExternalPenjualanGofitkuDetail({
         outlet: {
           deleted_at: null,
           is_active: true,
-          excep: false,
+          is_excluded: false,
         },
         insanku: {
           deleted_at: null,
@@ -1150,7 +1150,7 @@ async function get_gofitku_chart_scope({
           }
         : {}),
       outlet: {
-        excep: false,
+        is_excluded: false,
       },
       OR: [
         {
@@ -1379,7 +1379,7 @@ export async function createPenjualanGofitku({
       outlet: {
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       insanku: {
         deleted_at: null,
@@ -1421,7 +1421,7 @@ export async function createPenjualanGofitku({
   );
 
   if (relation_map.size !== employee_uuid_set.length) {
-    throw new Error("Sebagian InsanKu tidak terhubung dengan outlet yang dipilih.");
+    throw new Error("Sebagian InsanKU tidak terhubung dengan outlet yang dipilih.");
   }
 
   const product_rows = product_uuid_set.length
@@ -1451,7 +1451,7 @@ export async function createPenjualanGofitku({
         isDateInInactivePeriods(date, relation?.insanku?.inactive_periods)
       ) {
         throw new Error(
-          `${relation?.insanku?.name ?? "InsanKu"} tidak aktif pada tanggal tersebut.`,
+          `${relation?.insanku?.name ?? "InsanKU"} tidak aktif pada tanggal tersebut.`,
         );
       }
 
@@ -1462,7 +1462,7 @@ export async function createPenjualanGofitku({
         )
       ) {
         throw new Error(
-          `${relation?.insanku?.name ?? "InsanKu"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
+          `${relation?.insanku?.name ?? "InsanKU"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
         );
       }
 
@@ -1520,7 +1520,7 @@ export async function updatePenjualanGofitku({
   }
 
   if (!trimmed_employee_uuid) {
-    throw new Error("InsanKu wajib diisi.");
+    throw new Error("InsanKU wajib diisi.");
   }
 
   await assert_outlet_access({
@@ -1584,7 +1584,7 @@ export async function updatePenjualanGofitku({
           outlet: {
             deleted_at: null,
             is_active: true,
-            excep: false,
+            is_excluded: false,
           },
           insanku: {
             deleted_at: null,
@@ -1618,7 +1618,7 @@ export async function updatePenjualanGofitku({
       });
 
   if (!outlet_insanku) {
-    throw new Error("InsanKu tidak terhubung dengan outlet yang dipilih.");
+    throw new Error("InsanKU tidak terhubung dengan outlet yang dipilih.");
   }
 
   if (outlet_insanku.deleted_at && parsed_date > outlet_insanku.deleted_at) {
@@ -1630,7 +1630,7 @@ export async function updatePenjualanGofitku({
     isDateInInactivePeriods(parsed_date, outlet_insanku.insanku?.inactive_periods)
   ) {
     throw new Error(
-      `${outlet_insanku.insanku?.name ?? "InsanKu"} tidak aktif pada tanggal tersebut.`,
+      `${outlet_insanku.insanku?.name ?? "InsanKU"} tidak aktif pada tanggal tersebut.`,
     );
   }
 
@@ -1641,7 +1641,7 @@ export async function updatePenjualanGofitku({
     )
   ) {
     throw new Error(
-      `${outlet_insanku.insanku?.name ?? "InsanKu"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
+      `${outlet_insanku.insanku?.name ?? "InsanKU"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
     );
   }
 
@@ -1850,7 +1850,7 @@ async function get_target_placement_maps() {
       outlet: {
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       insanku: {
         deleted_at: null,

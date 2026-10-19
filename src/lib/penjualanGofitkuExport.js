@@ -147,7 +147,7 @@ export function export_penjualan_gofitku(export_groups) {
       rows.push(get_row([get_cell("Data ringkasan belum tersedia.", "String", "")]));
 
       return get_worksheet(
-        "Ringkasan Outlet & InsanKu",
+        "Ringkasan Outlet & InsanKU",
         rows,
         [160, 160, 90, 70, 80, 100],
       );
@@ -223,7 +223,7 @@ export function export_penjualan_gofitku(export_groups) {
     }
 
     return get_worksheet(
-      "Ringkasan Outlet & InsanKu",
+      "Ringkasan Outlet & InsanKU",
       rows,
       [160, 160, 90, 70, 80, 100],
     );
@@ -304,7 +304,7 @@ export function export_penjualan_gofitku(export_groups) {
       rows.push(get_row([get_cell("Data ringkasan belum tersedia.", "String", "")]));
 
       return get_worksheet(
-        "Ringkasan InsanKu",
+        "Ringkasan InsanKU",
         rows,
         [160, 160, 90, 70, 80, 100],
       );
@@ -382,7 +382,7 @@ export function export_penjualan_gofitku(export_groups) {
     }
 
     return get_worksheet(
-      "Ringkasan InsanKu",
+      "Ringkasan InsanKU",
       rows,
       [160, 160, 90, 70, 80, 100],
     );
@@ -580,9 +580,9 @@ export function export_penjualan_gofitku(export_groups) {
       get_row([]),
     ];
   };
-  used_sheet_names.add("Ringkasan Outlet & InsanKu");
+  used_sheet_names.add("Ringkasan Outlet & InsanKU");
   used_sheet_names.add("Ringkasan Outlet");
-  used_sheet_names.add("Ringkasan InsanKu");
+  used_sheet_names.add("Ringkasan InsanKU");
   const worksheets = [
     get_ringkasan_outlet_insanku_sheet(export_groups),
     get_ringkasan_outlet_sheet(export_groups),

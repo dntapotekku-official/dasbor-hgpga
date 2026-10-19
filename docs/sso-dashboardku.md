@@ -58,7 +58,7 @@ Syarat login berhasil:
 3. Nilai `preferred_username` sama persis dengan `tbl_outlet.username`.
 4. Outlet lokal aktif.
 5. Outlet lokal tidak deleted.
-6. Outlet lokal tidak termasuk `excep`.
+6. Outlet lokal tidak termasuk `is_excluded`.
 
 Jika username tidak ditemukan di admin maupun outlet aktif, callback menolak login dan mengarahkan user kembali ke halaman login dengan pesan error.
 

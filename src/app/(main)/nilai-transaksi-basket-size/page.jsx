@@ -42,6 +42,7 @@ import {
 } from "@/lib/number";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { hasRoleAccess } from "@/lib/role";
+import { prepareMetricSummaryRows, summaryTargetCount } from "@/lib/ntBsSummaryExclusion";
 import NilaiTransaksiTab from "./components/nilai-transaksi-tab";
 
 const ImportDataModal = dynamic(() => import("./components/import-data-modal"));
@@ -87,8 +88,8 @@ const default_available_dates = {
   basket_size: [],
 };
 
-const BS_DECIMAL_PLACES = 3;
-const BS_PERCENT_DECIMAL_PLACES = 3;
+const BS_DECIMAL_PLACES = 2;
+const BS_PERCENT_DECIMAL_PLACES = 2;
 
 function formatBsDecimal(value) {
   return Number(value ?? 0).toLocaleString("id-ID", {
@@ -206,7 +207,7 @@ function summarizeVisibleRows(rows) {
     return empty_metrics;
   }
 
-  const summary = rows.reduce(
+  const summary = prepareMetricSummaryRows(rows).reduce(
     (current, row) => ({
       nt_target: current.nt_target + toNumber(row.nt_target),
       nt_daily_total_revenue:
@@ -246,7 +247,6 @@ function summarizeVisibleRows(rows) {
       bs_last_month_kunjungan: 0,
     },
   );
-  const row_count = rows.length;
   const nt_daily = summary.nt_daily_kunjungan
     ? summary.nt_daily_total_revenue / summary.nt_daily_kunjungan
     : 0;
@@ -262,8 +262,8 @@ function summarizeVisibleRows(rows) {
   const bs_current_month = summary.bs_current_month_kunjungan
     ? summary.bs_current_month_sku_qty / summary.bs_current_month_kunjungan
     : 0;
-  const nt_target = summary.nt_target / row_count;
-  const bs_target = summary.bs_target / row_count;
+  const nt_target = summary.nt_target / summaryTargetCount(rows, "nilai_transaksi");
+  const bs_target = summary.bs_target / summaryTargetCount(rows, "basket_size");
   const nt_growth = comparePercentage(nt_current_month, nt_last_month);
   const bs_growth = comparePercentage(bs_current_month, bs_last_month);
   const nt_target_compare = comparePercentage(nt_current_month, nt_target);

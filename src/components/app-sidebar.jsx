@@ -26,6 +26,7 @@ import {
   ClipboardCheckIcon,
   Columns3Icon,
   CrosshairIcon,
+  CircleOffIcon,
   IdCardIcon,
   LayoutDashboardIcon,
   LinkIcon,
@@ -92,7 +93,7 @@ const data = {
       menuKey: "nilai-magang",
     },
     {
-      title: "Atribut InsanKu",
+      title: "Atribut InsanKU",
       url: "/atribut-insanku",
       icon: (
         <IdCardIcon />
@@ -120,6 +121,13 @@ const data = {
           icon: <StoreIcon />,
           roles: ["admin"],
           menuKey: "pengaturan-outlet",
+        },
+        {
+          title: "Pengecualian Nilai Transaksi dan Basket Size",
+          url: "/pengaturan/pengecualian-nilai-transaksi-basket-size",
+          icon: <CircleOffIcon />,
+          roles: ["admin"],
+          menuKey: "pengaturan-pengecualian",
         },
         {
           title: "Produk Gofitku",

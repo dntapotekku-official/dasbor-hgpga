@@ -12,6 +12,7 @@ import {
   openOutletInsanKuInactivePeriod,
 } from "@/services/inactivePeriodService";
 import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
+import { getGofitkuSetupWindow, isWithinGofitkuSetupWindow } from "@/lib/gofitkuSetupWindow";
 
 const DEFAULT_INSANKU_PASSWORD = "Apotekku";
 
@@ -132,7 +133,7 @@ async function validateOutlets(database, outlet_uuids) {
       uuid: { in: outlet_uuids },
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: { uuid: true },
   });
@@ -233,7 +234,7 @@ export async function fetchInsanKuPayload() {
 
   if (!Array.isArray(payload)) {
     throw new Error(
-      "Response data karyawan Slip Gaji harus berupa array data InsanKu.",
+      "Response data karyawan Slip Gaji harus berupa array data InsanKU.",
     );
   }
 
@@ -409,6 +410,8 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       is_active: true,
       is_slip_gaji_account: true,
       is_skip_sync: true,
+      is_gofitku_setup_pending: true,
+      created_at: true,
       gofitku_exclusion_periods: {
         where: {
           deleted_at: null,
@@ -433,7 +436,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
           is_active: true,
           outlet: {
             deleted_at: null,
-            excep: false,
+            is_excluded: false,
           },
         },
         orderBy: {
@@ -472,6 +475,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
     },
   });
 
+  const setup_window = getGofitkuSetupWindow();
   return data_insanku.map((item) => {
     const active_gofitku_exclusion = item.gofitku_exclusion_periods[0] ?? null;
 
@@ -482,6 +486,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       username: item.username,
       is_active: Boolean(item.is_active),
       is_slip_gaji_account: item.is_slip_gaji_account,
+      is_gofitku_setup_pending: Boolean(item.is_gofitku_setup_pending) && isWithinGofitkuSetupWindow(item.created_at, setup_window),
       is_skip_sync_insanku: Boolean(item.is_skip_sync),
       is_skip_sync_outlet_insanku: item.outlet_insanku.some(
         (outlet_insanku) => outlet_insanku.is_skip_sync,
@@ -594,7 +599,7 @@ export async function syncInsanKu() {
       attempt += 1;
     }
 
-    throw new Error("Gagal membuat username fallback unik untuk InsanKu.");
+    throw new Error("Gagal membuat username fallback unik untuk InsanKU.");
   };
   const resolveNewUsername = (item) => {
     return reserveUsername(item.username, item.uuid) ?? reserveFallbackUsername(item);
@@ -611,6 +616,7 @@ export async function syncInsanKu() {
       ...item,
       username: resolveNewUsername(item),
       password: default_password,
+      is_gofitku_setup_pending: true,
     }));
   const update_insanku = unique_insanku
     .filter((item) => existing_insanku_map.has(item.uuid))
@@ -782,7 +788,7 @@ export async function updateInsanKu({
   expected_is_slip_gaji_account = true,
 }) {
   if (!uuid_insanku) {
-    throw new Error("UUID InsanKu wajib diisi.");
+    throw new Error("UUID InsanKU wajib diisi.");
   }
 
   const trimmed_name = String(name ?? "").trim();
@@ -814,15 +820,15 @@ export async function updateInsanKu({
   const unique_outlet_uuids = normalized_placements.outlet_uuids;
 
   if (!trimmed_name) {
-    throw new Error("Nama InsanKu wajib diisi.");
+    throw new Error("Nama InsanKU wajib diisi.");
   }
 
   if (!expected_is_slip_gaji_account && !trimmed_nik) {
-    throw new Error("NIK InsanKu Non Slip Gaji wajib diisi.");
+    throw new Error("NIK InsanKU Non Slip Gaji wajib diisi.");
   }
 
   if (!trimmed_username) {
-    throw new Error("Username InsanKu wajib diisi.");
+    throw new Error("Username InsanKU wajib diisi.");
   }
 
   if (trimmed_password && trimmed_password.length < 6) {
@@ -868,7 +874,7 @@ export async function updateInsanKu({
     existing_insanku.deleted_at ||
     existing_insanku.is_slip_gaji_account !== expected_is_slip_gaji_account
   ) {
-    throw new Error("Data InsanKu tidak ditemukan.");
+    throw new Error("Data InsanKU tidak ditemukan.");
   }
 
   await validateOutlets(prisma, unique_outlet_uuids);
@@ -898,6 +904,7 @@ export async function updateInsanKu({
           : {}),
         is_active: normalized_is_active,
         is_skip_sync: Boolean(is_skip_sync_insanku),
+        is_gofitku_setup_pending: false,
       },
     });
     if (normalized_is_active) {
@@ -977,7 +984,7 @@ export async function updateInsanKu({
         (placement_uuid) => !current_relation_uuid_set.has(placement_uuid),
       )
     ) {
-      throw new Error("Sebagian penempatan outlet tidak ditemukan untuk InsanKu ini.");
+      throw new Error("Sebagian penempatan outlet tidak ditemukan untuk InsanKU ini.");
     }
 
     const current_relations_by_uuid = new Map(
@@ -1235,7 +1242,7 @@ export async function updateInsanKu({
   return {
     success: true,
     data: updated_insanku ?? null,
-    message: "Data InsanKu berhasil diperbarui.",
+    message: "Data InsanKU berhasil diperbarui.",
   };
 }
 
@@ -1318,7 +1325,7 @@ export async function createInsanKuNonSlipGaji({
     data: refreshed_data.data_insanku.find(
       (item) => item.uuid === created_insanku.uuid,
     ),
-    message: "Data InsanKu Non Slip Gaji berhasil ditambahkan.",
+    message: "Data InsanKU Non Slip Gaji berhasil ditambahkan.",
   };
 }
 
@@ -1333,7 +1340,7 @@ export async function resetInsanKuSlipGaji(uuid_insanku) {
   const normalized_uuid = String(uuid_insanku ?? "").trim();
 
   if (!normalized_uuid) {
-    throw new Error("UUID InsanKu wajib diisi.");
+    throw new Error("UUID InsanKU wajib diisi.");
   }
 
   const existing_insanku = await prisma.tbl_insanku.findFirst({
@@ -1346,7 +1353,7 @@ export async function resetInsanKuSlipGaji(uuid_insanku) {
   });
 
   if (!existing_insanku) {
-    throw new Error("Data InsanKu Slip Gaji tidak ditemukan.");
+    throw new Error("Data InsanKU Slip Gaji tidak ditemukan.");
   }
 
   const [insanku_payload, outlet_insanku_payload] = await Promise.all([
@@ -1367,12 +1374,12 @@ export async function resetInsanKuSlipGaji(uuid_insanku) {
   ).trim();
 
   if (!source_insanku || !default_name) {
-    throw new Error("Nama InsanKu tidak ditemukan pada endpoint karyawan.");
+    throw new Error("Nama InsanKU tidak ditemukan pada endpoint karyawan.");
   }
 
   if (!default_username) {
     throw new Error(
-      "Username InsanKu tidak ditemukan pada endpoint cabang_karyawan.",
+      "Username InsanKU tidak ditemukan pada endpoint cabang_karyawan.",
     );
   }
 
@@ -1385,7 +1392,7 @@ export async function resetInsanKuSlipGaji(uuid_insanku) {
   });
 
   if (username_owner) {
-    throw new Error("Username default sudah digunakan oleh akun InsanKu lain.");
+    throw new Error("Username default sudah digunakan oleh akun InsanKU lain.");
   }
 
   await prisma.tbl_insanku.update({
@@ -1403,7 +1410,7 @@ export async function resetInsanKuSlipGaji(uuid_insanku) {
   return {
     success: true,
     data: refreshed_insanku.find((item) => item.uuid === normalized_uuid) ?? null,
-    message: "Nama dan username InsanKu berhasil direset dari Slip Gaji.",
+    message: "Nama dan username InsanKU berhasil direset dari Slip Gaji.",
   };
 }
 
@@ -1444,7 +1451,7 @@ export async function deleteInsanKuSlipGaji(uuid_insanku) {
   return deleteInsanKuAccount({
     uuid_insanku,
     is_slip_gaji_account: true,
-    label: "InsanKu Slip Gaji",
+    label: "InsanKU Slip Gaji",
   });
 }
 
@@ -1452,6 +1459,6 @@ export async function deleteInsanKuNonSlipGaji(uuid_insanku) {
   return deleteInsanKuAccount({
     uuid_insanku,
     is_slip_gaji_account: false,
-    label: "InsanKu Non Slip Gaji",
+    label: "InsanKU Non Slip Gaji",
   });
 }

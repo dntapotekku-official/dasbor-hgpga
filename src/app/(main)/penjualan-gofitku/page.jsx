@@ -256,7 +256,7 @@ export default function PenjualanGoFitKuPage() {
 
   const handle_open_add_modal = () => {
     if (!outlet_active_group?.rows?.some((row) => row.is_active)) {
-      toast.error("Belum ada penempatan InsanKu aktif di outlet ini.");
+      toast.error("Belum ada penempatan InsanKU aktif di outlet ini.");
       return;
     }
 
@@ -916,9 +916,9 @@ export default function PenjualanGoFitKuPage() {
                 label: item.name,
               })),
             searchable: true,
-            search_placeholder: "Cari InsanKu...",
-            empty_search_message: "InsanKu tidak ditemukan.",
-            aria_label: "Nama InsanKu penjualan",
+            search_placeholder: "Cari InsanKU...",
+            empty_search_message: "InsanKU tidak ditemukan.",
+            aria_label: "Nama InsanKU penjualan",
           },
           {
             key: "produk_uuid",

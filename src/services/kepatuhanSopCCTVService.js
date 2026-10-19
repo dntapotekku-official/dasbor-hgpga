@@ -53,7 +53,7 @@ export async function getKepatuhanSopCCTVChart({
 
   const [outlet_rows, rows] = await Promise.all([
     prisma.tbl_outlet.findMany({
-      where: { deleted_at: null, is_active: true, excep: false },
+      where: { deleted_at: null, is_active: true, is_excluded: false },
       orderBy: { name: "asc" },
       select: { uuid: true, name: true },
     }),
@@ -68,7 +68,7 @@ export async function getKepatuhanSopCCTVChart({
         outlet: {
           deleted_at: null,
           is_active: true,
-          excep: false,
+          is_excluded: false,
         },
       },
       select: {
@@ -248,7 +248,7 @@ export async function syncKepatuhanSopCCTV({
     where: {
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
       uuid: {
         in: Array.from(new Set(deduped_rows.map((item) => item.uuid_outlet))),
       },

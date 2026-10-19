@@ -310,7 +310,7 @@ export default function OutletManagementCard() {
         body: JSON.stringify({
           action: "update_exception",
           uuid_outlet: selected_item.uuid,
-          excep: !selected_item.excep,
+          is_excluded: !selected_item.is_excluded,
         }),
       });
       const payload = await response.json();
@@ -507,20 +507,20 @@ export default function OutletManagementCard() {
                           </Button>
                           <Button
                             type="button"
-                            variant={row.excep ? "outline" : "delete"}
+                            variant={row.is_excluded ? "outline" : "delete"}
                             size="sm"
                             onClick={() => handle_exception(row)}
                           >
-                            {row.excep ? (
+                            {row.is_excluded ? (
                               <RotateCcwIcon className="size-4" />
                             ) : (
                               <CircleOffIcon className="size-4" />
                             )}
                             {updating_exception_uuid === row.uuid
                               ? "Menyimpan..."
-                              : row.excep
-                                ? "Aktifkan"
-                                : "Kecualikan"}
+                              : row.is_excluded
+                                ? "Aktifkan Global"
+                                : "Kecualikan Global"}
                           </Button>
                         </div>
                       </TableCell>

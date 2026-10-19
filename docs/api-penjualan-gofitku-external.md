@@ -1,6 +1,6 @@
 # API Eksternal Penjualan GoFitKu
 
-Dokumen ini menjelaskan endpoint untuk mengambil rekap penjualan GoFitKu per outlet dan InsanKu.
+Dokumen ini menjelaskan endpoint untuk mengambil rekap penjualan GoFitKu per outlet dan InsanKU.
 
 ## Endpoint
 
@@ -45,7 +45,7 @@ Server membaca API key dari environment variable berikut:
 | --- | --- | --- | --- |
 | `uuid_outlet` | Tidak | UUID | Filter data untuk satu outlet. Jika kosong, API mengembalikan semua outlet aktif. |
 | `outlet_name` | Tidak | String | Filter data berdasarkan nama outlet. Bisa diisi nama lengkap, sebagian nama, atau versi normalized tanpa spasi/simbol. |
-| `insanku_name` | Tidak | String | Filter data berdasarkan nama InsanKu. Bisa diisi nama lengkap, sebagian nama, atau versi normalized tanpa spasi/simbol. |
+| `insanku_name` | Tidak | String | Filter data berdasarkan nama InsanKU. Bisa diisi nama lengkap, sebagian nama, atau versi normalized tanpa spasi/simbol. |
 | `date` | Tidak | `YYYY-MM` | Filter bulan dan tahun penjualan. Contoh: `2026-10`. |
 
 Jika beberapa filter dikirim bersamaan, data harus cocok dengan semua filter tersebut.
@@ -67,7 +67,7 @@ outlet_name=apotekku9renon
 outlet_name=Renon
 ```
 
-Contoh berikut sama-sama bisa mencocokkan InsanKu `I Made Adi`:
+Contoh berikut sama-sama bisa mencocokkan InsanKU `I Made Adi`:
 
 ```text
 insanku_name=I Made Adi
@@ -100,7 +100,7 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku?date=2026-10
   -H "x-api-key: <API_KEY>"
 ```
 
-Filter berdasarkan nama InsanKu:
+Filter berdasarkan nama InsanKU:
 
 ```bash
 curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku?date=2026-10&insanku_name=imadeadi" \
@@ -120,12 +120,12 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku?date=2026-10
       "insanku": [
         {
           "uuid_insanku": "e7b1f4a2-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-          "nama": "Nama InsanKu A",
+          "nama": "Nama InsanKU A",
           "total": 12
         },
         {
           "uuid_insanku": "9c2a7d31-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-          "nama": "Nama InsanKu B",
+          "nama": "Nama InsanKU B",
           "total": 0
         }
       ]
@@ -145,22 +145,22 @@ Jika `date` tidak dikirim, field `tanggal` tidak muncul dan `total` dihitung dar
 | `data[].uuid_outlet` | String | UUID outlet. |
 | `data[].nama_outlet` | String | Nama outlet. |
 | `data[].tanggal` | String | Bulan acuan sesuai query parameter `date`. Field ini hanya muncul jika `date` dikirim. |
-| `data[].insanku` | Array | Daftar InsanKu pada outlet tersebut. |
-| `data[].insanku[].uuid_insanku` | String | UUID InsanKu. |
-| `data[].insanku[].nama` | String | Nama InsanKu. |
+| `data[].insanku` | Array | Daftar InsanKU pada outlet tersebut. |
+| `data[].insanku[].uuid_insanku` | String | UUID InsanKU. |
+| `data[].insanku[].nama` | String | Nama InsanKU. |
 | `data[].insanku[].total` | Number | Total qty penjualan GoFitKu. |
 
 ## Aturan Perhitungan
 
-- Data InsanKu diambil dari penempatan aktif di `tbl_outlet_insanku`.
-- InsanKu yang belum memiliki penjualan tetap dikembalikan dengan `total: 0`.
-- `total` adalah akumulasi `qty` dari semua produk GoFitKu milik InsanKu tersebut.
+- Data InsanKU diambil dari penempatan aktif di `tbl_outlet_insanku`.
+- InsanKU yang belum memiliki penjualan tetap dikembalikan dengan `total: 0`.
+- `total` adalah akumulasi `qty` dari semua produk GoFitKu milik InsanKU tersebut.
 - Jika `date=YYYY-MM` dikirim, perhitungan hanya mencakup tanggal dari awal bulan sampai sebelum awal bulan berikutnya.
-- Jika `date=YYYY-MM` dikirim, penempatan/InsanKu hanya dikembalikan jika tersedia pada minimal satu hari di bulan tersebut.
-- Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
-- Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.
+- Jika `date=YYYY-MM` dikirim, penempatan/InsanKU hanya dikembalikan jika tersedia pada minimal satu hari di bulan tersebut.
+- Penjualan pada tanggal ketika penempatan atau InsanKU sedang nonaktif tidak dihitung.
+- Penjualan pada tanggal ketika InsanKU sedang masuk periode pengecualian GoFitKu tidak dihitung.
 - Data yang `deleted_at` terisi tidak dihitung.
-- Outlet, penempatan, atau InsanKu yang tidak aktif, deleted, atau outlet `excep` tidak dikembalikan.
+- Outlet, penempatan, atau InsanKU yang tidak aktif, deleted, atau outlet `is_excluded` tidak dikembalikan.
 
 ## Response Error
 
@@ -284,8 +284,8 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku/produk?date=
 - `total` adalah akumulasi `qty` dari penjualan GoFitKu.
 - Jika `date=YYYY-MM` dikirim, perhitungan hanya mencakup tanggal dari awal bulan sampai sebelum awal bulan berikutnya.
 - Jika filter outlet dikirim, total hanya menghitung penjualan outlet yang cocok.
-- Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
-- Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.
+- Penjualan pada tanggal ketika penempatan atau InsanKU sedang nonaktif tidak dihitung.
+- Penjualan pada tanggal ketika InsanKU sedang masuk periode pengecualian GoFitKu tidak dihitung.
 - Data penjualan yang `deleted_at` terisi tidak dihitung.
 
 ## Endpoint Detail Tanggal
@@ -353,6 +353,6 @@ curl -X GET "https://domain-anda.com/api/external/penjualan-gofitku/detail?uuid_
 - Tanggal tanpa transaksi tetap dikembalikan dengan `qty: 0`.
 - `qty` adalah akumulasi `qty` dari semua produk GoFitKu pada tanggal response.
 - Jika filter outlet dikirim, total hanya menghitung penjualan outlet yang cocok.
-- Penjualan pada tanggal ketika penempatan atau InsanKu sedang nonaktif tidak dihitung.
-- Penjualan pada tanggal ketika InsanKu sedang masuk periode pengecualian GoFitKu tidak dihitung.
+- Penjualan pada tanggal ketika penempatan atau InsanKU sedang nonaktif tidak dihitung.
+- Penjualan pada tanggal ketika InsanKU sedang masuk periode pengecualian GoFitKu tidak dihitung.
 - Data penjualan yang `deleted_at` terisi tidak dihitung.

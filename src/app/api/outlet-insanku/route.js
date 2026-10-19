@@ -48,12 +48,12 @@ export const POST = async () => {
       data: data.data,
     });
   } catch (error) {
-    console.error("Sinkronisasi penempatan InsanKu gagal:", error);
+    console.error("Sinkronisasi penempatan InsanKU gagal:", error);
 
     return NextResponse.json(
       buildApiErrorResponse(
         error,
-        "Terjadi kesalahan saat sinkronisasi penempatan InsanKu.",
+        "Terjadi kesalahan saat sinkronisasi penempatan InsanKU.",
       ),
       { status: 500 },
     );
@@ -80,7 +80,7 @@ export const PATCH = async (request) => {
     return NextResponse.json(
       buildApiErrorResponse(
         error,
-        "Terjadi kesalahan saat menyimpan penempatan InsanKu.",
+        "Terjadi kesalahan saat menyimpan penempatan InsanKU.",
       ),
       { status: 500 },
     );

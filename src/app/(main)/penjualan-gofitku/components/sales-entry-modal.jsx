@@ -211,7 +211,7 @@ export default function SalesEntryModal({
                               onValueChange={(employee_uuid) =>
                                 on_entry_change(entry.id, "employee_uuid", employee_uuid)
                               }
-                              ariaLabel={`Nama InsanKu entri ${index + 1}`}
+                              ariaLabel={`Nama InsanKU entri ${index + 1}`}
                             />
                           </div>
                           <div className="space-y-2">

@@ -343,7 +343,7 @@ export default function AtributPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-        description="Kelola daftar kolom atribut untuk data InsanKu."
+        description="Kelola daftar kolom atribut untuk data InsanKU."
         />
       </div>
       <div className="px-4 lg:px-6">
@@ -468,7 +468,7 @@ export default function AtributPage() {
                                 >
                                   <ListChecksIcon className="size-4" />
                                   {row.is_attribute
-                                    ? "Atribut InsanKu"
+                                    ? "Atribut InsanKU"
                                     : "Kolom biasa"}
                                 </span>
                                 <span
@@ -590,15 +590,15 @@ export default function AtributPage() {
                   },
                   {
                     key: "is_attribute",
-                    label: "Jadikan Atribut InsanKu",
+                    label: "Jadikan Atribut InsanKU",
                     type: "checkbox",
-                    placeholder: "Gunakan kolom ini sebagai atribut InsanKu",
+                    placeholder: "Gunakan kolom ini sebagai atribut InsanKU",
                   },
                   {
                     key: "is_view",
-                    label: "Boleh Dilihat di InsanKu",
+                    label: "Boleh Dilihat di InsanKU",
                     type: "checkbox",
-                    placeholder: "Tampilkan atribut ini di InsanKu",
+                    placeholder: "Tampilkan atribut ini di InsanKU",
                     on_change: (draft, checked) => ({
                       is_view: checked,
                       is_edit: checked ? Boolean(draft.is_edit) : false,
@@ -606,14 +606,14 @@ export default function AtributPage() {
                   },
                   {
                     key: "is_edit",
-                    label: "Boleh Diedit di InsanKu",
+                    label: "Boleh Diedit di InsanKU",
                     type: "checkbox",
-                    placeholder: "Izinkan atribut ini diedit di InsanKu",
+                    placeholder: "Izinkan atribut ini diedit di InsanKU",
                     disabled: (draft) => !draft.is_view,
                     helper: (draft) =>
                       draft.is_view
                         ? null
-                        : "Aktifkan tampil di InsanKu terlebih dahulu untuk mengizinkan edit.",
+                        : "Aktifkan tampil di InsanKU terlebih dahulu untuk mengizinkan edit.",
                   },
                   {
                     key: "is_summary_visible",
@@ -624,7 +624,7 @@ export default function AtributPage() {
                     helper: (draft) =>
                       draft.is_attribute
                         ? "Matikan untuk menyembunyikan kartu ringkasan atribut ini."
-                        : "Aktifkan sebagai atribut InsanKu terlebih dahulu untuk menampilkan panel dinamis.",
+                        : "Aktifkan sebagai atribut InsanKU terlebih dahulu untuk menampilkan panel dinamis.",
                   },
                 ]}
                 on_save={handle_save}
@@ -672,15 +672,15 @@ export default function AtributPage() {
                   },
                   {
                     key: "is_attribute",
-                    label: "Jadikan Atribut InsanKu",
+                    label: "Jadikan Atribut InsanKU",
                     type: "checkbox",
-                    placeholder: "Gunakan kolom ini sebagai atribut InsanKu",
+                    placeholder: "Gunakan kolom ini sebagai atribut InsanKU",
                   },
                   {
                     key: "is_view",
-                    label: "Boleh Dilihat di InsanKu",
+                    label: "Boleh Dilihat di InsanKU",
                     type: "checkbox",
-                    placeholder: "Tampilkan atribut ini di InsanKu",
+                    placeholder: "Tampilkan atribut ini di InsanKU",
                     on_change: (draft, checked) => ({
                       is_view: checked,
                       is_edit: checked ? Boolean(draft.is_edit) : false,
@@ -688,14 +688,14 @@ export default function AtributPage() {
                   },
                   {
                     key: "is_edit",
-                    label: "Boleh Diedit di InsanKu",
+                    label: "Boleh Diedit di InsanKU",
                     type: "checkbox",
-                    placeholder: "Izinkan atribut ini diedit di InsanKu",
+                    placeholder: "Izinkan atribut ini diedit di InsanKU",
                     disabled: (draft) => !draft.is_view,
                     helper: (draft) =>
                       draft.is_view
                         ? null
-                        : "Aktifkan tampil di InsanKu terlebih dahulu untuk mengizinkan edit.",
+                        : "Aktifkan tampil di InsanKU terlebih dahulu untuk mengizinkan edit.",
                   },
                   {
                     key: "is_summary_visible",
@@ -706,7 +706,7 @@ export default function AtributPage() {
                     helper: (draft) =>
                       draft.is_attribute
                         ? "Matikan untuk menyembunyikan kartu ringkasan atribut ini."
-                        : "Aktifkan sebagai atribut InsanKu terlebih dahulu untuk menampilkan panel dinamis.",
+                        : "Aktifkan sebagai atribut InsanKU terlebih dahulu untuk menampilkan panel dinamis.",
                   },
                 ]}
                 on_save={handle_create}
@@ -735,7 +735,7 @@ export default function AtributPage() {
                   }
                 }}
                 title="Ubah jenis kolom atribut"
-                description="Perubahan jenis kolom atribut akan memengaruhi data InsanKu yang sudah ada. Sistem akan memeriksa kecocokan data lama terlebih dahulu sebelum menyimpan perubahan."
+                description="Perubahan jenis kolom atribut akan memengaruhi data InsanKU yang sudah ada. Sistem akan memeriksa kecocokan data lama terlebih dahulu sebelum menyimpan perubahan."
                 confirmLabel="Ya, ubah jenis"
                 isPending={is_type_change_pending}
                 onConfirm={handle_confirm_type_change}

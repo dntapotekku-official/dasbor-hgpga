@@ -154,7 +154,7 @@ export default function LoginPage() {
         </Card>
       </div>
       <footer className="pt-3 text-center text-xs text-white/75">
-        Dikembangkan oleh <span className="font-semibold"> Tim DnT ApotekKu.</span>
+        Dikembangkan oleh <span className="font-semibold"> Tim DnT ApotekKU.</span>
       </footer>
     </main>
   );

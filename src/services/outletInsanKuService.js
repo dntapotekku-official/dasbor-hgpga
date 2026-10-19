@@ -239,7 +239,7 @@ export async function syncOutletInsanKu() {
         where: {
           deleted_at: null,
           is_active: true,
-          excep: false,
+          is_excluded: false,
         },
         select: {
           uuid: true,
@@ -464,7 +464,7 @@ export async function updateOutletInsanKu({
   is_skip_sync_outlet_insanku,
 }) {
   if (!uuid_insanku) {
-    throw new Error("UUID InsanKu wajib diisi.");
+    throw new Error("UUID InsanKU wajib diisi.");
   }
 
   const unique_outlet_uuids = Array.from(
@@ -487,7 +487,7 @@ export async function updateOutletInsanKu({
   });
 
   if (!existing_insanku || existing_insanku.deleted_at) {
-    throw new Error("Data InsanKu tidak ditemukan.");
+    throw new Error("Data InsanKU tidak ditemukan.");
   }
 
   const valid_outlets = await prisma.tbl_outlet.findMany({
@@ -497,7 +497,7 @@ export async function updateOutletInsanKu({
       },
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: {
       uuid: true,

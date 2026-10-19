@@ -110,7 +110,7 @@ export default function AiApiPage() {
       <div className="px-4 lg:px-6">
         <PageHeading
           title="Pengaturan"
-          description="Sinkronkan dan pantau data outlet, InsanKu, dan admin, serta kelola pengaturan sistem lainnya."
+          description="Sinkronkan dan pantau data outlet, InsanKU, dan admin, serta kelola pengaturan sistem lainnya."
         />
       </div>
       <div className="px-4 lg:px-6">

@@ -94,7 +94,7 @@ export const PATCH = async (request) => {
       : body?.action === "update_exception"
       ? await updateOutletException({
           uuid_outlet: body?.uuid_outlet,
-          excep: body?.excep,
+          is_excluded: body?.is_excluded,
         })
       : await updateOutlet({
           uuid_outlet: body?.uuid_outlet,

@@ -151,7 +151,7 @@ async function assert_active_outlet(uuid_outlet) {
       uuid: normalized_uuid_outlet,
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: {
       uuid: true,
@@ -324,7 +324,7 @@ export async function getKunjungan() {
         outlet: {
           deleted_at: null,
           is_active: true,
-          excep: false,
+          is_excluded: false,
         },
       },
       orderBy: [
@@ -355,7 +355,7 @@ export async function getKunjungan() {
       where: {
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       orderBy: {
         name: "asc",
@@ -564,7 +564,7 @@ export async function importKunjungan({
     where: {
       deleted_at: null,
       is_active: true,
-      excep: false,
+      is_excluded: false,
     },
     select: {
       uuid: true,
@@ -733,7 +733,7 @@ export async function getKunjunganBulanan() {
       metric: KUNJUNGAN_METRIC_NILAI_TRANSAKSI,
       outlet: {
         deleted_at: null,
-        excep: false,
+        is_excluded: false,
       },
     },
     orderBy: [

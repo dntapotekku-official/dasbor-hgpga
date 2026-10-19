@@ -34,7 +34,7 @@ async function get_member_overview(user, period) {
         uuid: user.uuid,
         deleted_at: null,
         is_active: true,
-        excep: false,
+        is_excluded: false,
       },
       select: {
         name: true,
@@ -103,8 +103,8 @@ async function get_member_overview(user, period) {
   if (!employees.length) {
     notices.push({
       tone: "warning",
-      title: "InsanKu outlet belum tersedia",
-      description: "Hubungi admin agar penempatan InsanKu pada outlet dilengkapi.",
+      title: "InsanKU outlet belum tersedia",
+      description: "Hubungi admin agar penempatan InsanKU pada outlet dilengkapi.",
     });
   }
 
@@ -112,7 +112,7 @@ async function get_member_overview(user, period) {
     notices.push({
       tone: "warning",
       title: `${total_required_attributes - filled_attribute_count} atribut belum lengkap`,
-      description: "Lengkapi data atribut InsanKu yang berada di outlet Anda.",
+      description: "Lengkapi data atribut InsanKU yang berada di outlet Anda.",
     });
   } else {
     notices.push({
@@ -126,7 +126,7 @@ async function get_member_overview(user, period) {
     stats: [
       {
         key: "employees",
-        label: "InsanKu",
+        label: "InsanKU",
         value: employees.length.toLocaleString("id-ID"),
         caption: outlet?.name ?? "Outlet tidak ditemukan",
         tone: "sky",
@@ -163,7 +163,7 @@ async function get_management_overview(user) {
           outlet_insanku: {
             where: {
               deleted_at: null,
-              outlet: { deleted_at: null, is_active: true, excep: false },
+              outlet: { deleted_at: null, is_active: true, is_excluded: false },
             },
             select: { uuid: true },
           },
@@ -183,7 +183,7 @@ async function get_management_overview(user) {
         where: { deleted_at: null, is_attribute: true },
       }),
       prisma.tbl_outlet.count({
-        where: { deleted_at: null, is_active: true, excep: false },
+        where: { deleted_at: null, is_active: true, is_excluded: false },
       }),
       normalizeRole(user.role) === "superadmin"
         ? prisma.tbl_admin.count({ where: { deleted_at: null } })
@@ -213,7 +213,7 @@ async function get_management_overview(user) {
   if (employees_without_outlet) {
     notices.push({
       tone: "warning",
-      title: `${employees_without_outlet} InsanKu belum memiliki outlet`,
+      title: `${employees_without_outlet} InsanKU belum memiliki outlet`,
       description: "Periksa penempatan pengguna agar pelaporan operasional tetap akurat.",
     });
   }
@@ -221,8 +221,8 @@ async function get_management_overview(user) {
   if (incomplete_employees) {
     notices.push({
       tone: "warning",
-      title: `${incomplete_employees} InsanKu belum melengkapi atribut`,
-      description: "Pantau dan tindak lanjuti kelengkapan atribut wajib InsanKu.",
+      title: `${incomplete_employees} InsanKU belum melengkapi atribut`,
+      description: "Pantau dan tindak lanjuti kelengkapan atribut wajib InsanKU.",
     });
   }
 
@@ -230,7 +230,7 @@ async function get_management_overview(user) {
     notices.push({
       tone: "success",
       title: "Data utama dalam kondisi baik",
-      description: "Seluruh InsanKu aktif telah memiliki outlet dan atribut wajib yang lengkap.",
+      description: "Seluruh InsanKU aktif telah memiliki outlet dan atribut wajib yang lengkap.",
     });
   }
 
@@ -238,7 +238,7 @@ async function get_management_overview(user) {
     stats: [
       {
         key: "employees",
-        label: "InsanKu",
+        label: "InsanKU",
         value: employees.length.toLocaleString("id-ID"),
         caption: "Jumlah pengguna aktif",
         tone: "sky",
