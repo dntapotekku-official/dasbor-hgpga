@@ -93,7 +93,7 @@ export default function PengecualianPage() {
     { key: "start_date", label: "Tanggal Mulai", type: "date", required: true, disabled: busy },
     {
       key: "end_date", label: "Tanggal Selesai", type: "date", required: true, disabled: busy,
-      helper: "Berlaku untuk total NT dan BS berdasarkan tanggal laporan yang dipilih. Setelah rentang berakhir, outlet kembali dihitung termasuk angka bulan pembanding. Rentang outlet yang sama tidak boleh bertabrakan.",
+      helper: "Berlaku untuk total Nilai Transaksi dan Basket Size berdasarkan tanggal laporan yang dipilih. Setelah rentang berakhir, outlet kembali dihitung termasuk angka bulan pembanding. Rentang outlet yang sama tidak boleh bertabrakan.",
     },
   ];
 
