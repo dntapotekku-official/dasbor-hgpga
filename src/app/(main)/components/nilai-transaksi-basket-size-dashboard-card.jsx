@@ -72,6 +72,7 @@ function MetricHeading({ icon, title, description }) {
 
 export default function NilaiTransaksiBasketSizeDashboardCard({
   metrics,
+  report_date_label,
   highest_nilai_transaksi_by_category = [],
   highest_basket_size_by_category = [],
   showDetailLink = true,
@@ -82,7 +83,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
         <section className="bg-orange-50/60 p-(--card-spacing) dark:bg-orange-950/15">
           <MetricHeading
             title="Nilai Transaksi"
-            description="Semua kategori"
+            description={report_date_label ? `Semua kategori • ${report_date_label}` : "Semua kategori"}
             icon={
               <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/50">
                 <BadgeDollarSignIcon className="size-5 text-orange-700 dark:text-orange-300" />
@@ -108,11 +109,11 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
             <SummaryValue
               label="Target"
-              value={<CurrencyValue value={metrics.nt_target} align="split" />}
+              value={<CurrencyValue value={metrics.nt_target} align="left" />}
             />
             <SummaryValue
               label="Total Penerimaan Pendapatan Bulan Ini"
-              value={<CurrencyValue value={metrics.nt_current_month_total_revenue} align="split" />}
+              value={<CurrencyValue value={metrics.nt_current_month_total_revenue} align="left" />}
             />
             <SummaryValue
               label="Kunjungan Bulan Ini"
@@ -120,15 +121,15 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
             />
             <SummaryValue
               label="Rata-rata Harian"
-              value={<CurrencyValue value={metrics.nt_daily} align="split" />}
+              value={<CurrencyValue value={metrics.nt_daily} align="left" />}
             />
             <SummaryValue
               label="Bulan Ini"
-              value={<CurrencyValue value={metrics.nt_current_month} align="split" />}
+              value={<CurrencyValue value={metrics.nt_current_month} align="left" />}
             />
             <SummaryValue
               label="Bulan lalu"
-              value={<CurrencyValue value={metrics.nt_last_month} align="split" />}
+              value={<CurrencyValue value={metrics.nt_last_month} align="left" />}
             />
             <SummaryValue
               label="Growth"
@@ -170,7 +171,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
         <section className="bg-blue-50/60 p-(--card-spacing) dark:bg-blue-950/15">
           <MetricHeading
             title="Basket Size"
-            description="Semua kategori"
+            description={report_date_label ? `Semua kategori • ${report_date_label}` : "Semua kategori"}
             icon={
               <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50">
                 <ShoppingBasketIcon className="size-5 text-blue-700 dark:text-blue-300" />

@@ -34,6 +34,7 @@ import getCurrentUser from "@/lib/auth";
 import { canAccessMenu } from "@/lib/menu-access";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { normalizeRole } from "@/lib/role";
+import { getDashboardPeriods } from "@/lib/dashboardPeriods";
 import { getDashboardOverview } from "@/services/dashboardService";
 import { getKepuasanInternalChart } from "@/services/kepuasanInternalService";
 import { getNilaiTransaksiBasketSize } from "@/services/nilaiTransaksiBasketSizeService";
@@ -157,8 +158,7 @@ export default async function Page() {
   const role_meta = ROLE_META[role] ?? ROLE_META.member;
   const RoleIcon = role_meta.icon;
   const today = new Date();
-  const current_year = String(today.getFullYear());
-  const current_month = `${current_year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const dashboard_periods = getDashboardPeriods(today);
   const can_view_kepuasan = canAccessMenu(user, "kepuasan-internal");
   const can_view_cctv = canAccessMenu(
     user,
@@ -185,12 +185,12 @@ export default async function Page() {
     getDashboardOverview(user),
     can_view_kepuasan
       ? safely(
-          () => getKepuasanInternalChart({ year: current_year }),
+          () => getKepuasanInternalChart({ year: dashboard_periods.kepuasan_year }),
           { data: { chart_data: [], series: [] } },
         )
       : null,
     can_view_ntbs
-      ? safely(() => getNilaiTransaksiBasketSize(), {
+      ? safely(() => getNilaiTransaksiBasketSize({ selected_date: dashboard_periods.ntbs_date }), {
           rows: [],
           overall_metrics: {},
         })
@@ -212,14 +212,14 @@ export default async function Page() {
         )
       : null,
   ]);
-  const current_chart_item = kepuasan_internal?.data?.chart_data?.find(
-    (item) => item.month === current_month,
+  const previous_month_chart_item = kepuasan_internal?.data?.chart_data?.find(
+    (item) => item.month === dashboard_periods.kepuasan_month,
   );
-  const pie_data = current_chart_item
+  const pie_data = previous_month_chart_item
     ? (kepuasan_internal.data?.series ?? []).map((item) => ({
         key: item.key,
         label: item.label,
-        value: Number(current_chart_item[item.key]) || 0,
+        value: Number(previous_month_chart_item[item.key]) || 0,
       }))
     : [];
   const outlet_chart_data = gofitku_outlet_chart?.chart_data ?? [];
@@ -390,10 +390,7 @@ export default async function Page() {
               {can_view_kepuasan ? (
                 <ChartPieDonutText
                   title="Kepuasan Internal"
-                  description={new Intl.DateTimeFormat("id-ID", {
-                    month: "long",
-                    year: "numeric",
-                  }).format(today)}
+                  description={dashboard_periods.kepuasan_label}
                   data={pie_data}
                   emptyMessage="Data kepuasan internal belum tersedia."
                   icon={<PieChartIcon className="size-5 text-rose-700" />}
@@ -470,6 +467,7 @@ export default async function Page() {
 
           {can_view_ntbs ? (
             <NilaiTransaksiBasketSizeDashboardCard
+              report_date_label={dashboard_periods.ntbs_label}
               metrics={nilai_transaksi_basket_size.overall_metrics}
               highest_nilai_transaksi_by_category={
                 highest_nilai_transaksi_by_category
