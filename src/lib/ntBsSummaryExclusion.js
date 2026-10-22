@@ -23,9 +23,10 @@ export function findExclusionConflict(exclusions, { outlet_uuids, start_date, en
     && exclusionDateKey(item.start_date) <= end && exclusionDateKey(item.end_date) >= start);
 }
 
-// Eligibility follows the selected report date for both current and comparison totals.
-export function applySummaryExclusions(rows, exclusions, currentDate) {
+// Each column follows the cutoff date of its own reporting period.
+export function applySummaryExclusions(rows, exclusions, currentDate, previousDate) {
   const current = exclusionDateKey(currentDate);
+  const previous = exclusionDateKey(previousDate);
   const byOutlet = new Map();
   for (const item of exclusions) {
     if (item.deleted_at) continue;
@@ -38,7 +39,7 @@ export function applySummaryExclusions(rows, exclusions, currentDate) {
     ...row,
     summary_exclusions: Object.fromEntries(["nilai_transaksi", "basket_size"].map((metric) => [metric, {
       current: (byOutlet.get(row.uuid) ?? []).some((range) => range.start <= current && range.end >= current),
-      previous: (byOutlet.get(row.uuid) ?? []).some((range) => range.start <= current && range.end >= current),
+      previous: (byOutlet.get(row.uuid) ?? []).some((range) => range.start <= previous && range.end >= previous),
     }])),
   }));
 }
@@ -74,7 +75,7 @@ export function summaryTargetCount(rows, metric) {
 
 export function summaryExclusionLabel(row, metric) {
   const flags = row.summary_exclusions?.[metric];
-  if (flags?.current && flags?.previous) return "Dikecualikan dari total pada tanggal laporan ini";
+  if (flags?.current && flags?.previous) return "Dikecualikan dari total periode ini dan bulan sebelumnya";
   if (flags?.current) return "Dikecualikan dari total periode ini";
   if (flags?.previous) return "Dikecualikan dari total bulan sebelumnya";
   return "";

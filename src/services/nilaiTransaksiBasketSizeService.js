@@ -1048,8 +1048,10 @@ export async function getNilaiTransaksiBasketSize({
       where: {
         deleted_at: null,
         ...outlet_scope,
-        start_date: { lte: current_day_start },
-        end_date: { gte: current_day_start },
+        OR: [current_day_start, previous_month_end_start].map((date) => ({
+          start_date: { lte: date },
+          end_date: { gte: date },
+        })),
       },
       select: { uuid_outlet: true, start_date: true, end_date: true, metric: true },
     }),
@@ -1083,7 +1085,7 @@ export async function getNilaiTransaksiBasketSize({
     last_basket_size_map,
     nilai_transaksi_target_map,
     basket_size_target_map,
-  }), summary_exclusions, current_day_start);
+  }), summary_exclusions, current_day_start, previous_month_end_start);
 
   // Ringkasan per kategori.
   const category_metrics = Object.fromEntries(

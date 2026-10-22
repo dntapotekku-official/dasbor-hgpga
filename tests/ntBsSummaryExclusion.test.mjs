@@ -49,22 +49,22 @@ test("September: details remain while both summary numerators and denominators e
   assert.equal(result.nt_daily, 100);
   assert.equal(result.bs_current_month, 2);
   assert.equal(result.nt_target, 100);
-  assert.equal(result.nt_last_month_total_revenue, 1000, "comparison uses the same eligible outlets as the selected report");
-  assert.equal(result.nt_last_month_kunjungan, 10);
+  assert.equal(result.nt_last_month_total_revenue, 7000, "August comparison is outside the September exclusion");
+  assert.equal(result.nt_last_month_kunjungan, 40);
   assert.equal(rows[1].summary_exclusions, undefined, "source data is not mutated");
 });
 
-test("October: expired September exclusion no longer removes outlets from September comparison", () => {
+test("October: September exclusion still applies to September comparison only", () => {
   const flagged = applySummaryExclusions(rows, exclusions, "2026-10-12", "2026-09-30");
   const result = summarizeServer(flagged);
-  assert.equal(result.nt_last_month, 175);
-  assert.equal(result.bs_last_month, 3.5);
+  assert.equal(result.nt_last_month, 100);
+  assert.equal(result.bs_last_month, 2);
   assert.equal(result.nt_current_month, 175);
   assert.equal(result.bs_current_month, 3.5);
-  assert.equal(result.nt_growth, 100);
-  assert.equal(result.bs_growth, 100);
+  assert.equal(result.nt_growth, 175);
+  assert.equal(result.bs_growth, 175);
   assert.equal(result.nt_target, 175);
-  assert.equal(result.nt_gap_growth, 0);
+  assert.equal(result.nt_gap_growth, 75);
 });
 
 test("each exclusion applies to both NT and BS; unrelated months remain unchanged", () => {
@@ -121,6 +121,6 @@ test("custom date ranges follow the reporting cutoff inclusively and leave other
     const flagged = applySummaryExclusions(rows, range, date, "2026-08-31");
     assert.equal(flagged[1].summary_exclusions.nilai_transaksi.current, excluded);
     assert.equal(flagged[1].summary_exclusions.basket_size.current, excluded);
-    assert.equal(flagged[1].summary_exclusions.nilai_transaksi.previous, excluded);
+    assert.equal(flagged[1].summary_exclusions.nilai_transaksi.previous, false);
   }
 });
