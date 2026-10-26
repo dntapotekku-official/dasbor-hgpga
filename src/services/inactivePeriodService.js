@@ -111,7 +111,10 @@ async function closeInactivePeriod({
     where: {
       [foreign_key]: foreign_uuid,
       deleted_at: null,
-      end_date: null,
+      OR: [
+        { end_date: null },
+        { end_date: { gte: normalized_active_date } },
+      ],
       start_date: {
         lt: normalized_active_date,
       },
