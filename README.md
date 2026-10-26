@@ -20,6 +20,7 @@ Isi seluruh konfigurasi yang diperlukan di `.env`. Gunakan `JWT_SECRET` acak den
 
 ```bash
 npm run lint
+npm test
 npx prisma validate
 npx prisma migrate status
 npm run build
@@ -40,6 +41,12 @@ Pada Impor maupun Tambah Massal, target aktif dengan periode yang bertabrakan ak
 ## Dokumentasi API
 
 - [API Eksternal Penjualan GoFitKu](docs/api-penjualan-gofitku-external.md)
+
+## Mapping penempatan
+
+Tab **Pengaturan → Pengguna → Mapping Penempatan** menampilkan tabel harian per bulan dan outlet. Sel merah menunjukkan penempatan aktif pada tanggal tersebut. Filter mencakup nama/NIK, jenis InsanKU, outlet, bulan, dan tahun; tombol Sinkron membaca ulang data tersimpan.
+
+Periode dihitung dari riwayat nonaktif penempatan dan InsanKU. Jika tanggal efektif awal belum tercatat pada data lama, tanggal pembuatan penempatan digunakan sebagai acuan. Fitur ini hanya membaca data dan tidak memerlukan migrasi database baru.
 
 ## Deployment
 

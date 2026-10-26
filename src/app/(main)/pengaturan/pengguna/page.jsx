@@ -8,11 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isSuperadmin } from "@/lib/role";
 import AdminTab from "./components/admin-tab";
 import InsanKuTab from "./components/insanKu-tab";
+import PlacementMappingTab from "./components/placement-mapping-tab";
 
 const TAB_LABELS = {
   admin: "Admin",
   insanku: "InsanKU (Slip Gaji)",
   insanku_non_slip_gaji: "InsanKU (Non Slip Gaji)",
+  mapping_penempatan: "Mapping Penempatan",
 };
 
 export default function PenggunaPage() {
@@ -25,6 +27,7 @@ export default function PenggunaPage() {
     : {
         insanku: TAB_LABELS.insanku,
         insanku_non_slip_gaji: TAB_LABELS.insanku_non_slip_gaji,
+        mapping_penempatan: TAB_LABELS.mapping_penempatan,
       };
   const active_tab = Object.hasOwn(tab_labels, requested_tab)
     ? requested_tab
@@ -65,6 +68,9 @@ export default function PenggunaPage() {
           </TabsContent>
           <TabsContent value="insanku_non_slip_gaji">
             <InsanKuTab is_non_slip_gaji />
+          </TabsContent>
+          <TabsContent value="mapping_penempatan">
+            <PlacementMappingTab />
           </TabsContent>
         </Tabs>
       </div>
