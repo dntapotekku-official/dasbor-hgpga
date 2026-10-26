@@ -8,11 +8,11 @@ import {
 } from "../src/lib/ntBsSummaryExclusion.js";
 
 const source = readFileSync(new URL("../src/services/nilaiTransaksiBasketSizeService.js", import.meta.url), "utf8");
-const summarizeServer = new Function("prepareMetricSummaryRows", "summaryTargetCount", "comparePercentage",
+const summarizeServer = new Function("prepareMetricSummaryRows", "summaryTargetCount", "comparePercentage", "withMarkedNtBsRefresh", "prisma",
   source.slice(source.indexOf("const exec_file"))
     .replace("const exec_file = promisify(execFile);", "")
     .replace(/^export /gm, "") + "\nreturn summarize_metric_rows;",
-)(prepareMetricSummaryRows, summaryTargetCount, comparePercentage);
+)(prepareMetricSummaryRows, summaryTargetCount, comparePercentage, (_database, mutate) => mutate, {});
 const clientSource = readFileSync(new URL("../src/app/(main)/nilai-transaksi-basket-size/page.jsx", import.meta.url), "utf8");
 const summarizeClient = new Function("prepareMetricSummaryRows", "summaryTargetCount", "comparePercentage", "toNumber", "empty_metrics",
   clientSource.slice(clientSource.indexOf("function summarizeVisibleRows("), clientSource.indexOf("export default function NilaiTransaksiPage"))

@@ -20,6 +20,7 @@ function get_today_value() {
 
 export default function TargetImportModal({
   open,
+  allow_open_end = false,
   date_mode,
   is_importing,
   target_label,
@@ -30,7 +31,7 @@ export default function TargetImportModal({
 }) {
   const [import_date, setImportDate] = useState(get_today_value);
   const [start_date, setStartDate] = useState(get_today_value);
-  const [end_date, setEndDate] = useState(get_today_value);
+  const [end_date, setEndDate] = useState(() => allow_open_end ? "" : get_today_value());
   const [file, setFile] = useState(null);
   const [file_error, setFileError] = useState("");
   const [is_dragging, setIsDragging] = useState(false);
@@ -68,7 +69,7 @@ export default function TargetImportModal({
 
     setImportDate(today);
     setStartDate(today);
-    setEndDate(today);
+    setEndDate(allow_open_end ? "" : today);
     setFile(null);
     setFileError("");
     setIsDragging(false);
@@ -135,15 +136,17 @@ export default function TargetImportModal({
                   />
                 </div>
                 <div className="space-y-2">
-                  <FieldLabel htmlFor="tanggal-selesai-import-target" label="Tanggal Selesai" required />
+                  <FieldLabel htmlFor="tanggal-selesai-import-target" label="Tanggal Selesai" required={!allow_open_end} />
                   <Input
                     id="tanggal-selesai-import-target"
                     type="date"
                     value={end_date}
+                    min={start_date || undefined}
                     onChange={(event) => setEndDate(event.target.value)}
                     disabled={is_importing}
-                    required
+                    required={!allow_open_end}
                   />
+                  {allow_open_end && <p className="text-xs text-muted-foreground">Kosongkan agar target berlaku seterusnya.</p>}
                 </div>
               </div>
             ) : (

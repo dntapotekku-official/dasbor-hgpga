@@ -12,6 +12,7 @@ import {
   openOutletInsanKuInactivePeriod,
 } from "@/services/inactivePeriodService";
 import { softDeleteInsanKuRelations } from "@/services/softDeleteInsanKuRelations";
+import { buildDefaultPlacementTarget } from "@/services/defaultPlacementTarget";
 import { getGofitkuSetupWindow, isWithinGofitkuSetupWindow } from "@/lib/gofitkuSetupWindow";
 
 const DEFAULT_INSANKU_PASSWORD = "Apotekku";
@@ -166,29 +167,19 @@ async function validateJabatanMaster(database, jabatan_uuids) {
 }
 
 async function savePlacementJabatan(database, placement, uuid_outlet_insanku) {
-  if (!placement.uuid_jabatan_master) {
-    await database.tbl_jabatan_insanku.updateMany({
-      where: { uuid_outlet_insanku },
-      data: {
-        uuid_jabatan_master: null,
-        is_active: placement.jabatan_is_active,
-        deleted_at: null,
-      },
-    });
-    return;
-  }
+  const uuid_jabatan_master = placement.uuid_jabatan_master || null;
 
   await database.tbl_jabatan_insanku.upsert({
     where: { uuid_outlet_insanku },
     update: {
-      uuid_jabatan_master: placement.uuid_jabatan_master,
+      uuid_jabatan_master,
       is_active: placement.jabatan_is_active,
       deleted_at: null,
     },
     create: {
       uuid: randomUUID(),
       uuid_outlet_insanku,
-      uuid_jabatan_master: placement.uuid_jabatan_master,
+      uuid_jabatan_master,
       is_active: placement.jabatan_is_active,
     },
   });
@@ -1156,6 +1147,7 @@ export async function updateInsanKu({
               uuid_insanku,
               is_active: true,
               is_skip_sync: should_skip_sync_outlet_insanku,
+              target_gofitku: buildDefaultPlacementTarget(placement_active_start_date),
             },
           });
           await createOutletInsanKuPreActivePeriod(
@@ -1221,6 +1213,7 @@ export async function updateInsanKu({
           uuid_insanku,
           is_active: true,
           is_skip_sync: should_skip_sync_outlet_insanku,
+          target_gofitku: buildDefaultPlacementTarget(placement_active_start_date),
         },
       });
       await createOutletInsanKuPreActivePeriod(
@@ -1306,6 +1299,9 @@ export async function createInsanKuNonSlipGaji({
           uuid: uuid_outlet_insanku,
           uuid_outlet: placement.outlet_uuid,
           uuid_insanku: insanku.uuid,
+          target_gofitku: buildDefaultPlacementTarget(
+            parseOptionalDate(placement.active_start_date, "Tanggal mulai penempatan"),
+          ),
         },
       });
       await savePlacementJabatan(

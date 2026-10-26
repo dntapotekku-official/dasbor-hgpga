@@ -26,6 +26,7 @@ export default function GofitkuTab() {
       secondary_entity_label="Outlet"
       show_nik={false}
       split_entity_filters
+      allow_open_end
       enable_bulk_create
       enable_bulk_target_update
     />

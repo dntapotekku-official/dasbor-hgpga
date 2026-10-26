@@ -1,3 +1,4 @@
+import { withMarkedNtBsRefresh } from "@/services/markedNtBsOutletService";
 import { randomUUID } from "node:crypto";
 import ExcelJS from "exceljs";
 
@@ -378,7 +379,7 @@ export async function getKunjungan() {
   };
 }
 
-export async function createKunjungan({
+async function createKunjunganData({
   uuid_outlet,
   date,
   value,
@@ -434,7 +435,7 @@ export async function createKunjungan({
   };
 }
 
-export async function updateKunjungan({
+async function updateKunjunganData({
   uuid_kunjungan,
   uuid_outlet,
   date,
@@ -516,7 +517,7 @@ export async function updateKunjungan({
   };
 }
 
-export async function deleteKunjungan({ uuid_kunjungan }) {
+async function deleteKunjunganData({ uuid_kunjungan }) {
   const normalized_uuid_kunjungan = String(uuid_kunjungan ?? "").trim();
 
   if (!normalized_uuid_kunjungan) {
@@ -554,7 +555,7 @@ export async function deleteKunjungan({ uuid_kunjungan }) {
   };
 }
 
-export async function importKunjungan({
+async function importKunjunganData({
   file_path,
   import_date,
 }) {
@@ -769,7 +770,7 @@ export async function getKunjunganBulanan() {
   };
 }
 
-export async function createKunjunganBulanan({
+async function createKunjunganBulananData({
   uuid_outlet,
   from_date,
   to_date,
@@ -832,7 +833,7 @@ export async function createKunjunganBulanan({
   };
 }
 
-export async function updateKunjunganBulanan({
+async function updateKunjunganBulananData({
   uuid_kunjungan_bulanan,
   uuid_outlet,
   from_date,
@@ -921,7 +922,7 @@ export async function updateKunjunganBulanan({
   };
 }
 
-export async function deleteKunjunganBulanan({ uuid_kunjungan_bulanan }) {
+async function deleteKunjunganBulananData({ uuid_kunjungan_bulanan }) {
   const normalized_uuid = String(uuid_kunjungan_bulanan ?? "").trim();
 
   if (!normalized_uuid) {
@@ -958,3 +959,12 @@ export async function deleteKunjunganBulanan({ uuid_kunjungan_bulanan }) {
     message: "Kunjungan bulanan berhasil dihapus.",
   };
 }
+
+// Visits determine NT, so changes also refresh the persisted outlet marks.
+export const createKunjungan = withMarkedNtBsRefresh(prisma, createKunjunganData);
+export const updateKunjungan = withMarkedNtBsRefresh(prisma, updateKunjunganData);
+export const deleteKunjungan = withMarkedNtBsRefresh(prisma, deleteKunjunganData);
+export const importKunjungan = withMarkedNtBsRefresh(prisma, importKunjunganData);
+export const createKunjunganBulanan = withMarkedNtBsRefresh(prisma, createKunjunganBulananData);
+export const updateKunjunganBulanan = withMarkedNtBsRefresh(prisma, updateKunjunganBulananData);
+export const deleteKunjunganBulanan = withMarkedNtBsRefresh(prisma, deleteKunjunganBulananData);

@@ -26,7 +26,15 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function get_today_input_value() {
-  return new Date().toISOString().slice(0, 10);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Makassar",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date()).map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function normalize_placements(value, include_key = false, field_key = "") {
@@ -148,6 +156,7 @@ export default function PengaturanRowSheet({
   const [open_field_key, setOpenFieldKey] = useState(null);
   const [field_search, setFieldSearch] = useState({});
   const [placement_delete_action, setPlacementDeleteAction] = useState(null);
+  const [placement_add_action, setPlacementAddAction] = useState(null);
   const [is_submitting, setIsSubmitting] = useState(false);
 
   const reset_sheet_state = () => {
@@ -155,6 +164,7 @@ export default function PengaturanRowSheet({
     setOpenFieldKey(null);
     setFieldSearch({});
     setPlacementDeleteAction(null);
+    setPlacementAddAction(null);
   };
 
   const handle_open_change = (next_open) => {
@@ -244,14 +254,20 @@ export default function PengaturanRowSheet({
     }
   };
 
-  const add_placement = (field) => {
+  const confirm_add_placement = () => {
+    if (!placement_add_action?.active_start_date) {
+      toast.error("Tanggal efektif penempatan wajib diisi.");
+      return;
+    }
+
+    const { field, active_start_date } = placement_add_action;
     setDraft((current) => {
       const next_placements = [
         ...(current[field.key] ?? []),
         {
           uuid: "",
           outlet_uuid: "",
-          active_start_date: get_today_input_value(),
+          active_start_date,
           uuid_jabatan_master: "",
           jabatan_is_active: true,
           key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -264,6 +280,7 @@ export default function PengaturanRowSheet({
 
       return apply_field_change(field, next_draft, next_placements);
     });
+    setPlacementAddAction(null);
   };
 
   const confirm_delete_placement = () => {
@@ -635,7 +652,10 @@ export default function PengaturanRowSheet({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => add_placement(field)}
+                    onClick={() => setPlacementAddAction({
+                      field,
+                      active_start_date: get_today_input_value(),
+                    })}
                     className="w-full"
                   >
                     <PlusIcon className="size-4" />
@@ -752,6 +772,50 @@ export default function PengaturanRowSheet({
           </Button>
         </div>
       </SheetContent>
+      <DialogPrimitive.Root
+        open={Boolean(placement_add_action)}
+        onOpenChange={(next_open) => {
+          if (!next_open) setPlacementAddAction(null);
+        }}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-150 supports-backdrop-filter:backdrop-blur-xs" />
+          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-popover p-4 text-popover-foreground shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <DialogPrimitive.Title className="font-heading text-lg font-semibold">
+                  Tambah Penempatan
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+                  Tentukan tanggal efektif penempatan. Target GoFitKu 10 mulai berlaku pada tanggal tersebut.
+                </DialogPrimitive.Description>
+              </div>
+              <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <XIcon className="size-4" />
+                <span className="sr-only">Tutup</span>
+              </DialogPrimitive.Close>
+            </div>
+            <div className="mt-4 space-y-2">
+              <FieldLabel htmlFor="placement-add-date" label="Tanggal efektif penempatan" required />
+              <Input
+                id="placement-add-date"
+                type="date"
+                required
+                value={placement_add_action?.active_start_date ?? ""}
+                onChange={(event) => setPlacementAddAction((current) =>
+                  current ? { ...current, active_start_date: event.target.value } : current,
+                )}
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <DialogPrimitive.Close asChild>
+                <Button type="button" variant="outline">Batal</Button>
+              </DialogPrimitive.Close>
+              <Button type="button" onClick={confirm_add_placement}>Tambah</Button>
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
       <DialogPrimitive.Root
         open={Boolean(placement_delete_action)}
         onOpenChange={(next_open) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import dynamic from "next/dynamic";
 import {
   ArrowDownIcon,
@@ -294,6 +295,8 @@ export default function NilaiTransaksiPage() {
   const [activeMetric, setActiveMetric] = useState("nilai-transaksi");
   const [selectedDate, setSelectedDate] = useState(get_current_date_value);
   const [selectedOutlet, setSelectedOutlet] = useState("all");
+  const [outletStatus, setOutletStatus] = useState("all");
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("non-pariwisata");
   const [rows, setRows] = useState([]);
   const [categoryMetrics, setCategoryMetrics] = useState({});
@@ -395,10 +398,11 @@ export default function NilaiTransaksiPage() {
   );
   const filtered_outlet_rows = useMemo(
     () =>
-      selectedOutlet === "all"
-        ? category_outlet_rows
-        : category_outlet_rows.filter((row) => row.uuid === selectedOutlet),
-    [category_outlet_rows, selectedOutlet],
+      category_outlet_rows.filter((row) =>
+        (selectedOutlet === "all" || row.uuid === selectedOutlet)
+        && (outletStatus === "all" || row.highlight_nt_decline),
+      ),
+    [category_outlet_rows, selectedOutlet, outletStatus],
   );
   const highest_category_value = category_outlet_rows.length
     ? Math.max(
@@ -458,7 +462,7 @@ export default function NilaiTransaksiPage() {
     }),
     [rows],
   );
-  const displayed_metrics = selectedOutlet !== "all"
+  const displayed_metrics = selectedOutlet !== "all" || outletStatus === "marked"
     ? summarizeVisibleRows(filtered_outlet_rows)
     : (categoryMetrics[selectedCategory] ?? empty_metrics);
   const onImportButtonClick = (import_type = activeMetric) => {
@@ -471,7 +475,7 @@ export default function NilaiTransaksiPage() {
     setIsImportModalOpen(true);
   };
 
-  const onExportButtonClick = async () => {
+  const onExportButtonClick = async (outlet_scope) => {
     if (!canImportExport) {
       toast.error("Akun outlet tidak memiliki akses ekspor.");
       return;
@@ -480,7 +484,7 @@ export default function NilaiTransaksiPage() {
     try {
       setIsExporting(true);
       const response = await fetch(
-        `/api/nilai-transaksi?action=export&selected_date=${encodeURIComponent(selectedDate)}`,
+        `/api/nilai-transaksi?action=export&selected_date=${encodeURIComponent(selectedDate)}&outlet_scope=${outlet_scope}`,
       );
 
       if (!response.ok) {
@@ -501,6 +505,7 @@ export default function NilaiTransaksiPage() {
       download_link.click();
       download_link.remove();
       URL.revokeObjectURL(download_url);
+      setIsExportModalOpen(false);
       toast.success("Laporan Excel berhasil diekspor.");
     } catch (error) {
       toast.error(
@@ -1102,6 +1107,17 @@ export default function NilaiTransaksiPage() {
                     aria-label="Tanggal nilai transaksi"
                   />
                 </FilterField>
+                <FilterField label="Status" className="sm:w-[200px]">
+                  <OptionDropdown
+                    value={outletStatus}
+                    onValueChange={setOutletStatus}
+                    options={[
+                      { value: "all", label: "Semua Outlet" },
+                      { value: "marked", label: "Outlet Ditandai" },
+                    ]}
+                    ariaLabel="Filter status outlet"
+                  />
+                </FilterField>
               </div>
 
               {canImportExport ? (
@@ -1109,7 +1125,8 @@ export default function NilaiTransaksiPage() {
                   <Button
                     type="button"
                     className="bg-emerald-600 text-white hover:bg-emerald-700"
-                    onClick={onExportButtonClick}
+                    onClick={() => setIsExportModalOpen(true)}
+                    disabled={isExporting || isLoading}
                   >
                     <FileSpreadsheetIcon className="size-4" />
                     {isExporting ? "Mengekspor..." : "Ekspor"}
@@ -1250,6 +1267,43 @@ export default function NilaiTransaksiPage() {
           </div>
         </Tabs>
       </div>
+
+      <DialogPrimitive.Root
+        open={isExportModalOpen}
+        onOpenChange={(open) => {
+          if (!isExporting) setIsExportModalOpen(open);
+        }}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20 supports-backdrop-filter:backdrop-blur-xs" />
+          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-popover p-5 text-popover-foreground shadow-xl">
+            <DialogPrimitive.Title className="text-lg font-semibold">
+              Ekspor Laporan Excel
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
+              Pilih outlet yang akan diekspor untuk seluruh kategori pada tanggal laporan.
+              Outlet Ditandai adalah outlet dengan NT bulan berjalan pada tanggal 7
+              lebih rendah dari bulan lalu, ditandai orange mulai tanggal 8 hingga akhir bulan.
+            </DialogPrimitive.Description>
+            <div className="mt-5 grid grid-cols-2 gap-3" aria-busy={isExporting}>
+              <Button disabled={isExporting} onClick={() => onExportButtonClick("all")}>
+                Semua Outlet
+              </Button>
+              <Button
+                variant="outline"
+                disabled={isExporting}
+                onClick={() => onExportButtonClick("marked")}
+              >
+                Outlet Ditandai
+              </Button>
+              {isExporting && <p role="status" className="col-span-2 text-sm text-muted-foreground">Mengekspor...</p>}
+              <DialogPrimitive.Close render={<Button className="col-span-2" variant="ghost" disabled={isExporting} />}>
+                Batal
+              </DialogPrimitive.Close>
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {canImportExport && isImportModalOpen ? (
         <ImportDataModal

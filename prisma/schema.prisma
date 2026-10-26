@@ -69,6 +69,7 @@ model tbl_outlet {
   kunjungan          tbl_kunjungan[]
   nilai_magang       tbl_nilai_magang[]
   summary_exclusions tbl_nt_bs_summary_exclusion[]
+  marked_nt_bs_outlet  tbl_marked_nt_bs_outlet[]
 }
 
 model tbl_nt_bs_summary_exclusion {
@@ -558,4 +559,19 @@ model tbl_jabatan_insanku {
 
   @@unique([uuid_outlet_insanku])
   @@index([uuid_jabatan_master])
+}
+
+model tbl_marked_nt_bs_outlet {
+  id          Int             @id @default(autoincrement())
+  uuid        String          @unique @db.Char(36)
+  uuid_outlet String          @db.Char(36)
+  date        DateTime
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+  deleted_at  DateTime?
+
+  outlet tbl_outlet @relation(fields: [uuid_outlet], references: [uuid], onDelete: Cascade)
+
+  @@unique([uuid_outlet, date])
+  @@index([date, deleted_at])
 }

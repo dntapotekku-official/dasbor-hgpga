@@ -32,10 +32,10 @@ function formatBsPercentage(value) {
   })}%`;
 }
 
-function sticky_identity_class(column) {
+function sticky_identity_class(column, highlight_nt_decline = false) {
   return column === "number"
     ? "w-24 min-w-24 max-w-24 bg-background md:sticky md:left-0 md:z-20"
-    : "bg-background md:sticky md:left-24 md:z-20";
+    : `${highlight_nt_decline ? "bg-orange-200 text-orange-950 dark:bg-orange-900 dark:text-orange-100" : "bg-background"} md:sticky md:left-24 md:z-20`;
 }
 
 function PeriodHeader({ label, prefix = null, prefix_as_title = false }) {
@@ -139,7 +139,7 @@ export default function BasketSizeTab({
             <TableCell className={`${sticky_identity_class("number")} text-center`}>
               {index + 1}
             </TableCell>
-            <TableCell className={`${sticky_identity_class("outlet")} font-medium`}>
+            <TableCell className={`${sticky_identity_class("outlet", row.highlight_nt_decline)} font-medium`}>
               {row.outlet_name}
               {summaryExclusionLabel(row, "basket_size") && (
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">{summaryExclusionLabel(row, "basket_size")}</span>

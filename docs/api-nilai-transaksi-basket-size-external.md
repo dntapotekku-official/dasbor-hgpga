@@ -108,6 +108,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
       "uuid_outlet": "2f90f2bf-ff4a-4c31-9b0f-0123456789ab",
       "outlet": "ApotekKu No. 52 Ampenan Mataram",
       "jenis": "Non Pariwisata",
+      "status": false,
       "nilai_transaksi": {
         "target": 77972,
         "harian": 83180,
@@ -138,8 +139,8 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
 | --- | --- | --- |
 | `success` | Boolean | Status request. |
 | `tanggal` | String | Tanggal acuan sesuai query parameter `date`. |
-| `summary_nt` | Object | Ringkasan total/rata-rata nilai transaksi semua outlet. |
-| `summary_bs` | Object | Ringkasan total/rata-rata basket size semua outlet. |
+| `summary_nt` | Object | Ringkasan nilai transaksi outlet yang sesuai filter, mengikuti aturan pengecualian ringkasan. |
+| `summary_bs` | Object | Ringkasan basket size outlet yang sesuai filter, mengikuti aturan pengecualian ringkasan. |
 | `rows` | Array | Daftar outlet dengan kolom seperti laporan pemantauan. |
 
 ## Field Row
@@ -150,8 +151,30 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
 | `uuid_outlet` | UUID outlet. |
 | `outlet` | Nama outlet. |
 | `jenis` | Kategori/jenis outlet. |
+| `status` | Boolean: `true` jika outlet ditandai orange pada tanggal laporan; `false` jika tidak ditandai. Berlaku untuk NT dan BS. |
 | `nilai_transaksi` | Data nilai transaksi outlet. |
 | `basket_size` | Data basket size outlet. |
+
+## Status Outlet Ditandai
+
+`rows[].status` dibaca dari tabel `tbl_marked_nt_bs_outlet` untuk outlet dan tanggal pada parameter `date`.
+
+- Tanggal 1–7: `status` bernilai `false`.
+- Penentuan memakai NT bulan berjalan pada tanggal 7, yaitu total pendapatan periode 1–7 dibagi kunjungan periode 1–7, dibandingkan dengan NT seluruh bulan sebelumnya.
+- Perbandingan menggunakan NT yang dibulatkan ke bilangan bulat, sesuai kolom NT pada laporan.
+- Jika NT tanggal 7 lebih kecil, `status` bernilai `true` untuk tanggal 8 hingga akhir bulan. Jika sama atau lebih tinggi, bernilai `false`.
+- Penanda ditentukan oleh NT, dan berlaku untuk tampilan nama outlet pada NT maupun BS.
+- Perubahan NT tanggal 8 dan seterusnya tidak mengubah keputusan bulan tersebut. Karena itu, `status` bisa tetap `true` meskipun `nilai_transaksi.gap_growth` pada tanggal laporan sudah positif.
+- Jika data NT atau kunjungan penentu tanggal 7 maupun pembanding bulan sebelumnya berubah, penanda diperbarui. Jika datanya tidak lengkap atau kunjungannya nol, outlet tidak ditandai.
+- Menghapus data NT periode 1–7 menghapus penanda tanggal 8 hingga akhir bulan untuk outlet terkait melalui soft delete.
+
+Contoh: NT periode 1–7 Oktober = 90.000 dan NT September = 100.000. Permintaan tanggal `2026-10-07` menghasilkan `status: false`; tanggal `2026-10-08` sampai `2026-10-31` menghasilkan `status: true`, selama data penentu tidak berubah.
+
+API ini belum menyediakan parameter filter `status` atau `outlet_scope`. Untuk mengambil outlet ditandai saja, filter hasil di sisi pemanggil:
+
+```js
+const outletDitandai = response.rows.filter((outlet) => outlet.status === true);
+```
 
 ## Field Nilai Transaksi
 
@@ -221,6 +244,6 @@ Format tanggal salah:
 | Status | Keterangan |
 | --- | --- |
 | `200` | Request berhasil. |
-| `400` | Parameter tidak valid. |
+| `400` | Parameter tidak valid atau terjadi error saat mengambil data laporan. |
 | `401` | API key tidak valid atau tidak dikirim. |
-| `500` | Konfigurasi server belum lengkap atau terjadi kesalahan server. |
+| `500` | API key belum dikonfigurasi pada server. |

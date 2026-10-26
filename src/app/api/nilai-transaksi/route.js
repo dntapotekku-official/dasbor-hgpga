@@ -46,6 +46,7 @@ export async function GET(request) {
         selected_date,
         member_outlet_uuid: uuid_outlet,
         outlet_name,
+        outlet_scope: request.nextUrl.searchParams.get("outlet_scope") ?? "all",
       });
 
       return new NextResponse(new Uint8Array(buffer), {

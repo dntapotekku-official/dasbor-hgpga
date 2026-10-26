@@ -60,12 +60,17 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
       "uuid_outlet": "2f90f2bf-ff4a-4c31-9b0f-0123456789ab",
       "outlet": "ApotekKu No. 52 Ampenan Mataram",
       "jenis": "Non Pariwisata",
+      "status": true,
       "nilai_transaksi": {},
       "basket_size": {}
     }
   ]
 }
 ```
+
+`rows[].status` adalah Boolean untuk penanda orange: `true` berarti ditandai, `false` berarti tidak. Patokannya NT bulan berjalan pada tanggal 7 dibanding NT bulan sebelumnya; penanda berlaku tanggal 8 sampai akhir bulan. NT setelah tanggal 7 tidak mengubah keputusan. Contoh di atas mengasumsikan NT tanggal 7 lebih kecil dari bulan sebelumnya.
+
+Lihat [dokumentasi lengkap NT/BS](api-nilai-transaksi-basket-size-external.md) untuk aturan status dan struktur seluruh field.
 
 ## Penjualan GoFitKu
 

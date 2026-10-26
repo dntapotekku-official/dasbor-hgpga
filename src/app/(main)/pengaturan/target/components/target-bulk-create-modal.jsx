@@ -11,6 +11,7 @@ import FieldLabel from "@/components/field-label";
 
 export default function TargetBulkCreateModal({
   open,
+  allow_open_end = false,
   is_submitting,
   on_open_change,
   on_submit,
@@ -22,12 +23,12 @@ export default function TargetBulkCreateModal({
   const handle_submit = async (event) => {
     event.preventDefault();
 
-    if (!start_date || !end_date || target === "") {
-      toast.error("Rentang tanggal dan nilai target wajib diisi.");
+    if (!start_date || (!allow_open_end && !end_date) || target === "") {
+      toast.error("Tanggal mulai dan nilai target wajib diisi.");
       return;
     }
 
-    if (start_date > end_date) {
+    if (end_date && start_date > end_date) {
       toast.error("Tanggal selesai tidak boleh lebih awal dari tanggal mulai.");
       return;
     }
@@ -76,15 +77,17 @@ export default function TargetBulkCreateModal({
                 />
               </div>
               <div className="space-y-2">
-                <FieldLabel htmlFor="bulk-create-end-date" label="Tanggal Selesai" required />
+                <FieldLabel htmlFor="bulk-create-end-date" label="Tanggal Selesai" required={!allow_open_end} />
                 <Input
                   id="bulk-create-end-date"
                   type="date"
                   value={end_date}
+                  min={start_date || undefined}
                   onChange={(event) => setEndDate(event.target.value)}
                   disabled={is_submitting}
-                  required
+                  required={!allow_open_end}
                 />
+                {allow_open_end && <p className="text-xs text-muted-foreground">Kosongkan agar target berlaku seterusnya.</p>}
               </div>
             </div>
 

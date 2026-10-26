@@ -15,6 +15,7 @@ function get_period_key(start_date, end_date) {
 
 export default function TargetBulkDateModal({
   open,
+  allow_open_end = false,
   date_mode,
   is_updating,
   target_label,
@@ -56,7 +57,7 @@ export default function TargetBulkDateModal({
 
     return Array.from(period_map.values()).sort((first_period, second_period) =>
       second_period.start_date.localeCompare(first_period.start_date) ||
-      second_period.end_date.localeCompare(first_period.end_date),
+      (second_period.end_date ?? "").localeCompare(first_period.end_date ?? ""),
     );
   }, [rows]);
   const period_options = useMemo(
@@ -209,16 +210,18 @@ export default function TargetBulkDateModal({
                   <FieldLabel
                     htmlFor={`${field_id}-tanggal-selesai-baru`}
                     label="Tanggal Selesai Baru"
-                    required
+                    required={!allow_open_end}
                   />
                   <Input
                     id={`${field_id}-tanggal-selesai-baru`}
                     type="date"
                     value={end_date}
+                    min={start_date || undefined}
                     onChange={(event) => setEndDate(event.target.value)}
                     disabled={is_updating}
-                    required
+                    required={!allow_open_end}
                   />
+                  {allow_open_end && <p className="text-xs text-muted-foreground">Kosongkan agar target berlaku seterusnya.</p>}
                 </div>
               </div>
             ) : (

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { buildDefaultPlacementTarget } from "@/services/defaultPlacementTarget";
 import { prisma } from "@/lib/prisma";
 import { dedupeByKey } from "@/lib/utils";
 import {
@@ -295,6 +296,7 @@ export async function syncOutletInsanKu() {
     .filter((item) => existing_insanku_uuid_set.has(item.uuid_insanku))
     .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
   let synced_jabatan_insanku = 0;
+  const default_target = buildDefaultPlacementTarget();
 
   await prisma.$transaction(
     async (tx) => {
@@ -316,6 +318,7 @@ export async function syncOutletInsanKu() {
             uuid_outlet: item.uuid_outlet,
             uuid_insanku: item.uuid_insanku,
             is_active: true,
+            target_gofitku: buildDefaultPlacementTarget(default_target.create.start_date),
           },
           select: { uuid: true },
         });
@@ -543,6 +546,7 @@ export async function updateOutletInsanKu({
           uuid_insanku,
           is_active: true,
           is_skip_sync: should_skip_sync,
+          target_gofitku: buildDefaultPlacementTarget(),
         },
       });
       const active_relation = await tx.tbl_outlet_insanku.findUnique({

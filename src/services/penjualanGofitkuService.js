@@ -1757,10 +1757,12 @@ function normalize_target_insanku_name(value) {
 
 function parse_target_date(date, {
   label = "Tanggal target",
+  optional = false,
 } = {}) {
   const trimmed_date = String(date ?? "").trim();
 
   if (!trimmed_date) {
+    if (optional) return null;
     throw new Error(`${label} wajib diisi.`);
   }
 
@@ -1795,7 +1797,7 @@ function parse_target_value(target, {
 }
 
 function assert_valid_range(start_date, end_date) {
-  if (end_date < start_date) {
+  if (end_date && end_date < start_date) {
     throw new Error("Tanggal akhir tidak boleh lebih kecil dari tanggal awal.");
   }
 }
@@ -1909,14 +1911,7 @@ async function get_target_placement_maps() {
   };
 }
 
-function get_source_end_date_filter(source_start_date, source_end_date) {
-  if (source_start_date.getTime() === source_end_date.getTime()) {
-    return [
-      { end_date: source_end_date },
-      { end_date: null },
-    ];
-  }
-
+function get_source_end_date_filter(_source_start_date, source_end_date) {
   return [{ end_date: source_end_date }];
 }
 
@@ -1932,12 +1927,14 @@ async function bulkUpdateTargetDates({
   });
   const parsed_source_end_date = parse_target_date(source_end_date, {
     label: "Tanggal selesai lama",
+    optional: true,
   });
   const parsed_start_date = parse_target_date(start_date, {
     label: "Tanggal mulai baru",
   });
   const parsed_end_date = parse_target_date(end_date, {
     label: "Tanggal selesai baru",
+    optional: true,
   });
   const parsed_target = parse_target_value(target);
 
@@ -1986,9 +1983,7 @@ async function bulkUpdateTargetDates({
             uuid_outlet_insanku: {
               in: placement_uuids,
             },
-            start_date: {
-              lte: parsed_end_date,
-            },
+            ...(parsed_end_date ? { start_date: { lte: parsed_end_date } } : {}),
             OR: [
               { end_date: null },
               {
@@ -2042,7 +2037,7 @@ async function bulkUpdateTargetDates({
       data: {
         updated_count: result.count,
         start_date: parsed_start_date.toISOString().slice(0, 10),
-        end_date: parsed_end_date.toISOString().slice(0, 10),
+        end_date: parsed_end_date?.toISOString().slice(0, 10) ?? "",
         target: parsed_target,
       },
     };
@@ -2058,6 +2053,7 @@ async function bulkDeleteTargetPeriod({
   });
   const parsed_source_end_date = parse_target_date(source_end_date, {
     label: "Tanggal selesai target",
+    optional: true,
   });
 
   assert_valid_range(parsed_source_start_date, parsed_source_end_date);
@@ -2123,7 +2119,7 @@ function format_target_row(item, placement_by_uuid) {
     start_date: item.start_date.toISOString().slice(0, 10),
     end_date: item.end_date
       ? item.end_date.toISOString().slice(0, 10)
-      : item.start_date.toISOString().slice(0, 10),
+      : "",
   };
 }
 
@@ -2144,9 +2140,7 @@ async function find_overlapping_target({
             },
           }
         : {}),
-      start_date: {
-        lte: end_date,
-      },
+      ...(end_date ? { start_date: { lte: end_date } } : {}),
       OR: [
         {
           end_date: null,
@@ -2234,7 +2228,7 @@ export async function createTargetGofitku({
   const { placement_by_uuid } = await get_target_placement_maps();
   const parsed_target = parse_target_value(target);
   const parsed_start_date = parse_target_date(start_date);
-  const parsed_end_date = parse_target_date(end_date);
+  const parsed_end_date = parse_target_date(end_date, { optional: true });
   const resolved_uuid_outlet_insanku = await assert_valid_placement_uuid(
     uuid_outlet_insanku,
     placement_by_uuid,
@@ -2282,7 +2276,7 @@ export async function bulkCreateTargetGofitku({
   end_date,
 }) {
   const parsed_start_date = parse_target_date(start_date);
-  const parsed_end_date = parse_target_date(end_date);
+  const parsed_end_date = parse_target_date(end_date, { optional: true });
   const parsed_target = parse_target_value(target);
 
   assert_valid_range(parsed_start_date, parsed_end_date);
@@ -2309,9 +2303,7 @@ export async function bulkCreateTargetGofitku({
           uuid_outlet_insanku: {
             in: normalized_items.map((item) => item.uuid_outlet_insanku),
           },
-          start_date: {
-            lte: parsed_end_date,
-          },
+          ...(parsed_end_date ? { start_date: { lte: parsed_end_date } } : {}),
           OR: [
             { end_date: null },
             {
@@ -2361,7 +2353,7 @@ export async function updateTargetGofitku({
   const { placement_by_uuid } = await get_target_placement_maps();
   const parsed_target = parse_target_value(target);
   const parsed_start_date = parse_target_date(start_date);
-  const parsed_end_date = parse_target_date(end_date);
+  const parsed_end_date = parse_target_date(end_date, { optional: true });
   const resolved_uuid_outlet_insanku = await assert_valid_placement_uuid(
     uuid_outlet_insanku,
     placement_by_uuid,
@@ -2464,6 +2456,7 @@ export async function importTargetGofitku({
   });
   const parsed_end_date = parse_target_date(end_date, {
     label: "Tanggal selesai",
+    optional: true,
   });
 
   assert_valid_range(parsed_start_date, parsed_end_date);
@@ -2563,9 +2556,7 @@ export async function importTargetGofitku({
         uuid_outlet_insanku: {
           in: imported_rows.map((item) => item.uuid_outlet_insanku),
         },
-        start_date: {
-          lte: parsed_end_date,
-        },
+        ...(parsed_end_date ? { start_date: { lte: parsed_end_date } } : {}),
         OR: [
           {
             end_date: null,
@@ -2598,7 +2589,7 @@ export async function importTargetGofitku({
       unmatched_insanku: unmatched_placements,
       unmatched_placements,
       start_date: parsed_start_date.toISOString().slice(0, 10),
-      end_date: parsed_end_date.toISOString().slice(0, 10),
+      end_date: parsed_end_date?.toISOString().slice(0, 10) ?? "",
     },
   };
 }

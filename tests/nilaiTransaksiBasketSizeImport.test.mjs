@@ -7,7 +7,7 @@ import test from "node:test";
 // Run the real import functions with an in-memory database and parser output.
 const source = readFileSync(new URL("../src/services/nilaiTransaksiBasketSizeService.js", import.meta.url), "utf8");
 const loadService = new Function(
-  "prisma", "promisify", "execFile", "path", "process", "randomUUID",
+  "prisma", "promisify", "execFile", "path", "process", "randomUUID", "withMarkedNtBsRefresh",
   source.slice(source.indexOf("// ============================================================================"))
     .replace(/^export /gm, "")
     + "\nreturn { importNilaiTransaksiBulanan, importBasketSize };",
@@ -74,7 +74,7 @@ function fixture() {
   };
   const service = loadService(
     prisma, () => async () => ({ stdout: JSON.stringify(payload), stderr: "" }),
-    () => {}, path, process, randomUUID,
+    () => {}, path, process, randomUUID, (_database, mutate) => mutate,
   );
   return {
     get state() { return state; },

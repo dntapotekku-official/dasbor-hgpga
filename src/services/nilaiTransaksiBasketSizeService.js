@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 import ExcelJS from "exceljs";
+import { withMarkedNtBsRefresh } from "@/services/markedNtBsOutletService";
 
 import {
   comparePercentage,
@@ -739,6 +740,7 @@ function map_external_nilai_transaksi_basket_size_row(row, index) {
     uuid_outlet: row.uuid,
     outlet: row.outlet_name,
     jenis: get_external_category_label(row),
+    status: Boolean(row.highlight_nt_decline),
     nilai_transaksi: {
       target: row.nt_target,
       harian: row.nt_daily,
@@ -1099,7 +1101,19 @@ export async function getNilaiTransaksiBasketSize({
 
   const overall_metrics = summarize_metric_rows(rows, global_targets);
 
-  const rounded_rows = rows.map(round_nilai_transaksi_row_values);
+  const marked_outlets = await prisma.tbl_marked_nt_bs_outlet.findMany({
+    where: {
+      date: current_day_start,
+      deleted_at: null,
+      uuid_outlet: { in: rows.map((row) => row.uuid) },
+    },
+    select: { uuid_outlet: true },
+  });
+  const marked_outlet_uuids = new Set(marked_outlets.map((row) => row.uuid_outlet));
+  const rounded_rows = rows.map((row) => ({
+    ...round_nilai_transaksi_row_values(row),
+    highlight_nt_decline: marked_outlet_uuids.has(row.uuid),
+  }));
 
   return {
     selected_month_label: resolve_month_label(current_date),
@@ -1219,6 +1233,7 @@ function add_export_data_row(
   number,
   category_label,
   is_highest_daily = false,
+  is_highest_bs = false,
 ) {
   const row = sheet.addRow([
     number,
@@ -1248,8 +1263,24 @@ function add_export_data_row(
   }).filter(Boolean);
   if (exclusion_notes.length) row.getCell("B").note = exclusion_notes.join("\n");
 
+  if (item.highlight_nt_decline) {
+    row.getCell("B").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFFED7AA" },
+    };
+  }
+
   if (is_highest_daily) {
     row.getCell("E").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFC6E0B4" },
+    };
+  }
+
+  if (is_highest_bs) {
+    row.getCell("N").fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFC6E0B4" },
@@ -1342,12 +1373,29 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   selected_date,
   member_outlet_uuid,
   outlet_name,
+  outlet_scope = "all",
 }) {
+  if (!["all", "marked"].includes(outlet_scope)) {
+    throw new Error("Pilihan outlet ekspor tidak valid.");
+  }
   const data = await getNilaiTransaksiBasketSize({
     selected_date,
     member_outlet_uuid,
     outlet_name,
   });
+  if (outlet_scope === "marked") {
+    data.rows = data.rows.filter((row) => row.highlight_nt_decline);
+    if (!data.rows.length) {
+      throw new Error("Tidak ada Outlet Ditandai pada tanggal laporan yang dipilih.");
+    }
+    data.category_metrics = Object.fromEntries(
+      outlet_category_slugs.map((category) => [
+        category,
+        summarize_metric_rows(data.rows.filter((row) => row.category_key === category)),
+      ]),
+    );
+    data.overall_metrics = summarize_metric_rows(data.rows, data.global_targets);
+  }
   const workbook = new ExcelJS.Workbook();
   const sheet_name = `Share ${data.selected_month_label}`.slice(0, 31);
   const sheet = workbook.addWorksheet(sheet_name, {
@@ -1459,6 +1507,9 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
     const highest_daily = Math.max(
       ...category_rows.map((row) => to_number(row.nt_daily)),
     );
+    const highest_bs = Math.max(
+      ...category_rows.map((row) => to_number(row.bs_current_month)),
+    );
 
     category_rows.forEach((row, index) => {
       add_export_data_row(
@@ -1467,6 +1518,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
         index + 1,
         category_label,
         to_number(row.nt_daily) === highest_daily,
+        to_number(row.bs_current_month) === highest_bs,
       );
     });
 
@@ -1525,7 +1577,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
 
   return {
     buffer,
-    filename: `NILAI-TRANSAKSI-DAN-BASKET-SIZE-${file_month}.xlsx`,
+    filename: `NILAI-TRANSAKSI-DAN-BASKET-SIZE-${file_month}${outlet_scope === "marked" ? "-OUTLET-DITANDAI" : ""}.xlsx`,
   };
 }
 
@@ -1640,7 +1692,7 @@ async function update_kunjungan_metric_range(transaction, {
 }
 
 /** Memperbarui nilai transaksi harian outlet dan membersihkan record duplikat pada hari yang sama. */
-export async function updateNilaiTransaksiDaily({
+async function updateNilaiTransaksiDailyData({
   uuid_outlet,
   selected_date,
   total_revenue,
@@ -1711,7 +1763,7 @@ export async function updateNilaiTransaksiDaily({
 }
 
 /** Memperbarui total penerimaan Nilai Transaksi bulanan outlet. */
-export async function updateNilaiTransaksiMonthly({
+async function updateNilaiTransaksiMonthlyData({
   uuid_outlet,
   selected_date,
   total_revenue,
@@ -1787,7 +1839,7 @@ export async function updateNilaiTransaksiMonthly({
 }
 
 /** Memperbarui total penerimaan harian dan bulanan Nilai Transaksi outlet. */
-export async function updateNilaiTransaksiTotals({
+async function updateNilaiTransaksiTotalsData({
   uuid_outlet,
   selected_date,
   total_revenue_daily,
@@ -1807,12 +1859,12 @@ export async function updateNilaiTransaksiTotals({
     "Kunjungan bulanan",
   );
 
-  await updateNilaiTransaksiDaily({
+  await updateNilaiTransaksiDailyData({
     uuid_outlet: normalized_uuid_outlet,
     selected_date,
     total_revenue: total_revenue_daily,
   });
-  await updateNilaiTransaksiMonthly({
+  await updateNilaiTransaksiMonthlyData({
     uuid_outlet: normalized_uuid_outlet,
     selected_date,
     total_revenue: total_revenue_monthly,
@@ -1927,7 +1979,7 @@ export async function updateBasketSizeSkuQty({
 }
 
 /** Menghapus seluruh data Nilai Transaksi pada rentang tanggal tertentu. */
-export async function bulkDeleteNilaiTransaksiMonthly(payload) {
+async function bulkDeleteNilaiTransaksiMonthlyData(payload) {
   const { from_date, to_date } = parse_metric_date_range({
     from_date: payload?.from_date,
     to_date: payload?.to_date,
@@ -1975,7 +2027,7 @@ export async function bulkDeleteNilaiTransaksiMonthly(payload) {
 }
 
 /** Memindahkan periode seluruh data Nilai Transaksi. */
-export async function bulkUpdateNilaiTransaksiMonthly(payload) {
+async function bulkUpdateNilaiTransaksiMonthlyData(payload) {
   const {
     from_date: source_from_date,
     to_date: source_to_date,
@@ -2502,7 +2554,7 @@ export function importNilaiTransaksi({
 }
 
 /** Mengimpor data Nilai Transaksi dari laporan rentang tanggal outlet. */
-export async function importNilaiTransaksiBulanan({
+async function importNilaiTransaksiBulananData({
   file_path,
   import_date,
   from_date,
@@ -4026,3 +4078,11 @@ export function bulkDeleteTargetBasketSize(payload) {
     label: config.label,
   });
 }
+
+// Refresh persisted marks after successful NT changes, including imports and moves.
+export const updateNilaiTransaksiDaily = withMarkedNtBsRefresh(prisma, updateNilaiTransaksiDailyData);
+export const updateNilaiTransaksiMonthly = withMarkedNtBsRefresh(prisma, updateNilaiTransaksiMonthlyData);
+export const updateNilaiTransaksiTotals = withMarkedNtBsRefresh(prisma, updateNilaiTransaksiTotalsData);
+export const bulkDeleteNilaiTransaksiMonthly = withMarkedNtBsRefresh(prisma, bulkDeleteNilaiTransaksiMonthlyData);
+export const bulkUpdateNilaiTransaksiMonthly = withMarkedNtBsRefresh(prisma, bulkUpdateNilaiTransaksiMonthlyData);
+export const importNilaiTransaksiBulanan = withMarkedNtBsRefresh(prisma, importNilaiTransaksiBulananData);

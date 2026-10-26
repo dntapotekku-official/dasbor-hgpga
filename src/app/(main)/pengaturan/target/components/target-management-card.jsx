@@ -6,6 +6,7 @@ import {
   CalendarRangeIcon,
   FileSpreadsheetIcon,
   ListPlusIcon,
+  MoveRightIcon,
   PencilIcon,
   PlusIcon,
   Trash2Icon,
@@ -93,6 +94,7 @@ function format_target_date(value) {
 }
 
 function format_target_range(start_date, end_date) {
+  if (!end_date) return `${format_target_date(start_date)} - Seterusnya`;
   const start_label = format_target_date(start_date);
   const end_label = format_target_date(end_date);
 
@@ -145,6 +147,7 @@ export default function TargetManagementCard({
   import_button_label = "Impor",
   enable_bulk_create = false,
   enable_bulk_target_update = false,
+  allow_open_end = false,
 }) {
   const [target_rows, setTargetRows] = useState([]);
   const [entity_options, setEntityOptions] = useState([]);
@@ -152,6 +155,7 @@ export default function TargetManagementCard({
   const [selected_outlet, setSelectedOutlet] = useState("all");
   const [selected_insanku, setSelectedInsanku] = useState("all");
   const [selected_date, setSelectedDate] = useState("");
+  const [selected_end_date, setSelectedEndDate] = useState("");
   const [selected_target, setSelectedTarget] = useState(null);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_create_sheet_open, setIsCreateSheetOpen] = useState(false);
@@ -218,13 +222,13 @@ export default function TargetManagementCard({
                 row.uuid_insanku === selected_insanku)
             : selected_entity === "all" ||
               row[entity_key] === selected_entity) &&
-          (!selected_date ||
-            (row.start_date <= selected_date &&
-              (!row.end_date || row.end_date >= selected_date))),
+          (!selected_end_date || row.start_date <= selected_end_date) &&
+          (!selected_date || !row.end_date || row.end_date >= selected_date),
       ),
     [
       entity_key,
       selected_date,
+      selected_end_date,
       selected_entity,
       selected_insanku,
       selected_outlet,
@@ -308,6 +312,7 @@ export default function TargetManagementCard({
     setCurrentPage(1);
   }, [
     selected_date,
+    selected_end_date,
     selected_entity,
     selected_insanku,
     selected_outlet,
@@ -638,6 +643,7 @@ export default function TargetManagementCard({
       key: "end_date",
       label: "Tanggal Selesai",
       type: "date",
+      helper: allow_open_end ? "Kosongkan agar target berlaku seterusnya." : undefined,
     },
     {
       key: "target",
@@ -743,18 +749,34 @@ export default function TargetManagementCard({
                 </FilterField>
               )}
               <FilterField
-                label="Tanggal"
+                label="Rentang Tanggal"
                 htmlFor={date_filter_id}
-                className="w-full sm:w-44"
+                className="w-full sm:w-96"
               >
-                <Input
-                  id={date_filter_id}
-                  type="date"
-                  value={selected_date}
-                  onChange={(event) => setSelectedDate(event.target.value)}
-                  aria-label={`Filter tanggal berlaku ${target_label}`}
-                  className="w-full"
-                />
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                  <Input
+                    id={date_filter_id}
+                    type="date"
+                    value={selected_date}
+                    onChange={(event) => setSelectedDate(event.target.value)}
+                    max={selected_end_date || undefined}
+                    aria-label={`Filter tanggal mulai ${target_label}`}
+                    className="w-full"
+                  />
+                  <div className="flex items-center justify-center text-muted-foreground">
+                    <MoveRightIcon className="size-4" />
+                    <span className="sr-only">sampai</span>
+                  </div>
+                  <Input
+                    id={`${date_filter_id}-end`}
+                    type="date"
+                    value={selected_end_date}
+                    min={selected_date || undefined}
+                    onChange={(event) => setSelectedEndDate(event.target.value)}
+                    aria-label={`Filter tanggal selesai ${target_label}`}
+                    className="w-full"
+                  />
+                </div>
               </FilterField>
             </div>
             <div className="flex w-full flex-wrap justify-end gap-2">
@@ -957,6 +979,7 @@ export default function TargetManagementCard({
 
           {is_import_modal_open ? (
             <TargetImportModal
+              allow_open_end={allow_open_end}
               open
               date_mode={import_date_mode}
               is_importing={is_importing}
@@ -970,6 +993,7 @@ export default function TargetManagementCard({
 
           {enable_bulk_create && is_bulk_create_modal_open ? (
             <TargetBulkCreateModal
+              allow_open_end={allow_open_end}
               open
               is_submitting={is_bulk_creating}
               on_open_change={setIsBulkCreateModalOpen}
@@ -979,6 +1003,7 @@ export default function TargetManagementCard({
 
           {is_bulk_date_modal_open ? (
             <TargetBulkDateModal
+              allow_open_end={allow_open_end}
               open
               date_mode="range"
               is_updating={is_bulk_date_updating}
