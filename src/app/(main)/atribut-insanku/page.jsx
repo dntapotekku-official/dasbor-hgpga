@@ -994,7 +994,7 @@ export default function AtributInsanKuPage() {
         </div>
         {show_join_date_range ? (
           <span className="text-sm text-primary">
-            Tanggal bergabung: <span className="font-semibold">{join_date_days === null ? "-" : `${join_date_days} hari`}</span>
+            TB: <span className="font-semibold">{join_date_days === null ? "-" : `${join_date_days} hari`}</span>
           </span>
         ) : null}
       </div>
