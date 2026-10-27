@@ -29,14 +29,12 @@ export default async function DashboardLayout({ children }) {
         />
         <SidebarInset>
           <SiteHeader />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="@container/main flex min-w-0 flex-1 flex-col gap-2">
-              <div className="flex min-w-0 flex-col gap-6 py-6">
-                {children}
-              </div>
+          <div className="@container/main flex min-w-0 flex-1 shrink-0 flex-col">
+            <div className="flex min-w-0 shrink-0 flex-col gap-6 py-6">
+              {children}
             </div>
           </div>
-          <footer className="mt-auto border-t bg-background/70 px-4 py-4 text-center text-xs text-muted-foreground backdrop-blur-sm md:px-6">
+          <footer className="shrink-0 border-t bg-background/70 px-4 py-4 text-center text-xs text-muted-foreground backdrop-blur-sm md:px-6">
             Dikembangkan oleh <span className="font-semibold"> Tim DnT ApotekKU.</span>
           </footer>
         </SidebarInset>

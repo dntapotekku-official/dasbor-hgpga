@@ -109,8 +109,7 @@ export default function PlacementMappingTab() {
                   <p className="px-4 py-8 text-center text-sm text-muted-foreground">Tidak ada penempatan tercatat pada bulan ini untuk Outlet yang dipilih.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full table-fixed border-separate border-spacing-0 text-xs" style={{ minWidth: 400 + month.total_days * 34 }}>
-                      <caption className="sr-only">Mapping harian per Outlet, {month.name} {year}</caption>
+                    <table aria-label={`Mapping harian per Outlet, ${month.name} ${year}`} className="w-full table-fixed border-separate border-spacing-0 text-xs" style={{ minWidth: 400 + month.total_days * 34 }}>
                       <thead>
                         <tr>
                           <th scope="col" className="sticky left-0 z-20 w-[200px] border-b border-r bg-muted px-3 py-3 text-left">Outlet</th>
@@ -127,9 +126,7 @@ export default function PlacementMappingTab() {
                                 {row.person_name}
                               </th>
                               {row.days.map((active, day_index) => (
-                                <td key={day_index} className={`h-9 border-b border-r p-0 text-center last:border-r-0 ${active ? "bg-red-600" : "bg-muted/30"}`}>
-                                  <span className="sr-only">{active ? "Aktif" : "Tidak ada penempatan aktif tercatat"}</span>
-                                </td>
+                                <td key={day_index} aria-label={active ? "Aktif" : "Tidak ada penempatan aktif tercatat"} className={`h-9 border-b border-r p-0 text-center last:border-r-0 ${active ? "bg-red-600" : "bg-muted/30"}`} />
                               ))}
                             </tr>
                           ))}
