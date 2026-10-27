@@ -28,6 +28,7 @@ import BulkGofitkuExclusionModal from "./bulk-gofitku-exclusion-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -517,11 +518,12 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 htmlFor="filter-pencarian-insanku"
                 className="w-full lg:min-w-48 lg:max-w-sm lg:flex-1"
               >
-                <Input
+                <SearchInput
                   id="filter-pencarian-insanku"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Cari nama InsanKU..."
+                  onClear={() => setSearch("")}
                 />
               </FilterField>
               {!is_non_slip_gaji ? (
@@ -628,6 +630,15 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                       </TableHead>
                       <TableHead>
                         <SortableTableHead
+                          label="Tanggal Bergabung"
+                          sortKey="join_date"
+                          currentSortKey={sort_key}
+                          sortDirection={sort_direction}
+                          onSort={toggle_sort}
+                        />
+                      </TableHead>
+                      <TableHead>
+                        <SortableTableHead
                           label="Status"
                           sortKey="is_active"
                           currentSortKey={sort_key}
@@ -686,6 +697,16 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           ) : (
                             "-"
                           )}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {row.join_date
+                            ? new Date(row.join_date).toLocaleDateString("id-ID", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                                timeZone: "UTC",
+                              })
+                            : "-"}
                         </TableCell>
                         <TableCell>
                           <span
@@ -794,6 +815,12 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 key: "name",
                 label: "Nama",
                 placeholder: "Masukkan nama InsanKU",
+              },
+              {
+                key: "join_date",
+                label: "Tanggal Bergabung",
+                type: "date",
+                disabled: true,
               },
               {
                 key: "username",

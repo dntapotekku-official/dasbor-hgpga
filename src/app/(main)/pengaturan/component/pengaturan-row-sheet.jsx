@@ -6,7 +6,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   PlusIcon,
-  SearchIcon,
+
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -17,6 +17,7 @@ import CurrencyInput from "@/components/currency-input";
 import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Sheet,
   SheetContent,
@@ -422,8 +423,8 @@ export default function PengaturanRowSheet({
                   {open_field_key === field.key && !is_disabled ? (
                     <div className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-2 shadow-lg">
                       <div className="relative p-1">
-                        <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
+                        <SearchInput
+                          showSearchIcon
                           value={field_search[field.key] ?? ""}
                           onChange={(event) =>
                             setFieldSearch((current) => ({
@@ -434,6 +435,7 @@ export default function PengaturanRowSheet({
                           onKeyDown={(event) => event.stopPropagation()}
                           placeholder={field.search_placeholder ?? "Cari item..."}
                           className="h-9 pl-8"
+                          onClear={() => setFieldSearch((current) => ({ ...current, [field.key]: "" }))}
                         />
                       </div>
                       {field.options

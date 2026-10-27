@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SearchIcon } from "lucide-react";
 
 import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
@@ -10,6 +9,7 @@ import SortableTableHead from "@/components/sortable-table-head";
 import { outlet_category_filter_options } from "@/lib/outletCategories";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -660,13 +660,14 @@ export default function RingkasanTabContent({
           className="w-full xl:w-[280px]"
         >
           <div className="relative w-full">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <SearchInput
+              showSearchIcon
               id="filter-pencarian-ringkasan-gofitku"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={SEARCH_PLACEHOLDERS[sub_tab]}
               className="bg-card pl-9"
+              onClear={() => setSearch("")}
             />
           </div>
         </FilterField>

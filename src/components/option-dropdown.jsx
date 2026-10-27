@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDownIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,13 +72,14 @@ export default function OptionDropdown({
       <DropdownMenuContent>
         {searchable ? (
           <div className="relative p-1">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <SearchInput
+              showSearchIcon
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => event.stopPropagation()}
               placeholder={searchPlaceholder}
               className="h-9 pl-8"
+              onClear={() => setSearch("")}
             />
           </div>
         ) : null}

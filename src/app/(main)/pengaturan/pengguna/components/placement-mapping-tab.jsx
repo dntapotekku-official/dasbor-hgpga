@@ -7,7 +7,7 @@ import OptionDropdown from "@/components/option-dropdown";
 import { buildDailyPlacementMonth } from "@/lib/placementMapping";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 
@@ -70,7 +70,7 @@ export default function PlacementMappingTab() {
       <CardContent className="flex min-h-0 flex-1 flex-col gap-5">
         <div className="flex shrink-0 flex-wrap items-end gap-3">
           <FilterField label="Pencarian" htmlFor={`${field_id}-search`} className="w-full sm:w-[280px]">
-            <Input id={`${field_id}-search`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nama atau NIK…" />
+            <SearchInput id={`${field_id}-search`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nama atau NIK…" onClear={() => setSearch("")} />
           </FilterField>
           <FilterField label="Jenis InsanKU" htmlFor={`${field_id}-type`} className="w-full sm:w-[180px]">
             <OptionDropdown id={`${field_id}-type`} value={account_type} options={[{ value: "all", label: "Semua InsanKU" }, { value: "slip", label: "Slip Gaji" }, { value: "non-slip", label: "Non Slip Gaji" }]} onValueChange={setAccountType} ariaLabel="Filter jenis InsanKU" />

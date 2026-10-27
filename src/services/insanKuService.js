@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { dedupeByUuid } from "@/lib/utils";
 import { normalizeNik, stripInvisibleCharacters } from "@/lib/nik";
 import { buildSlipGajiApiUrl } from "@/lib/slipGajiApi";
+import { parseSlipGajiJoinDate } from "@/lib/slipGajiJoinDate";
 import {
   closeInsanKuInactivePeriod,
   closeOutletInsanKuInactivePeriod,
@@ -377,6 +378,7 @@ export function normalizeInsanKuRows(insanku_payload, username_map = new Map()) 
         is_username_change: false,
         is_password_change: false,
         avatar: item?.foto_profile ?? item?.avatar ?? null,
+        join_date: parseSlipGajiJoinDate(item?.tgl_bergabung),
         is_active: true,
         is_slip_gaji_account: true,
         role: "member",
@@ -398,6 +400,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       nik: true,
       name: true,
       username: true,
+      join_date: true,
       is_active: true,
       is_slip_gaji_account: true,
       is_skip_sync: true,
@@ -475,6 +478,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       nik: item.nik,
       name: item.name,
       username: item.username,
+      join_date: formatDateInput(item.join_date),
       is_active: Boolean(item.is_active),
       is_slip_gaji_account: item.is_slip_gaji_account,
       is_gofitku_setup_pending: Boolean(item.is_gofitku_setup_pending) && isWithinGofitkuSetupWindow(item.created_at, setup_window),
@@ -667,6 +671,7 @@ export async function syncInsanKu() {
             nik: item.nik,
             password: item.password,
             avatar: item.avatar,
+            ...(item.join_date ? { join_date: item.join_date } : {}),
             role: item.role,
             is_active: true,
             ...(item.is_reactivated
@@ -1147,7 +1152,7 @@ export async function updateInsanKu({
               uuid_insanku,
               is_active: true,
               is_skip_sync: should_skip_sync_outlet_insanku,
-              target_gofitku: buildDefaultPlacementTarget(placement_active_start_date),
+              target_gofitku: buildDefaultPlacementTarget(),
             },
           });
           await createOutletInsanKuPreActivePeriod(
@@ -1213,7 +1218,7 @@ export async function updateInsanKu({
           uuid_insanku,
           is_active: true,
           is_skip_sync: should_skip_sync_outlet_insanku,
-          target_gofitku: buildDefaultPlacementTarget(placement_active_start_date),
+          target_gofitku: buildDefaultPlacementTarget(),
         },
       });
       await createOutletInsanKuPreActivePeriod(
@@ -1299,9 +1304,7 @@ export async function createInsanKuNonSlipGaji({
           uuid: uuid_outlet_insanku,
           uuid_outlet: placement.outlet_uuid,
           uuid_insanku: insanku.uuid,
-          target_gofitku: buildDefaultPlacementTarget(
-            parseOptionalDate(placement.active_start_date, "Tanggal mulai penempatan"),
-          ),
+          target_gofitku: buildDefaultPlacementTarget(),
         },
       });
       await savePlacementJabatan(

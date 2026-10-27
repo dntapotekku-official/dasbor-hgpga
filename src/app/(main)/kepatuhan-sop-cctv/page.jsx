@@ -6,7 +6,7 @@ import {
   ChevronDownIcon,
   ClipboardCheckIcon,
   MoveRightIcon,
-  SearchIcon,
+
   StarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -389,13 +390,14 @@ export default function KepatuhanSopCctvPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="min-w-[320px]">
                         <div className="relative p-1">
-                          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
+                          <SearchInput
+                            showSearchIcon
                             value={outlet_search}
                             onChange={(event) => setOutletSearch(event.target.value)}
                             onKeyDown={(event) => event.stopPropagation()}
                             placeholder="Cari outlet..."
                             className="h-9 pl-8"
+                            onClear={() => setOutletSearch("")}
                           />
                         </div>
                         <DropdownMenuRadioGroup

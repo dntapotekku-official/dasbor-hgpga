@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -389,11 +390,12 @@ export default function OutletManagementCard() {
               htmlFor="filter-pencarian-outlet"
               className="w-full sm:max-w-sm"
             >
-              <Input
+              <SearchInput
                 id="filter-pencarian-outlet"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Cari outlet..."
+                onClear={() => setSearch("")}
               />
             </FilterField>
             <FilterField label="Kategori" htmlFor="filter-kategori-outlet">

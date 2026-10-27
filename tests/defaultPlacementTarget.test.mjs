@@ -4,22 +4,11 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildDefaultPlacementTarget } from "../src/services/defaultPlacementTarget.js";
 
-test("default target starts on the placement date and has no end date", () => {
-  const start = new Date("2026-09-15T00:00:00.000Z");
-  const target = buildDefaultPlacementTarget(start).create;
+test("default target starts on January 1, 2026 and has no end date", () => {
+  const target = buildDefaultPlacementTarget().create;
   assert.equal(target.value, 10);
-  assert.equal(target.start_date, start);
+  assert.equal(target.start_date.toISOString(), "2026-01-01T00:00:00.000Z");
   assert.equal(target.end_date, null);
-});
-
-test("missing placement date uses today's date in Makassar across the UTC day boundary", () => {
-  for (const [now, expected] of [
-    ["2026-10-25T15:59:59Z", "2026-10-25"],
-    ["2026-10-25T16:00:00Z", "2026-10-26"],
-  ]) {
-    const target = buildDefaultPlacementTarget(null, new Date(now)).create;
-    assert.equal(target.start_date.toISOString(), `${expected}T00:00:00.000Z`);
-  }
 });
 
 test("creating an employee assigns a separate target to each new placement without a position", async () => {
@@ -53,8 +42,9 @@ test("creating an employee assigns a separate target to each new placement witho
   });
   assert.equal(placements.length, 2);
   assert.notEqual(placements[0].target_gofitku.create.uuid, placements[1].target_gofitku.create.uuid);
-  for (const [index, day] of ["01", "20"].entries()) {
-    assert.equal(placements[index].target_gofitku.create.value, 10);
-    assert.equal(placements[index].target_gofitku.create.start_date.toISOString(), `2026-10-${day}T00:00:00.000Z`);
+  for (const placement of placements) {
+    assert.equal(placement.target_gofitku.create.value, 10);
+    assert.equal(placement.target_gofitku.create.start_date.toISOString(), "2026-01-01T00:00:00.000Z");
+    assert.equal(placement.target_gofitku.create.end_date, null);
   }
 });

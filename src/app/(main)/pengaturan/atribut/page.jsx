@@ -24,7 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import useSearch from "@/hooks/useSearch";
 import { get_socket } from "@/lib/socket-client";
 import PengaturanRowSheet from "../component/pengaturan-row-sheet";
@@ -71,14 +71,14 @@ export default function AtributPage() {
     [filtered_items, selected_type],
   );
 
-  const get_range_options = (current_uuid, current_range_uuid) => [
+  const get_range_options = (current_uuid) => [
     { value: "", label: "Tidak menggunakan rentang" },
     ...attributes
       .filter(
         (item) =>
           item.type === "date" &&
           item.uuid !== current_uuid &&
-          (!item.range_with || item.uuid === current_range_uuid),
+          (!current_uuid || item.range_with !== current_uuid),
       )
       .map((item) => ({
         value: item.uuid,
@@ -164,6 +164,7 @@ export default function AtributPage() {
         type: new_attribute.type,
         is_attribute: new_attribute.is_attribute,
         range_with: new_attribute.range_with,
+        range_with_join_date: new_attribute.range_with_join_date,
         is_view: new_attribute.is_view,
         is_edit: new_attribute.is_edit,
         is_summary_visible: new_attribute.is_summary_visible,
@@ -191,6 +192,7 @@ export default function AtributPage() {
         type: next_attribute.type,
         is_attribute: next_attribute.is_attribute,
         range_with: next_attribute.range_with,
+        range_with_join_date: next_attribute.range_with_join_date,
         is_view: next_attribute.is_view,
         is_edit: next_attribute.is_edit,
         is_summary_visible: next_attribute.is_summary_visible,
@@ -359,11 +361,12 @@ export default function AtributPage() {
                   htmlFor="filter-pencarian-atribut"
                   className="w-full sm:max-w-sm"
                 >
-                  <Input
+                  <SearchInput
                     id="filter-pencarian-atribut"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Cari kolom atribut..."
+                    onClear={() => setSearch("")}
                   />
                 </FilterField>
                 <FilterField label="Tipe" htmlFor="filter-tipe-atribut">
@@ -572,21 +575,24 @@ export default function AtributPage() {
                     placeholder: "Pilih jenis kolom atribut",
                     options: attribute_types,
                     on_change: (draft, next_type) =>
-                      next_type === "date" ? {} : { range_with: "" },
+                      next_type === "date" ? {} : { range_with: "", range_with_join_date: false },
                   },
                   {
                     key: "range_with",
                     label: "Buat rentang dengan",
                     type: "select",
-                    options: get_range_options(
-                      selected_attribute?.uuid,
-                      selected_attribute?.range_with,
-                    ),
+                    options: get_range_options(selected_attribute?.uuid),
                     disabled: (draft) => draft.type !== "date",
                     helper: (draft) =>
                       draft.type === "date"
                         ? "Pilih kolom tanggal lain sebagai pasangan rentang."
                         : "Opsi rentang hanya tersedia untuk kolom bertipe tanggal.",
+                  },
+                  {
+                    key: "range_with_join_date",
+                    label: "Buat rentang dengan Tanggal Bergabung",
+                    type: "checkbox",
+                    disabled: (draft) => draft.type !== "date"
                   },
                   {
                     key: "is_attribute",
@@ -641,6 +647,7 @@ export default function AtributPage() {
                   is_view: false,
                   is_attribute: false,
                   range_with: "",
+                  range_with_join_date: false,
                   is_edit: false,
                   is_summary_visible: true,
                 }}
@@ -657,7 +664,7 @@ export default function AtributPage() {
                     placeholder: "Pilih jenis kolom atribut",
                     options: attribute_types,
                     on_change: (draft, next_type) =>
-                      next_type === "date" ? {} : { range_with: "" },
+                      next_type === "date" ? {} : { range_with: "", range_with_join_date: false },
                   },
                   {
                     key: "range_with",
@@ -669,6 +676,12 @@ export default function AtributPage() {
                       draft.type === "date"
                         ? "Pilih kolom tanggal lain sebagai pasangan rentang."
                         : "Opsi rentang hanya tersedia untuk kolom bertipe tanggal.",
+                  },
+                  {
+                    key: "range_with_join_date",
+                    label: "Buat rentang dengan Tanggal Bergabung",
+                    type: "checkbox",
+                    disabled: (draft) => draft.type !== "date"
                   },
                   {
                     key: "is_attribute",

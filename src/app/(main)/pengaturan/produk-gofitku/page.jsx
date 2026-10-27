@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -220,11 +220,12 @@ export default function ProdukGofitkuPage() {
                   htmlFor="filter-pencarian-produk-gofitku"
                   className="w-full sm:max-w-sm"
                 >
-                  <Input
+                  <SearchInput
                     id="filter-pencarian-produk-gofitku"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Cari produk..."
+                    onClear={() => setSearch("")}
                   />
                 </FilterField>
                 <div className="flex w-full justify-end sm:ml-auto sm:w-auto">

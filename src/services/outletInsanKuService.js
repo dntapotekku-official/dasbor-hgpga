@@ -296,7 +296,6 @@ export async function syncOutletInsanKu() {
     .filter((item) => existing_insanku_uuid_set.has(item.uuid_insanku))
     .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
   let synced_jabatan_insanku = 0;
-  const default_target = buildDefaultPlacementTarget();
 
   await prisma.$transaction(
     async (tx) => {
@@ -318,7 +317,7 @@ export async function syncOutletInsanKu() {
             uuid_outlet: item.uuid_outlet,
             uuid_insanku: item.uuid_insanku,
             is_active: true,
-            target_gofitku: buildDefaultPlacementTarget(default_target.create.start_date),
+            target_gofitku: buildDefaultPlacementTarget(),
           },
           select: { uuid: true },
         });

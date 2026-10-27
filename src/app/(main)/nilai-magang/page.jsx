@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AwardIcon,
-  SearchIcon,
+
   TrendingDownIcon,
   TrendingUpIcon,
   UsersRoundIcon,
@@ -18,7 +18,7 @@ import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import WebsiteLinkButton from "@/components/website-link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -362,13 +362,14 @@ export default function NilaiMagangPage() {
                   className="w-full xl:w-64 xl:flex-none"
                 >
                   <div className="relative w-full">
-                    <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
+                    <SearchInput
+                      showSearchIcon
                       id="filter-pencarian-nilai-magang"
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                       placeholder="Cari nama mentee..."
                       className="pl-9"
+                      onClear={() => setSearch("")}
                     />
                   </div>
                 </FilterField>

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { saveAttributeJoinDateRange } from "@/services/attributeJoinDateRange";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeRole } from "@/lib/role";
@@ -55,6 +56,7 @@ async function resolve_range_with(transaction, { range_with, uuid, type }) {
       uuid: true,
       type: true,
       deleted_at: true,
+      range_with: true,
     },
   });
 
@@ -66,19 +68,8 @@ async function resolve_range_with(transaction, { range_with, uuid, type }) {
     throw new Error("Kolom pasangan rentang harus bertipe tanggal dan masih aktif.");
   }
 
-  const existing_range = await transaction.tbl_kolom_atribut.findFirst({
-    where: {
-      range_with: normalized_range_with,
-      deleted_at: null,
-      ...(uuid ? { uuid: { not: uuid } } : {}),
-    },
-    select: {
-      uuid: true,
-    },
-  });
-
-  if (existing_range) {
-    throw new Error("Kolom tanggal yang dipilih sudah memiliki pasangan rentang.");
+  if (paired_attribute.range_with === uuid) {
+    throw new Error("Pasangan rentang dengan kolom ini sudah ada dalam arah sebaliknya.");
   }
 
   return paired_attribute.uuid;
@@ -188,6 +179,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         type: true,
         is_attribute: true,
         range_with: true,
+        rentang_tgl_atribut: { where: { deleted_at: null }, select: { uuid: true }, take: 1 },
         is_edit: true,
         is_view: true,
         is_summary_visible: true,
@@ -216,6 +208,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         is_slip_gaji_account: true,
         nik: true,
         name: true,
+        join_date: true,
         username: true,
         is_active: true,
         deleted_at: true,
@@ -246,6 +239,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
       type: attribute.type,
       is_attribute: attribute.is_attribute,
       range_with: attribute.range_with,
+      range_with_join_date: attribute.type === "date" && attribute.rentang_tgl_atribut.length > 0,
       is_edit: attribute.is_edit,
       is_view: attribute.is_view,
       is_summary_visible: attribute.is_summary_visible,
@@ -264,6 +258,7 @@ export async function getAtributInsanku({ user_uuid, user_role } = {}) {
         is_slip_gaji_account: employee.is_slip_gaji_account,
         nik: employee.nik,
         name: employee.name,
+        join_date: employee.join_date?.toISOString().slice(0, 10) ?? null,
         username: employee.username,
         is_active: employee.deleted_at === null && employee.is_active,
         filled_attribute_keys: employee.atribut_insanku.map(
@@ -715,6 +710,7 @@ export async function getAtributMaster() {
       type: true,
       is_attribute: true,
       range_with: true,
+      rentang_tgl_atribut: { where: { deleted_at: null }, select: { uuid: true }, take: 1 },
       is_edit: true,
       is_view: true,
       is_summary_visible: true,
@@ -723,7 +719,10 @@ export async function getAtributMaster() {
   });
 
   return {
-    data_atribut,
+    data_atribut: data_atribut.map(({ rentang_tgl_atribut, ...attribute }) => ({
+      ...attribute,
+      range_with_join_date: attribute.type === "date" && rentang_tgl_atribut.length > 0,
+    })),
   };
 }
 
@@ -732,6 +731,7 @@ export async function createAtribut({
   type,
   is_attribute,
   range_with,
+  range_with_join_date,
   is_edit,
   is_view,
   is_summary_visible,
@@ -811,7 +811,9 @@ export async function createAtribut({
       },
     });
 
-    return created_row;
+    await saveAttributeJoinDateRange(transaction, created_uuid, Boolean(range_with_join_date), normalized_type);
+
+    return { ...created_row, range_with_join_date: Boolean(range_with_join_date) };
   });
 
   emit_socket_event("attribute.master.changed", {
@@ -832,6 +834,7 @@ export async function updateAtribut({
   type,
   is_attribute,
   range_with,
+  range_with_join_date,
   is_edit,
   is_view,
   is_summary_visible,
@@ -961,7 +964,9 @@ export async function updateAtribut({
       );
     }
 
-    return updated_row;
+    await saveAttributeJoinDateRange(transaction, uuid_atribut, Boolean(range_with_join_date), normalized_type);
+
+    return { ...updated_row, range_with_join_date: Boolean(range_with_join_date) };
   });
 
   emit_socket_event("attribute.master.changed", {
@@ -997,6 +1002,7 @@ export async function deleteAtribut({ uuid_atribut }) {
 
   await prisma.$transaction(async (transaction) => {
     const deleted_at = new Date();
+    await saveAttributeJoinDateRange(transaction, uuid_atribut, false);
 
     await transaction.tbl_kolom_atribut.updateMany({
       where: {

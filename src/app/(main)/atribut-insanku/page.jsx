@@ -9,7 +9,7 @@ import {
   InfoIcon,
   LoaderCircleIcon,
   MoveRightIcon,
-  SearchIcon,
+
   TriangleAlertIcon,
   XIcon,
 } from "lucide-react";
@@ -30,6 +30,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import FieldLabel from "@/components/field-label";
 import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import {
   Table,
   TableBody,
@@ -40,8 +41,10 @@ import {
 } from "@/components/ui/table";
 import usePagination from "@/hooks/usePagination";
 import { get_socket } from "@/lib/socket-client";
+import { getJoinDateRangeDays } from "@/lib/attributeJoinDateRange";
 
 const PAGE_SIZE = 50;
+const FIXED_EMPLOYEE_COLUMNS = ["No.", "NIK", "Nama", "Tanggal Bergabung"];
 const ATTRIBUTE_CARD_STYLES = [
   "border-sky-200 bg-sky-50/80 text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-50",
   "border-violet-200 bg-violet-50/80 text-violet-950 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-50",
@@ -499,7 +502,7 @@ export default function AtributInsanKuPage() {
     next_page,
   } = usePagination(sorted_employees, PAGE_SIZE);
 
-  const table_column_count = display_attribute_columns.length + 3;
+  const table_column_count = display_attribute_columns.length + 4;
 
   const toggle_sort = (next_sort_key) => {
     if (sort_key === next_sort_key) {
@@ -965,21 +968,33 @@ export default function AtributInsanKuPage() {
   };
 
   const render_attribute_input = (employee, column) => {
-    if (!column.range_column) {
+    const show_join_date_range = column.type === "date" && column.range_with_join_date;
+    if (!column.range_column && !show_join_date_range) {
       return render_attribute_control(employee, column);
     }
 
-    const range_days = get_date_range_days(
+    const range_days = column.range_column ? get_date_range_days(
       employee.attribute_values?.[column.key],
       employee.attribute_values?.[column.range_column.key],
-    );
+    ) : null;
+    const join_date_days = show_join_date_range ? getJoinDateRangeDays(
+      employee.join_date,
+      employee.attribute_values?.[column.key],
+    ) : null;
 
     return (
-      <div className="flex items-center gap-2">
-        {render_attribute_control(employee, column)}
-        {range_days !== null ? (
-          <span className="shrink-0 text-xs font-semibold text-primary">
-            {range_days} hari
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          {render_attribute_control(employee, column)}
+          {range_days !== null ? (
+            <span className="shrink-0 text-xs font-semibold text-primary">
+              {range_days} hari
+            </span>
+          ) : null}
+        </div>
+        {show_join_date_range ? (
+          <span className="text-sm text-primary">
+            Tanggal bergabung: <span className="font-semibold">{join_date_days === null ? "-" : `${join_date_days} hari`}</span>
           </span>
         ) : null}
       </div>
@@ -1158,13 +1173,14 @@ export default function AtributInsanKuPage() {
                   className="w-full sm:max-w-sm"
                 >
                   <div className="relative w-full">
-                    <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
+                    <SearchInput
+                      showSearchIcon
                       id="filter-pencarian-atribut-insanku"
                       value={search}
                       onChange={handle_search_change}
                       placeholder="Cari nama InsanKU..."
                       className="pl-9"
+                      onClear={() => { setSearch(""); setCurrentPage(1); }}
                     />
                   </div>
                 </FilterField>
@@ -1199,13 +1215,13 @@ export default function AtributInsanKuPage() {
 
               <div className="overflow-hidden rounded-lg border">
                 <div className="max-h-[80vh] overflow-auto">
-                  <Table containerClassName="overflow-visible">
+                  <Table containerClassName="overflow-visible" fixedColumns={FIXED_EMPLOYEE_COLUMNS}>
                     <TableHeader className="sticky top-0 z-20 bg-card">
                     <TableRow>
-                      <TableHead className="sticky top-0 z-20 min-w-14 bg-card text-center md:left-0 md:z-30 md:shadow-[1px_0_0_0_hsl(var(--border))]">
+                      <TableHead className="sticky top-0 z-20 min-w-14 bg-card text-center">
                         No.
                       </TableHead>
-                      <TableHead className="sticky top-0 z-20 min-w-[160px] bg-card md:left-14 md:z-30 md:shadow-[1px_0_0_0_hsl(var(--border))]">
+                      <TableHead className="sticky top-0 z-20 min-w-[160px] bg-card">
                           <SortableTableHead
                             label="NIK"
                             sortKey="nik"
@@ -1214,10 +1230,19 @@ export default function AtributInsanKuPage() {
                             onSort={toggle_sort}
                           />
                         </TableHead>
-                        <TableHead className="sticky top-0 z-20 min-w-[240px] bg-card md:left-[216px] md:z-30 md:shadow-[1px_0_0_0_hsl(var(--border))]">
+                        <TableHead className="sticky top-0 z-20 min-w-[240px] bg-card">
                           <SortableTableHead
                             label="Nama"
                             sortKey="name"
+                            currentSortKey={sort_key}
+                            sortDirection={sort_direction}
+                            onSort={toggle_sort}
+                          />
+                        </TableHead>
+                        <TableHead className="sticky top-0 z-20 min-w-[180px] bg-card">
+                          <SortableTableHead
+                            label="Tanggal Bergabung"
+                            sortKey="join_date"
                             currentSortKey={sort_key}
                             sortDirection={sort_direction}
                             onSort={toggle_sort}
@@ -1260,14 +1285,24 @@ export default function AtributInsanKuPage() {
                       ) : paginated_rows.length ? (
                         paginated_rows.map((employee, index) => (
                           <TableRow key={employee.uuid}>
-                            <TableCell className="bg-card text-center md:sticky md:left-0 md:z-10 md:shadow-[1px_0_0_0_hsl(var(--border))]">
+                            <TableCell className="bg-card text-center">
                               {(current_page - 1) * PAGE_SIZE + index + 1}
                             </TableCell>
-                            <TableCell className="bg-card md:sticky md:left-14 md:z-10 md:shadow-[1px_0_0_0_hsl(var(--border))]">
+                            <TableCell className="bg-card">
                               {employee.nik || "-"}
                             </TableCell>
-                            <TableCell className="bg-card font-medium md:sticky md:left-[216px] md:z-10 md:shadow-[1px_0_0_0_hsl(var(--border))]">
+                            <TableCell className="bg-card font-medium">
                               {employee.name}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap bg-card">
+                              {employee.join_date
+                                ? new Date(employee.join_date).toLocaleDateString("id-ID", {
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                    timeZone: "UTC",
+                                  })
+                                : "-"}
                             </TableCell>
                             {display_attribute_columns.map((column) => (
                               <TableCell key={`${employee.uuid}-${column.key}`}>

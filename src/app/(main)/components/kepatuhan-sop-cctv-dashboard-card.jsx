@@ -7,7 +7,7 @@ import {
   Building2Icon,
   CctvIcon,
   ChevronDownIcon,
-  SearchIcon,
+
 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -29,7 +29,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import SearchInput from "@/components/search-input";
 import { hasRoleAccess } from "@/lib/role";
 
 const default_outlet = { value: "semua-outlet", label: "Semua Outlet" };
@@ -246,13 +246,14 @@ export default function KepatuhanSopCctvDashboardCard({ showDetailLink = true })
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[260px]">
                 <div className="relative p-1">
-                  <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
+                  <SearchInput
+                    showSearchIcon
                     value={outlet_search}
                     onChange={(event) => setOutletSearch(event.target.value)}
                     onKeyDown={(event) => event.stopPropagation()}
                     placeholder="Cari outlet..."
                     className="h-9 pl-8"
+                    onClear={() => setOutletSearch("")}
                   />
                 </div>
                 <DropdownMenuRadioGroup
