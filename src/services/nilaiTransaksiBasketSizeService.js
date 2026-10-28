@@ -1234,6 +1234,7 @@ function add_export_data_row(
   category_label,
   is_highest_daily = false,
   is_highest_bs = false,
+  highlight_outlet = false,
 ) {
   const row = sheet.addRow([
     number,
@@ -1263,7 +1264,7 @@ function add_export_data_row(
   }).filter(Boolean);
   if (exclusion_notes.length) row.getCell("B").note = exclusion_notes.join("\n");
 
-  if (item.highlight_nt_decline) {
+  if (highlight_outlet && item.highlight_nt_decline) {
     row.getCell("B").fill = {
       type: "pattern",
       pattern: "solid",
@@ -1519,6 +1520,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
         category_label,
         to_number(row.nt_daily) === highest_daily,
         to_number(row.bs_current_month) === highest_bs,
+        outlet_scope === "marked",
       );
     });
 
