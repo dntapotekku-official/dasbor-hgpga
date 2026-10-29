@@ -1,3 +1,4 @@
+import { applyJabatanGofitkuExclusions } from "@/services/jabatanGofitkuExclusionService";
 import { randomUUID } from "node:crypto";
 import { buildDefaultPlacementTarget } from "@/services/defaultPlacementTarget";
 import { prisma } from "@/lib/prisma";
@@ -296,9 +297,14 @@ export async function syncOutletInsanKu() {
     .filter((item) => existing_insanku_uuid_set.has(item.uuid_insanku))
     .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
   let synced_jabatan_insanku = 0;
+  let auto_excluded_insanku = 0;
 
   await prisma.$transaction(
     async (tx) => {
+      for (const item of jabatan_master_rows) {
+        await tx.tbl_jabatan_master.upsert({ where: { uuid: item.uuid },
+          update: { name: item.name, deleted_at: null }, create: item });
+      }
       for (const item of syncable_outlet_insanku) {
         const active_relation = await tx.tbl_outlet_insanku.upsert({
           where: {
@@ -421,6 +427,8 @@ export async function syncOutletInsanKu() {
           }),
         );
       }
+      auto_excluded_insanku = await applyJabatanGofitkuExclusions(tx,
+        syncable_outlet_insanku.map((item) => item.uuid_insanku));
     },
     {
       maxWait: 10_000,
@@ -441,6 +449,7 @@ export async function syncOutletInsanKu() {
         skipped_placement_insanku_uuid_set.size +
         (unique_rows.length - syncable_outlet_insanku.length),
       synced_jabatan_insanku,
+      auto_excluded_insanku,
     },
   };
 }

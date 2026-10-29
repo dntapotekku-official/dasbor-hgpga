@@ -1,3 +1,5 @@
+import { permanentGofitkuExclusionDates } from "../lib/gofitkuExclusion.js";
+import { parsePlacementMonth, currentPlacementMonth } from "../lib/placementMonth.js";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { randomUUID } from "node:crypto";
@@ -409,10 +411,6 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
       gofitku_exclusion_periods: {
         where: {
           deleted_at: null,
-          OR: [
-            { end_date: null },
-            { end_date: { gte: new Date() } },
-          ],
         },
         orderBy: {
           start_date: "desc",
@@ -779,8 +777,6 @@ export async function updateInsanKu({
   is_skip_sync_insanku,
   is_skip_sync_outlet_insanku,
   is_exclude_penjualan_gofitku,
-  gofitku_exclusion_start_date,
-  gofitku_exclusion_end_date,
   expected_is_slip_gaji_account = true,
 }) {
   if (!uuid_insanku) {
@@ -806,10 +802,10 @@ export async function updateInsanKu({
   const deleted_placement_date_map = new Map(
     normalized_deleted_placements.map((placement) => [
       placement.uuid,
-      parseOptionalDate(
+      parsePlacementMonth(
         placement.inactive_start_date,
-        "Tanggal efektif hapus penempatan",
-      ) ?? new Date(),
+        "Bulan efektif hapus penempatan",
+      ) ?? currentPlacementMonth(),
     ]),
   );
   const placement_uuid_list = normalized_placements.placement_uuids;
@@ -835,27 +831,6 @@ export async function updateInsanKu({
     Boolean(is_skip_sync_outlet_insanku) && unique_outlet_uuids.length > 0;
   const should_exclude_penjualan_gofitku =
     Boolean(is_exclude_penjualan_gofitku);
-  const exclusion_start_date = parseOptionalDate(
-    gofitku_exclusion_start_date,
-    "Tanggal mulai pengecualian GoFitKu",
-  );
-  const exclusion_end_date = parseOptionalDate(
-    gofitku_exclusion_end_date,
-    "Tanggal selesai pengecualian GoFitKu",
-  );
-
-  if (should_exclude_penjualan_gofitku && !exclusion_start_date) {
-    throw new Error("Tanggal mulai pengecualian GoFitKu wajib diisi.");
-  }
-
-  if (
-    should_exclude_penjualan_gofitku &&
-    exclusion_end_date &&
-    exclusion_end_date < exclusion_start_date
-  ) {
-    throw new Error("Tanggal selesai pengecualian GoFitKu tidak boleh sebelum tanggal mulai.");
-  }
-
   const existing_insanku = await prisma.tbl_insanku.findUnique({
     where: { uuid: uuid_insanku },
     select: {
@@ -909,51 +884,17 @@ export async function updateInsanKu({
       await openInsanKuInactivePeriod(tx, uuid_insanku);
     }
 
-    const now = new Date();
-    const today_start = new Date(now.toISOString().slice(0, 10));
-    const current_exclusions = await tx.tbl_insanku_gofitku_exclusion.findMany({
-      where: {
-        uuid_insanku,
-        deleted_at: null,
-        OR: [{ end_date: null }, { end_date: { gte: now } }],
-      },
-      select: { uuid: true, start_date: true, end_date: true },
-    });
-    const exclusion_unchanged = should_exclude_penjualan_gofitku &&
-      current_exclusions.length === 1 &&
-      current_exclusions[0].start_date.getTime() === exclusion_start_date.getTime() &&
-      current_exclusions[0].end_date?.getTime() === exclusion_end_date?.getTime();
-
-    if (!exclusion_unchanged) {
-      const yesterday_end = new Date(today_start.getTime() - 1);
+    if (!should_exclude_penjualan_gofitku) {
       await tx.tbl_insanku_gofitku_exclusion.updateMany({
-        where: {
-          uuid_insanku,
-          deleted_at: null,
-          start_date: { lt: today_start },
-          OR: [{ end_date: null }, { end_date: { gte: now } }],
-        },
-        data: { end_date: yesterday_end },
+        where: { uuid_insanku, deleted_at: null }, data: { deleted_at: new Date() },
       });
-      await tx.tbl_insanku_gofitku_exclusion.updateMany({
-        where: {
-          uuid_insanku,
-          deleted_at: null,
-          start_date: { gte: today_start },
-        },
-        data: { deleted_at: now },
+    } else {
+      const existing = await tx.tbl_insanku_gofitku_exclusion.findFirst({
+        where: { uuid_insanku, deleted_at: null }, select: { uuid: true },
       });
-
-      if (should_exclude_penjualan_gofitku) {
-        await tx.tbl_insanku_gofitku_exclusion.create({
-          data: {
-            uuid: randomUUID(),
-            uuid_insanku,
-            start_date: exclusion_start_date,
-            end_date: exclusion_end_date,
-          },
-        });
-      }
+      if (!existing) await tx.tbl_insanku_gofitku_exclusion.create({ data: {
+        uuid: randomUUID(), uuid_insanku, ...permanentGofitkuExclusionDates(),
+      } });
     }
 
     const current_relations = await tx.tbl_outlet_insanku.findMany({
@@ -994,7 +935,7 @@ export async function updateInsanKu({
       .map((item) => item.uuid);
 
     if (relation_uuids_to_remove.length > 0) {
-      const inactive_start_date = new Date();
+      const inactive_start_date = currentPlacementMonth();
 
       await tx.tbl_outlet_insanku.updateMany({
         where: {
@@ -1040,10 +981,10 @@ export async function updateInsanKu({
     });
 
     for (const placement of resolved_outlet_placements) {
-      const placement_active_start_date = parseOptionalDate(
+      const placement_active_start_date = parsePlacementMonth(
         placement.active_start_date,
-        "Tanggal mulai penempatan",
-      );
+        "Bulan mulai penempatan",
+      ) ?? currentPlacementMonth();
 
       if (placement.uuid) {
         const current_relation = current_relations_by_uuid.get(placement.uuid);
@@ -1066,7 +1007,7 @@ export async function updateInsanKu({
           await closeOutletInsanKuInactivePeriod(
             tx,
             placement.uuid,
-            placement_active_start_date ?? undefined,
+            placement_active_start_date,
           );
           await savePlacementJabatan(tx, placement, placement.uuid);
           continue;
@@ -1090,7 +1031,7 @@ export async function updateInsanKu({
           await closeOutletInsanKuInactivePeriod(
             tx,
             existing_target_relation.uuid,
-            placement_active_start_date ?? undefined,
+            placement_active_start_date,
           );
           await savePlacementJabatan(
             tx,
@@ -1116,7 +1057,7 @@ export async function updateInsanKu({
           await openOutletInsanKuInactivePeriod(
             tx,
             placement.uuid,
-            placement_active_start_date ?? undefined,
+            placement_active_start_date,
           );
 
           continue;
@@ -1141,7 +1082,7 @@ export async function updateInsanKu({
           await openOutletInsanKuInactivePeriod(
             tx,
             placement.uuid,
-            placement_active_start_date ?? undefined,
+            placement_active_start_date,
           );
           const created_relation_uuid = randomUUID();
 
@@ -1174,7 +1115,7 @@ export async function updateInsanKu({
           await closeOutletInsanKuInactivePeriod(
             tx,
             placement.uuid,
-            placement_active_start_date ?? undefined,
+            placement_active_start_date,
           );
           await savePlacementJabatan(tx, placement, placement.uuid);
         }
@@ -1199,7 +1140,7 @@ export async function updateInsanKu({
         await closeOutletInsanKuInactivePeriod(
           tx,
           existing_target_relation.uuid,
-          placement_active_start_date ?? undefined,
+          placement_active_start_date,
         );
         await savePlacementJabatan(
           tx,
@@ -1307,6 +1248,8 @@ export async function createInsanKuNonSlipGaji({
           target_gofitku: buildDefaultPlacementTarget(),
         },
       });
+      await createOutletInsanKuPreActivePeriod(transaction, uuid_outlet_insanku,
+        parsePlacementMonth(placement.active_start_date, "Bulan mulai penempatan") ?? currentPlacementMonth());
       await savePlacementJabatan(
         transaction,
         placement,

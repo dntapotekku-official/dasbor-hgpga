@@ -115,7 +115,7 @@ test("target follows outlet placement, not only employee uuid", () => {
   );
 });
 
-test("relation is unavailable during placement, employee, or GoFitKu exclusion periods", () => {
+test("placement and employee periods remain dated while GoFitKu exclusions apply permanently", () => {
   const placement_inactive = relation("assignment-placement", "Ani");
   placement_inactive.inactive_periods = [
     { start_date: date("05"), end_date: date("06") },
@@ -134,6 +134,10 @@ test("relation is unavailable during placement, employee, or GoFitKu exclusion p
   assert.equal(isGofitkuRelationAvailableOnDate(placement_inactive, date("05")), false);
   assert.equal(isGofitkuRelationAvailableOnDate(employee_inactive, date("05")), false);
   assert.equal(isGofitkuRelationAvailableOnDate(excluded, date("05")), false);
+  assert.equal(isGofitkuRelationAvailableOnDate(excluded, date("07")), false);
+  assert.equal(isGofitkuRelationAvailableOnDate(excluded, date("01")), false);
+  assert.equal(isGofitkuRelationAvailableInRange(excluded, date("01"), date("31")), false);
+  excluded.insanku.gofitku_exclusion_periods[0].deleted_at = new Date();
   assert.equal(isGofitkuRelationAvailableOnDate(excluded, date("07")), true);
 });
 

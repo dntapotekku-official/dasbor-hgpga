@@ -20,14 +20,13 @@ import OptionDropdown from "@/components/option-dropdown";
 import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
-import FieldLabel from "@/components/field-label";
 import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
+import JabatanGofitkuExclusionModal from "./jabatan-gofitku-exclusion-modal";
 import BulkGofitkuExclusionModal from "./bulk-gofitku-exclusion-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import SearchInput from "@/components/search-input";
 import {
   Table,
@@ -43,8 +42,6 @@ const EMPTY_ADVANCED_FILTERS = {
   skip_identity: false,
   skip_placement: false,
   exclude_gofitku: false,
-  exclusion_start_date: "",
-  exclusion_end_date: "",
 };
 
 function has_selected_outlet_placement(outlet_placements) {
@@ -76,8 +73,6 @@ function build_insanku_sheet_key(item) {
     Boolean(item.is_skip_sync_insanku),
     Boolean(item.is_skip_sync_outlet_insanku),
     Boolean(item.is_exclude_penjualan_gofitku),
-    item.gofitku_exclusion_start_date ?? "",
-    item.gofitku_exclusion_end_date ?? "",
   ].join(":");
 }
 
@@ -94,6 +89,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     useState(false);
   const [is_sheet_open, setIsSheetOpen] = useState(false);
   const [is_creating, setIsCreating] = useState(false);
+  const [is_jabatan_exclusion_open, setIsJabatanExclusionOpen] = useState(false);
   const [is_bulk_open, setIsBulkOpen] = useState(false);
   const [is_bulk_saving, setIsBulkSaving] = useState(false);
   const [sort_key, setSortKey] = useState("name");
@@ -130,25 +126,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       }
 
       if (!item.is_exclude_penjualan_gofitku) {
-        return false;
-      }
-
-      const item_start_date = item.gofitku_exclusion_start_date ?? "";
-      const item_end_date = item.gofitku_exclusion_end_date ?? "";
-
-      if (
-        advanced_filters.exclusion_start_date &&
-        item_end_date &&
-        item_end_date < advanced_filters.exclusion_start_date
-      ) {
-        return false;
-      }
-
-      if (
-        advanced_filters.exclusion_end_date &&
-        item_start_date &&
-        item_start_date > advanced_filters.exclusion_end_date
-      ) {
         return false;
       }
 
@@ -228,8 +205,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       setInsanKu((current) => current.map((item) => selected.has(item.uuid) ? {
         ...item, is_gofitku_setup_pending: false,
         is_exclude_penjualan_gofitku: settings.is_exclude_penjualan_gofitku,
-        gofitku_exclusion_start_date: settings.gofitku_exclusion_start_date,
-        gofitku_exclusion_end_date: settings.gofitku_exclusion_end_date,
       } : item));
       setIsBulkOpen(false);
       toast.success(payload.message);
@@ -311,16 +286,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
   };
 
   const apply_advanced_filters = () => {
-    if (
-      draft_advanced_filters.exclusion_start_date &&
-      draft_advanced_filters.exclusion_end_date &&
-      draft_advanced_filters.exclusion_end_date <
-        draft_advanced_filters.exclusion_start_date
-    ) {
-      toast.error("Tanggal selesai tidak boleh sebelum tanggal mulai.");
-      return;
-    }
-
     setAdvancedFilters({ ...draft_advanced_filters });
     setIsFilterModalOpen(false);
   };
@@ -398,8 +363,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
         is_skip_sync_insanku: next_insanku.is_skip_sync_insanku,
         is_skip_sync_outlet_insanku: next_insanku.is_skip_sync_outlet_insanku,
         is_exclude_penjualan_gofitku: next_insanku.is_exclude_penjualan_gofitku,
-        gofitku_exclusion_start_date: next_insanku.gofitku_exclusion_start_date,
-        gofitku_exclusion_end_date: next_insanku.gofitku_exclusion_end_date,
       }),
     });
     const payload = await response.json();
@@ -570,6 +533,9 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 </Button>
               ) : (
                 <div className="flex w-full flex-col gap-3 sm:flex-row lg:ml-auto lg:w-auto">
+                <Button type="button" className="w-full shrink-0 sm:w-auto" disabled={sync_status === "syncing" || is_bulk_saving} onClick={() => setIsJabatanExclusionOpen(true)}>
+                  <ListChecksIcon className="size-4" />Pengecualian Jabatan
+                </Button>
                 <Button type="button" className="w-full shrink-0 sm:w-auto" disabled={sync_status === "syncing" || is_bulk_saving} onClick={() => setIsBulkOpen(true)}>
                   <ListChecksIcon className="size-4" />Atur Banyak{pending_gofitku_rows.length > 0 ? ` (${pending_gofitku_rows.length})` : ""}
                 </Button>
@@ -874,40 +840,16 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                       key: "is_exclude_penjualan_gofitku",
                       label: "Kecualikan dalam penjualan GoFitKu",
                       type: "checkbox",
-                      on_change: (draft, checked) =>
-                        checked
-                          ? {}
-                          : {
-                              gofitku_exclusion_start_date: "",
-                              gofitku_exclusion_end_date: "",
-                            },
-                      helper: (draft) =>
-                        draft.is_exclude_penjualan_gofitku
-                          ? "Isi periode agar InsanKU dikecualikan hanya pada rentang tanggal tersebut."
-                          : "Aktifkan jika InsanKU tidak ikut dihitung pada periode tertentu.",
-                    },
-                    {
-                      key: "gofitku_exclusion_start_date",
-                      label: "Mulai dikecualikan GoFitKu",
-                      type: "date",
-                      disabled: (draft) => !draft.is_exclude_penjualan_gofitku,
-                      helper: (draft) =>
-                        draft.is_exclude_penjualan_gofitku
-                          ? "Wajib diisi saat pengecualian GoFitKu aktif."
-                          : undefined,
-                    },
-                    {
-                      key: "gofitku_exclusion_end_date",
-                      label: "Selesai dikecualikan GoFitKu",
-                      type: "date",
-                      disabled: (draft) => !draft.is_exclude_penjualan_gofitku,
-                      helper: "Kosongkan jika pengecualian berlaku seterusnya.",
+                      helper: "Pengecualian berlaku selamanya selama tetap diaktifkan.",
                     },
                   ]
                 : []),
               ]}
               on_save={handle_save}
             />
+            {!is_non_slip_gaji && is_jabatan_exclusion_open && (
+              <JabatanGofitkuExclusionModal on_open_change={setIsJabatanExclusionOpen} />
+            )}
             {!is_non_slip_gaji && is_bulk_open && (
               <BulkGofitkuExclusionModal rows={pending_gofitku_rows} is_saving={is_bulk_saving} on_open_change={setIsBulkOpen} on_save={handle_bulk_gofitku_save} />
             )}
@@ -975,12 +917,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                             setDraftAdvancedFilters((current) => ({
                               ...current,
                               exclude_gofitku: event.target.checked,
-                              ...(!event.target.checked
-                                ? {
-                                    exclusion_start_date: "",
-                                    exclusion_end_date: "",
-                                  }
-                                : {}),
                             }))
                           }
                           className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
@@ -988,56 +924,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                         <span>Dikecualikan pada penjualan GoFitKu</span>
                       </label>
 
-                      {draft_advanced_filters.exclude_gofitku ? (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <FieldLabel
-                              htmlFor="filter-gofitku-start-date"
-                              label="Mulai"
-                              variant="filter"
-                            />
-                            <Input
-                              id="filter-gofitku-start-date"
-                              type="date"
-                              value={
-                                draft_advanced_filters.exclusion_start_date
-                              }
-                              max={
-                                draft_advanced_filters.exclusion_end_date ||
-                                undefined
-                              }
-                              onChange={(event) =>
-                                setDraftAdvancedFilters((current) => ({
-                                  ...current,
-                                  exclusion_start_date: event.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <FieldLabel
-                              htmlFor="filter-gofitku-end-date"
-                              label="Selesai"
-                              variant="filter"
-                            />
-                            <Input
-                              id="filter-gofitku-end-date"
-                              type="date"
-                              value={draft_advanced_filters.exclusion_end_date}
-                              min={
-                                draft_advanced_filters.exclusion_start_date ||
-                                undefined
-                              }
-                              onChange={(event) =>
-                                setDraftAdvancedFilters((current) => ({
-                                  ...current,
-                                  exclusion_end_date: event.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                        </div>
-                      ) : null}
+
                     </div>
 
                     <div className="flex justify-end gap-2 border-t p-4">

@@ -1,5 +1,5 @@
 export function getGofitkuSetupWindow(now = new Date()) {
-  return { gte: new Date(now.getTime() - 48 * 60 * 60 * 1000), lte: now };
+  return { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), lte: now };
 }
 
 export function isWithinGofitkuSetupWindow(createdAt, window) {

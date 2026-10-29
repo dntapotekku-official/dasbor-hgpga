@@ -1,3 +1,4 @@
+import { permanentGofitkuExclusionDates } from "../lib/gofitkuExclusion.js";
 import { randomUUID } from "node:crypto";
 import { getGofitkuSetupWindow } from "../lib/gofitkuSetupWindow.js";
 
@@ -10,16 +11,7 @@ export function parseBulkGofitkuExclusion(payload) {
     throw new Error("Pengaturan pengecualian GoFitKu tidak valid.");
   }
   const enabled = payload.is_exclude_penjualan_gofitku;
-  const parse = (value, label, required = false) => {
-    if (!value && !required) return null;
-    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`${label} wajib diisi dengan tanggal yang valid.`);
-    const date = new Date(`${value}T00:00:00.000Z`);
-    if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error(`${label} tidak valid.`);
-    return date;
-  };
-  const start = enabled ? parse(payload.gofitku_exclusion_start_date, "Tanggal mulai pengecualian GoFitKu", true) : null;
-  const end = enabled ? parse(payload.gofitku_exclusion_end_date, "Tanggal selesai pengecualian GoFitKu") : null;
-  if (end && end < start) throw new Error("Tanggal selesai tidak boleh sebelum tanggal mulai.");
+  const { start_date: start, end_date: end } = permanentGofitkuExclusionDates();
   return { ids, enabled, start, end };
 }
 
@@ -36,7 +28,7 @@ export async function bulkSetGofitkuExclusion(prisma, payload) {
       data: { is_gofitku_setup_pending: false },
     });
     if (result.count !== ids.length) {
-      const error = new Error("Ada InsanKU yang sudah diatur, tidak lagi aktif, atau melewati batas 48 jam sejak ditambahkan lewat sinkronisasi. Muat ulang daftar dan coba kembali.");
+      const error = new Error("Ada InsanKU yang sudah diatur, tidak lagi aktif, atau melewati batas 7 hari sejak ditambahkan lewat sinkronisasi. Muat ulang daftar dan coba kembali.");
       error.status = 409;
       throw error;
     }

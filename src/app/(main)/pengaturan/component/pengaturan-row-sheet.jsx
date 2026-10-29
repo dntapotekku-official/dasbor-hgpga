@@ -26,16 +26,15 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-function get_today_input_value() {
+function get_current_month_input_value() {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Makassar",
       year: "numeric",
       month: "2-digit",
-      day: "2-digit",
     }).formatToParts(new Date()).map((part) => [part.type, part.value]),
   );
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  return `${parts.year}-${parts.month}`;
 }
 
 function normalize_placements(value, include_key = false, field_key = "") {
@@ -257,7 +256,7 @@ export default function PengaturanRowSheet({
 
   const confirm_add_placement = () => {
     if (!placement_add_action?.active_start_date) {
-      toast.error("Tanggal efektif penempatan wajib diisi.");
+      toast.error("Bulan dan tahun efektif penempatan wajib diisi.");
       return;
     }
 
@@ -286,7 +285,7 @@ export default function PengaturanRowSheet({
 
   const confirm_delete_placement = () => {
     if (!placement_delete_action?.inactive_start_date) {
-      toast.error("Tanggal efektif hapus wajib diisi.");
+      toast.error("Bulan dan tahun efektif hapus wajib diisi.");
       return;
     }
 
@@ -636,7 +635,7 @@ export default function PengaturanRowSheet({
                                 field,
                                 index,
                                 placement,
-                                inactive_start_date: get_today_input_value(),
+                                inactive_start_date: get_current_month_input_value(),
                               });
                             }}
                           >
@@ -656,7 +655,7 @@ export default function PengaturanRowSheet({
                     variant="outline"
                     onClick={() => setPlacementAddAction({
                       field,
-                      active_start_date: get_today_input_value(),
+                      active_start_date: get_current_month_input_value(),
                     })}
                     className="w-full"
                   >
@@ -789,7 +788,7 @@ export default function PengaturanRowSheet({
                   Tambah Penempatan
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                  Tentukan tanggal efektif penempatan. Target GoFitKu 10 mulai berlaku pada tanggal tersebut.
+                  Tentukan bulan dan tahun efektif penempatan. Penempatan mulai berlaku sejak awal bulan yang dipilih.
                 </DialogPrimitive.Description>
               </div>
               <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -798,10 +797,10 @@ export default function PengaturanRowSheet({
               </DialogPrimitive.Close>
             </div>
             <div className="mt-4 space-y-2">
-              <FieldLabel htmlFor="placement-add-date" label="Tanggal efektif penempatan" required />
+              <FieldLabel htmlFor="placement-add-date" label="Bulan efektif penempatan" required />
               <Input
                 id="placement-add-date"
-                type="date"
+                type="month"
                 required
                 value={placement_add_action?.active_start_date ?? ""}
                 onChange={(event) => setPlacementAddAction((current) =>
@@ -835,7 +834,7 @@ export default function PengaturanRowSheet({
                   Hapus Penempatan
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                  Tentukan tanggal efektif hapus penempatan.
+                  Penempatan dinonaktifkan mulai bulan yang dipilih.
                 </DialogPrimitive.Description>
               </div>
               <DialogPrimitive.Close className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -846,12 +845,12 @@ export default function PengaturanRowSheet({
             <div className="mt-4 space-y-2">
               <FieldLabel
                 htmlFor="placement-delete-date"
-                label="Tanggal efektif hapus"
+                label="Bulan efektif hapus"
                 required
               />
               <Input
                 id="placement-delete-date"
-                type="date"
+                type="month"
                 value={placement_delete_action?.inactive_start_date ?? ""}
                 onChange={(event) =>
                   setPlacementDeleteAction((current) =>

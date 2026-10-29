@@ -35,12 +35,14 @@ function fixture() {
   return { prisma, get state() { return state; }, set failWrite(value) { failWrite = value; } };
 }
 
-test("bulk applies the same dates only to selected new synced people", async () => {
+test("bulk applies permanent exclusion only to selected new synced people within seven days", async () => {
   const f = fixture();
+  f.state.people.find((row) => row.uuid === "new-a").created_at = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  f.state.people.find((row) => row.uuid === "new-b").created_at = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
   const result = await bulkSetGofitkuExclusion(f.prisma, payload());
   assert.equal(result.updated_count, 2);
   assert.deepEqual(f.state.exclusions.map((row) => row.uuid_insanku), ["new-a", "new-b"]);
-  assert.ok(f.state.exclusions.every((row) => row.start_date.toISOString().slice(0, 10) === "2026-10-01" && row.end_date.toISOString().slice(0, 10) === "2026-10-31"));
+  assert.ok(f.state.exclusions.every((row) => row.start_date.toISOString() === "1970-01-01T00:00:00.000Z" && row.end_date === null));
   assert.ok(f.state.people.filter((row) => ["new-a", "new-b"].includes(row.uuid)).every((row) => !row.is_gofitku_setup_pending));
   assert.equal(f.state.people.find((row) => row.uuid === "new-c").is_gofitku_setup_pending, true);
   assert.equal(f.state.people.find((row) => row.uuid === "new-a").name, "new-a");
@@ -76,26 +78,29 @@ test("failed exclusion writes preserve the pending queue", async () => {
   assert.deepEqual(f.state, before);
 });
 
-test("48-hour window includes the boundary and rejects expired or future creation dates", async () => {
+test("7-day window includes the boundary and rejects expired or future creation dates", async () => {
   const now = new Date("2026-10-19T04:00:00Z");
   const window = getGofitkuSetupWindow(now);
-  assert.equal(isWithinGofitkuSetupWindow("2026-10-17T04:00:00Z", window), true);
+  assert.equal(isWithinGofitkuSetupWindow("2026-10-12T04:00:00Z", window), true);
   assert.equal(isWithinGofitkuSetupWindow(now, window), true);
-  for (const date of ["2026-10-17T03:59:59.999Z", "2026-10-19T04:00:00.001Z", null, "invalid"]) {
+  for (const date of ["2026-10-12T03:59:59.999Z", "2026-10-19T04:00:00.001Z", null, "invalid"]) {
     assert.equal(isWithinGofitkuSetupWindow(date, window), false);
   }
   const f = fixture();
-  f.state.people.find((row) => row.uuid === "new-b").created_at = new Date(Date.now() - 49 * 60 * 60 * 1000);
+  f.state.people.find((row) => row.uuid === "new-b").created_at = new Date(Date.now() - (7 * 24 + 1) * 60 * 60 * 1000);
   const before = structuredClone(f.state);
-  await assert.rejects(bulkSetGofitkuExclusion(f.prisma, payload()), (error) => error.status === 409 && error.message.includes("48 jam"));
+  await assert.rejects(bulkSetGofitkuExclusion(f.prisma, payload()), (error) => error.status === 409 && error.message.includes("7 hari"));
   assert.deepEqual(f.state, before);
 });
 
-test("validate selected names, actual dates, date order and boolean; deduplicate IDs", () => {
+test("validate selected names and boolean; deduplicate IDs; ignore retained date fields", () => {
   for (const changes of [
     { uuid_insanku: [] }, { uuid_insanku: [null] }, { is_exclude_penjualan_gofitku: "false" },
-    { gofitku_exclusion_start_date: "" }, { gofitku_exclusion_start_date: "2026-02-30" },
-    { gofitku_exclusion_end_date: "2026-09-30" }, { gofitku_exclusion_end_date: "2026-13-01" },
   ]) assert.throws(() => parseBulkGofitkuExclusion(payload(changes)));
   assert.equal(parseBulkGofitkuExclusion(payload({ uuid_insanku: ["new-a", "new-a"] })).ids.length, 1);
+  for (const dates of [{}, { gofitku_exclusion_start_date: "", gofitku_exclusion_end_date: "" }, { gofitku_exclusion_start_date: "invalid", gofitku_exclusion_end_date: "2026-01-01" }]) {
+    const result = parseBulkGofitkuExclusion({ uuid_insanku: ["new-a"], is_exclude_penjualan_gofitku: true, ...dates });
+    assert.equal(result.start.toISOString(), "1970-01-01T00:00:00.000Z");
+    assert.equal(result.end, null);
+  }
 });

@@ -555,6 +555,7 @@ model tbl_jabatan_master {
   deleted_at DateTime?
 
   jabatan_insanku tbl_jabatan_insanku[]
+  pengecualian_jabatan tbl_pengecualian_jabatan[]
 }
 
 model tbl_jabatan_insanku {
@@ -587,4 +588,17 @@ model tbl_marked_nt_bs_outlet {
 
   @@unique([uuid_outlet, date])
   @@index([date, deleted_at])
+}
+
+model tbl_pengecualian_jabatan {
+  id                  Int       @id @default(autoincrement())
+  uuid                String    @unique @db.Char(36)
+  uuid_jabatan_master String    @db.Char(36)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+
+  jabatan_master tbl_jabatan_master @relation(fields: [uuid_jabatan_master], references: [uuid], onDelete: Cascade)
+
+  @@index([uuid_jabatan_master])
 }

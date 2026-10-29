@@ -1,3 +1,4 @@
+import { isGofitkuExcluded } from "../lib/gofitkuExclusion.js";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -134,19 +135,8 @@ function matches_search_text(value, search_value) {
   return normalize_search_text(value).includes(normalized_search);
 }
 
-function is_date_in_gofitku_exclusion(date_value, exclusion_periods = []) {
-  const date = new Date(date_value);
-
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
-
-  return exclusion_periods.some((period) => {
-    const start_date = new Date(period.start_date);
-    const end_date = period.end_date ? new Date(period.end_date) : null;
-
-    return start_date <= date && (!end_date || end_date >= date);
-  });
+function is_date_in_gofitku_exclusion(_date_value, exclusion_periods = []) {
+  return isGofitkuExcluded(exclusion_periods);
 }
 
 function filter_sales_by_relation_periods(sales_rows, relation_map) {
@@ -1462,7 +1452,7 @@ export async function createPenjualanGofitku({
         )
       ) {
         throw new Error(
-          `${relation?.insanku?.name ?? "InsanKU"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
+          `${relation?.insanku?.name ?? "InsanKU"} dikecualikan dari Penjualan GoFitKu.`,
         );
       }
 
@@ -1641,7 +1631,7 @@ export async function updatePenjualanGofitku({
     )
   ) {
     throw new Error(
-      `${outlet_insanku.insanku?.name ?? "InsanKU"} sedang dikecualikan dari Penjualan GoFitKu pada tanggal tersebut.`,
+      `${outlet_insanku.insanku?.name ?? "InsanKU"} dikecualikan dari Penjualan GoFitKu.`,
     );
   }
 

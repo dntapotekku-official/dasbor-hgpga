@@ -1,3 +1,5 @@
+import { isGofitkuExcluded } from "./gofitkuExclusion.js";
+
 function is_date_in_periods(date_value, periods = []) {
   const date = new Date(date_value);
 
@@ -17,10 +19,7 @@ export function isGofitkuRelationAvailableOnDate(relation, date_value) {
   return (
     !is_date_in_periods(date_value, relation?.inactive_periods) &&
     !is_date_in_periods(date_value, relation?.insanku?.inactive_periods) &&
-    !is_date_in_periods(
-      date_value,
-      relation?.insanku?.gofitku_exclusion_periods,
-    )
+    !isGofitkuExcluded(relation?.insanku?.gofitku_exclusion_periods)
   );
 }
 
