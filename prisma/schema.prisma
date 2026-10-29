@@ -178,12 +178,19 @@ model tbl_kepatuhan_sop_cctv {
   @@unique([uuid_outlet, date])
 }
 
+enum StatusOutletInsanku {
+  izin
+  praktek
+  izin_praktek
+}
+
 model tbl_outlet_insanku {
   id           Int       @id @default(autoincrement())
   uuid         String    @unique @db.Char(36)
   uuid_outlet  String?   @db.Char(36)
   uuid_insanku String?   @db.Char(36)
   is_active    Boolean   @default(true)
+  status       StatusOutletInsanku?
   is_skip_sync Boolean   @default(false)
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt

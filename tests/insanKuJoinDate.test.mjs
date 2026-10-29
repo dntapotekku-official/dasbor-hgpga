@@ -49,14 +49,14 @@ test("sync writes join_date for new and existing employees and respects skip syn
   const sync = new Function(
     "prisma", "fetchInsanKuPayload", "fetchOutletInsanKuPayload", "normalizeOutletInsanKuUsernames",
     "normalizeInsanKuRows", "normalizeUsernameKey", "hashPassword", "DEFAULT_INSANKU_PASSWORD",
-    "closeInsanKuInactivePeriod", "openInsanKuInactivePeriod",
+    "closeInsanKuInactivePeriod", "openInsanKuInactivePeriod", "currentPlacementMonth", "createInsanKuPreActivePeriod", "currentPlacementDay",
     source.slice(source.indexOf("export async function syncInsanKu("), source.indexOf("export async function getInsanKu("))
       .replace("export ", "") + "\nreturn syncInsanKu;",
   )(
     { tbl_insanku: { findMany: async () => existing }, $transaction: (fn) => fn(tx) },
     async () => ["new", "existing", "invalid", "skipped"].map((uuid) => ({ uuid, tgl_bergabung: uuid === "invalid" ? "0000-00-00" : "2026-01-15 00:00:00" })),
     async () => [], () => new Map(), normalizeInsanKuRows, (value) => value,
-    async () => "hashed", "password", async () => {}, async () => {},
+    async () => "hashed", "password", async () => {}, async () => {}, () => new Date("2026-10-01"), async () => {}, () => new Date("2026-10-29"),
   );
   await sync();
   assert.equal(created.length, 1);

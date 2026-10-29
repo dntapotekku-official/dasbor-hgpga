@@ -152,13 +152,11 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       const direction = sort_direction === "asc" ? 1 : -1;
       const first_value = sort_key === "outlet_names"
         ? (a.outlet_names ?? []).join(", ")
-        : sort_key === "is_active"
-          ? Number(Boolean(a.is_active))
+
         : a[sort_key];
       const second_value = sort_key === "outlet_names"
         ? (b.outlet_names ?? []).join(", ")
-        : sort_key === "is_active"
-          ? Number(Boolean(b.is_active))
+
         : b[sort_key];
 
       return String(first_value ?? "").localeCompare(
@@ -603,15 +601,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           onSort={toggle_sort}
                         />
                       </TableHead>
-                      <TableHead>
-                        <SortableTableHead
-                          label="Status"
-                          sortKey="is_active"
-                          currentSortKey={sort_key}
-                          sortDirection={sort_direction}
-                          onSort={toggle_sort}
-                        />
-                      </TableHead>
                       <TableHead>Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -645,17 +634,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                                         placement.uuid_jabatan_master ||
                                         "-"}
                                     </span>
-                                    <span
-                                      className={
-                                        placement.jabatan_is_active
-                                          ? "inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                          : "inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                                      }
-                                    >
-                                      {placement.jabatan_is_active
-                                        ? "Aktif"
-                                        : "Tidak Aktif"}
-                                    </span>
                                   </div>
                                 </li>
                               ))}
@@ -673,17 +651,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                                 timeZone: "UTC",
                               })
                             : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={
-                              row.is_active
-                                ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                : "inline-flex rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                            }
-                          >
-                            {row.is_active ? "Aktif" : "Tidak Aktif"}
-                          </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
@@ -754,19 +721,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               }
               item={selected_insanku}
 	              fields={[
-              {
-                key: "is_active",
-                label: "Status",
-                type: "tabs",
-                disabled: !is_non_slip_gaji,
-                helper: !is_non_slip_gaji
-                  ? "Status mengikuti hasil sinkronisasi API. Jika InsanKU tidak ada dari API, status otomatis menjadi Tidak Aktif."
-                  : undefined,
-                options: [
-                  { value: "true", label: "Aktif" },
-                  { value: "false", label: "Tidak Aktif" },
-                ],
-              },
               ...(is_non_slip_gaji
                 ? [
                     {

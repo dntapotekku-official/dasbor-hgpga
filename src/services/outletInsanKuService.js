@@ -1,9 +1,12 @@
+import { jabatanPlacementStatuses, isActiveJabatanRow, activeJabatanAssignments } from "../lib/outletInsanKuStatus.js";
+import { currentPlacementMonth, currentPlacementDay } from "../lib/placementMonth.js";
 import { applyJabatanGofitkuExclusions } from "@/services/jabatanGofitkuExclusionService";
 import { randomUUID } from "node:crypto";
 import { buildDefaultPlacementTarget } from "@/services/defaultPlacementTarget";
 import { prisma } from "@/lib/prisma";
 import { dedupeByKey } from "@/lib/utils";
 import {
+  buildPreActivePeriodData,
   closeOutletInsanKuInactivePeriod,
   openOutletInsanKuInactivePeriod,
 } from "@/services/inactivePeriodService";
@@ -116,6 +119,7 @@ function buildJabatanRelationMap(jabatan_insanku_payload) {
   const relation_map = new Map();
 
   for (const item of rows) {
+    if (!isActiveJabatanRow(item)) continue;
     const uuid_outlet = getOutletInsanKuPayloadOutletUuid("", item);
     const uuid_insanku = getOutletInsanKuPayloadInsanKuUuid(item);
     const uuid_jabatan_master = getOutletInsanKuPayloadJabatanUuid(item);
@@ -225,6 +229,8 @@ async function upsertJabatanInsanKu(
 }
 
 export async function syncOutletInsanKu() {
+  const sync_day = currentPlacementDay();
+  const sync_month = currentPlacementMonth(sync_day);
   const [
     insanku_payload,
     outlet_insanku_payload,
@@ -254,6 +260,7 @@ export async function syncOutletInsanKu() {
   );
   const jabatan_relation_map = buildJabatanRelationMap(jabatan_insanku_payload);
   const unique_insanku = normalizeInsanKuRows(insanku_payload);
+  const status_by_placement = jabatanPlacementStatuses(jabatan_insanku_payload);
   const valid_outlet_uuid_set = new Set(
     existing_outlets.map((item) => item.uuid),
   );
@@ -279,28 +286,62 @@ export async function syncOutletInsanKu() {
     existing_insanku.map((item) => item.uuid),
   );
   const existing_relations = await prisma.tbl_outlet_insanku.findMany({
-    where: {
-      deleted_at: null,
-    },
-    select: {
-      uuid_outlet: true,
-      uuid_insanku: true,
-      is_skip_sync: true,
-    },
+    select: { uuid: true, uuid_outlet: true, uuid_insanku: true, status: true, is_active: true, deleted_at: true, is_skip_sync: true },
   });
+  if ((!unique_insanku.length && existing_insanku.length) || (!unique_rows.length && existing_relations.some((item) =>
+    !item.deleted_at && item.is_active && valid_outlet_uuid_set.has(item.uuid_outlet) && valid_insanku_uuid_set.has(item.uuid_insanku)))) {
+    throw new Error("API tidak mengembalikan data penempatan valid. Sinkronisasi dibatalkan agar data lama tetap aman.");
+  }
+  const existing_status_by_placement = new Map(existing_relations.map((item) => [buildRelationKey(item), item.status]));
+  const effective_status = (item) => {
+    const key = buildRelationKey(item);
+    return status_by_placement.has(key) ? status_by_placement.get(key) : existing_status_by_placement.get(key) ?? null;
+  };
+  const izin_relation_keys = new Set([
+    ...[...status_by_placement].filter(([, status]) => status === "izin").map(([key]) => key),
+    ...existing_relations.filter((item) => effective_status(item) === "izin").map(buildRelationKey),
+  ]);
   const skipped_placement_insanku_uuid_set = new Set(
-    existing_relations
-      .filter((item) => item.is_skip_sync)
-      .map((item) => item.uuid_insanku),
+    existing_relations.filter((item) => item.is_skip_sync && !item.deleted_at).map((item) => item.uuid_insanku),
   );
   const syncable_outlet_insanku = unique_rows
     .filter((item) => existing_insanku_uuid_set.has(item.uuid_insanku))
-    .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku));
+    .filter((item) => !skipped_placement_insanku_uuid_set.has(item.uuid_insanku))
+    .map((item) => ({ ...item, status: effective_status(item) }))
+    .filter((item) => item.status !== "izin");
+  const synced_relation_keys = new Set(syncable_outlet_insanku.map(buildRelationKey));
+  const active_jabatan_assignments = activeJabatanAssignments(jabatan_insanku_payload)
+    .filter((item) => synced_relation_keys.has(buildRelationKey(item)));
+  let deleted_izin_outlet_insanku = 0;
   let synced_jabatan_insanku = 0;
   let auto_excluded_insanku = 0;
 
   await prisma.$transaction(
     async (tx) => {
+      if (izin_relation_keys.size) {
+        const izin_relations = await tx.tbl_outlet_insanku.findMany({
+          where: { deleted_at: null, OR: [...izin_relation_keys].map((key) => {
+            const [uuid_outlet, uuid_insanku] = key.split(":");
+            return { uuid_outlet, uuid_insanku };
+          }) },
+          select: { uuid: true },
+        });
+        const uuids = izin_relations.map((item) => item.uuid);
+        if (uuids.length) {
+          const deleted_at = new Date();
+          // Soft-delete only the placement and position; keep the employee and sales history.
+          const result = await tx.tbl_outlet_insanku.updateMany({
+            where: { uuid: { in: uuids }, deleted_at: null },
+            data: { status: "izin", is_active: false, deleted_at },
+          });
+          deleted_izin_outlet_insanku = result.count;
+          await tx.tbl_jabatan_insanku.updateMany({
+            where: { uuid_outlet_insanku: { in: uuids }, deleted_at: null },
+            data: { is_active: false, deleted_at },
+          });
+          for (const uuid of uuids) await openOutletInsanKuInactivePeriod(tx, uuid, sync_month);
+        }
+      }
       for (const item of jabatan_master_rows) {
         await tx.tbl_jabatan_master.upsert({ where: { uuid: item.uuid },
           update: { name: item.name, deleted_at: null }, create: item });
@@ -317,19 +358,23 @@ export async function syncOutletInsanKu() {
             deleted_at: null,
             is_active: true,
             is_skip_sync: false,
+            ...(Object.hasOwn(item, "status") ? { status: item.status } : {}),
           },
           create: {
             uuid: randomUUID(),
             uuid_outlet: item.uuid_outlet,
             uuid_insanku: item.uuid_insanku,
             is_active: true,
+            status: item.status ?? null,
             target_gofitku: buildDefaultPlacementTarget(),
+            // Nested creation runs only for a genuinely new placement, never on resync.
+            inactive_periods: { create: buildPreActivePeriodData(sync_month) },
           },
           select: { uuid: true },
         });
 
         if (active_relation) {
-          await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
+          await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid, sync_day);
 
           const is_jabatan_synced = await upsertJabatanInsanKu(tx, {
             jabatan_master_map,
@@ -428,7 +473,7 @@ export async function syncOutletInsanKu() {
         );
       }
       auto_excluded_insanku = await applyJabatanGofitkuExclusions(tx,
-        syncable_outlet_insanku.map((item) => item.uuid_insanku));
+        syncable_outlet_insanku.map((item) => item.uuid_insanku), active_jabatan_assignments);
     },
     {
       maxWait: 10_000,
@@ -450,6 +495,7 @@ export async function syncOutletInsanKu() {
         (unique_rows.length - syncable_outlet_insanku.length),
       synced_jabatan_insanku,
       auto_excluded_insanku,
+      deleted_izin_outlet_insanku,
     },
   };
 }

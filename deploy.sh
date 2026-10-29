@@ -16,18 +16,12 @@ if [[ ! -f .env ]]; then
 fi
 
 echo "[1/4] Pull latest code from GitHub..."
-PREVIOUS_REVISION="$(git rev-parse HEAD)"
 GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
   git pull origin "$BRANCH"
-CURRENT_REVISION="$(git rev-parse HEAD)"
 
-echo "[2/4] Check for migration changes..."
-if git diff "$PREVIOUS_REVISION" "$CURRENT_REVISION" --name-only -- prisma/migrations/ | grep -q .; then
-  echo "  → Migration detected, running prisma migrate deploy..."
-  npx prisma migrate deploy
-else
-  echo "  → No migration changes."
-fi
+echo "[2/4] Apply pending database migrations..."
+# Safe to repeat: a previous deploy may have pulled code before its migration failed.
+npx prisma migrate deploy
 
 echo "[3/4] Rebuild Docker image..."
 docker compose build --pull

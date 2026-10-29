@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
-import { parsePlacementMonth, currentPlacementMonth } from "../src/lib/placementMonth.js";
+import { parsePlacementMonth, currentPlacementMonth, currentPlacementDay } from "../src/lib/placementMonth.js";
 import { permanentGofitkuExclusionDates, isGofitkuExcluded } from "../src/lib/gofitkuExclusion.js";
 import { createOutletInsanKuPreActivePeriod, openOutletInsanKuInactivePeriod } from "../src/services/inactivePeriodService.js";
 
 const source = readFileSync(new URL("../src/services/insanKuService.js", import.meta.url), "utf8");
 const normalize = new Function(source.slice(source.indexOf("function normalizeOutletPlacements("), source.indexOf("function getInsanKuPayloadUuid(")) + "\nreturn { normalizeOutletPlacements, normalizeDeletedOutletPlacements };")();
 
-function fixture() {
-  const exclusions = [], starts = [], removals = [];
+function fixture(storedActive = true) {
+  const exclusions = [], starts = [], removals = [], closedPlacements = [], closedEmployees = [], employeeWrites = [];
   const tx = {
-    tbl_insanku: { update: async () => {} },
+    tbl_insanku: { update: async ({ data }) => employeeWrites.push(data) },
     tbl_insanku_gofitku_exclusion: {
       findFirst: async () => exclusions.find((row) => !row.deleted_at),
       create: async ({ data }) => exclusions.push({ ...data, deleted_at: null }),
@@ -20,17 +20,17 @@ function fixture() {
     },
     tbl_outlet_insanku: {
       findMany: async () => [{ uuid: "old-placement", uuid_outlet: "old-outlet", is_active: true, deleted_at: null }],
-      updateMany: async () => {}, create: async () => {},
+      updateMany: async () => {}, update: async () => {}, create: async () => {},
     },
     tbl_jabatan_insanku: { updateMany: async () => {} },
   };
   const dependencies = {
-    prisma: { tbl_insanku: { findUnique: async () => ({ uuid: "employee", deleted_at: null, is_slip_gaji_account: true }) }, $transaction: async (callback) => callback(tx) },
+    prisma: { tbl_insanku: { findUnique: async () => ({ uuid: "employee", deleted_at: null, is_slip_gaji_account: true, is_active: storedActive }) }, $transaction: async (callback) => callback(tx) },
     ...normalize, randomUUID, normalizeNik: (value) => value,
-    parsePlacementMonth, currentPlacementMonth, permanentGofitkuExclusionDates,
-    validateOutlets: async () => {}, validateJabatanMaster: async () => {}, closeInsanKuInactivePeriod: async () => {}, openInsanKuInactivePeriod: async () => {},
+    parsePlacementMonth, currentPlacementMonth, currentPlacementDay, permanentGofitkuExclusionDates,
+    validateOutlets: async () => {}, validateJabatanMaster: async () => {}, closeInsanKuInactivePeriod: async (...args) => closedEmployees.push(args), openInsanKuInactivePeriod: async () => {},
     openOutletInsanKuInactivePeriod: async (_tx, uuid, date) => removals.push({ uuid, date }),
-    closeOutletInsanKuInactivePeriod: async () => {},
+    closeOutletInsanKuInactivePeriod: async (...args) => closedPlacements.push(args),
     createOutletInsanKuPreActivePeriod: async (_tx, _uuid, date) => starts.push(date),
     savePlacementJabatan: async () => {}, buildDefaultPlacementTarget: () => ({}),
     getInsanKuSettingsData: async () => [],
@@ -38,7 +38,7 @@ function fixture() {
   const update = new Function(...Object.keys(dependencies), source.slice(source.indexOf("export async function updateInsanKu("), source.indexOf("export async function getInsanKuNonSlipGaji("))
     .replace("export ", "") + "\nreturn updateInsanKu;")(...Object.values(dependencies));
   const payload = { uuid_insanku: "employee", name: "Employee", username: "employee", outlet_placements: [{ outlet_uuid: "new-outlet", active_start_date: "2026-11" }], deleted_outlet_placements: [{ uuid: "old-placement", inactive_start_date: "2026-10" }] };
-  return { update, payload, exclusions, starts, removals };
+  return { update, payload, exclusions, starts, removals, closedPlacements, closedEmployees, employeeWrites };
 }
 
 test("placement month validation normalizes to the first day and accepts valid legacy dates", () => {
@@ -83,4 +83,51 @@ test("individual exclusion needs no dates, is idempotent, preserves old columns 
   await f.update({ ...f.payload, is_exclude_penjualan_gofitku: true });
   assert.equal(f.exclusions.length, 2);
   assert.equal(isGofitkuExcluded(f.exclusions), true);
+});
+
+
+test("saving a name with an unchanged placement must not rewrite historical inactive periods", async () => {
+  const f = fixture();
+  await f.update({ ...f.payload, outlet_placements: [{ uuid: "old-placement", outlet_uuid: "old-outlet" }], deleted_outlet_placements: [] });
+  assert.equal(f.closedPlacements.length, 0);
+  assert.equal(f.closedEmployees.length, 0);
+});
+
+test("omitting the hidden active field preserves an inactive employee", async () => {
+  const f = fixture(false);
+  await f.update({ ...f.payload, outlet_placements: [{ uuid: "old-placement", outlet_uuid: "old-outlet" }], deleted_outlet_placements: [] });
+  assert.equal(f.employeeWrites[0].is_active, false);
+  assert.equal(f.closedEmployees.length, 0);
+});
+
+test("repeating an inactive state keeps the same history row and its original start", async () => {
+  const records = [];
+  const model = {
+    findFirst: async () => records.find((row) => !row.deleted_at && !row.end_date),
+    updateMany: async ({ where, data }) => records.filter((row) => !row.deleted_at && row.start_date >= where.start_date.gte).forEach((row) => Object.assign(row, data)),
+    create: async ({ data }) => { const row = { ...data, deleted_at: null }; records.push(row); return row; },
+  };
+  const tx = { tbl_outlet_insanku_inactive_period: model };
+  const first = await openOutletInsanKuInactivePeriod(tx, "placement", new Date("2026-10-10"));
+  const sameDay = await openOutletInsanKuInactivePeriod(tx, "placement", new Date("2026-10-10"));
+  const later = await openOutletInsanKuInactivePeriod(tx, "placement", new Date("2026-10-29"));
+  assert.equal(sameDay.uuid, first.uuid);
+  assert.equal(later.uuid, first.uuid);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].start_date.toISOString(), "2026-10-10T00:00:00.000Z");
+  assert.equal(records[0].deleted_at, null);
+});
+
+test("a placement without a position defaults its next assigned position to active, while stored inactive stays inactive", async () => {
+  const people = [[], [{ is_active: false, jabatan_master: { uuid: 'position', name: 'Position' } }]].map((positions, index) => ({
+    uuid: `employee-${index}`, name: 'Employee', is_active: true, created_at: new Date(),
+    gofitku_exclusion_periods: [], outlet_insanku: [{ uuid: `placement-${index}`, is_active: true, outlet: { uuid: 'outlet', name: 'Outlet' }, jabatan_insanku: positions }],
+  }));
+  const getSettings = new Function('prisma', 'formatDateInput', 'getGofitkuSetupWindow', 'isWithinGofitkuSetupWindow',
+    source.slice(source.indexOf('export async function getInsanKuSettingsData('), source.indexOf('export async function syncInsanKu(')).replace('export ', '') + '\nreturn getInsanKuSettingsData;')(
+      { tbl_insanku: { findMany: async () => people } }, () => '', () => ({}), () => true,
+    );
+  const result = await getSettings();
+  assert.equal(result[0].outlet_placements[0].jabatan_is_active, true);
+  assert.equal(result[1].outlet_placements[0].jabatan_is_active, false);
 });

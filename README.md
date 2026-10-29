@@ -46,11 +46,15 @@ Pada Impor maupun Tambah Massal, target aktif dengan periode yang bertabrakan ak
 
 Tab **Pengaturan → Pengguna → Mapping Penempatan** menampilkan tabel harian per bulan dan outlet. Sel merah menunjukkan penempatan aktif pada tanggal tersebut. Filter mencakup nama/NIK, jenis InsanKU, outlet, bulan, dan tahun; tombol Sinkron membaca ulang data tersimpan.
 
+Status penempatan dibaca dari `ijin` dan `praktek` pada API `jb-karyawan`, per karyawan dan outlet. Status `izin` saja tidak dibuat sebagai penempatan baru; penempatan yang sudah ada dihapus melalui soft delete saat sinkronisasi. Status `praktek` dan `izin_praktek` tetap diproses.
+
+InsanKU dan penempatan baru hasil sinkronisasi mulai berlaku sejak awal bulan admin menjalankan sinkronisasi, mengikuti zona waktu Asia/Makassar. Nama tidak muncul pada laporan bulan sebelumnya. Sinkronisasi ulang mempertahankan bulan mulai data yang sudah ada; tanggal bergabung dari sumber tetap disimpan terpisah.
+
 Periode dihitung dari riwayat nonaktif penempatan dan InsanKU. Jika tanggal efektif awal belum tercatat pada data lama, tanggal pembuatan penempatan digunakan sebagai acuan. Fitur ini hanya membaca data dan tidak memerlukan migrasi database baru.
 
 ## Deployment
 
-Server produksi memerlukan `.env` yang lengkap, Docker, dan Docker Compose. Skrip `deploy.sh` menarik branch `main`, menjalankan migrasi bila ada perubahan, membangun image, dan me-restart container.
+Server produksi memerlukan `.env` yang lengkap, Docker, dan Docker Compose. Skrip `deploy.sh` menarik branch `main`, menjalankan seluruh migrasi yang masih tertunda pada setiap deploy, membangun image, dan me-restart container.
 
 Sebelum deploy:
 

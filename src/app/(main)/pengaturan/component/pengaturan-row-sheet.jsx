@@ -538,7 +538,7 @@ export default function PengaturanRowSheet({
                               searchPlaceholder="Cari outlet..."
                               emptyMessage="Outlet tidak ditemukan."
                             />
-                            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                            <div className="grid gap-2">
                               <div>
                                 <OptionDropdown
                                   id={`${field.key}-${index}-jabatan`}
@@ -579,29 +579,6 @@ export default function PengaturanRowSheet({
                                   emptyMessage="Jabatan tidak ditemukan."
                                 />
                               </div>
-                              <label className="flex items-center gap-2 text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(placement.jabatan_is_active)}
-                                  onChange={(event) =>
-                                    setDraft((current) => ({
-                                      ...current,
-                                      [field.key]: (current[field.key] ?? []).map(
-                                        (item, item_index) =>
-                                          item_index === index
-                                            ? {
-                                                ...item,
-                                                jabatan_is_active:
-                                                  event.target.checked,
-                                              }
-                                            : item,
-                                      ),
-                                    }))
-                                  }
-                                  className="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/50"
-                                />
-                                <span>Aktif</span>
-                              </label>
                             </div>
                           </div>
                           <Button
@@ -809,8 +786,8 @@ export default function PengaturanRowSheet({
               />
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <DialogPrimitive.Close asChild>
-                <Button type="button" variant="outline">Batal</Button>
+              <DialogPrimitive.Close render={<Button type="button" variant="outline" />}>
+                Batal
               </DialogPrimitive.Close>
               <Button type="button" onClick={confirm_add_placement}>Tambah</Button>
             </div>
@@ -862,10 +839,8 @@ export default function PengaturanRowSheet({
               />
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <DialogPrimitive.Close asChild>
-                <Button type="button" variant="outline">
-                  Batal
-                </Button>
+              <DialogPrimitive.Close render={<Button type="button" variant="outline" />}>
+                Batal
               </DialogPrimitive.Close>
               <Button
                 type="button"

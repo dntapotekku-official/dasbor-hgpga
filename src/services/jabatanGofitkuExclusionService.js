@@ -27,17 +27,27 @@ export async function saveJabatanGofitkuExclusions(database, ids) {
   return { success: true, message: "Pengecualian jabatan berhasil disimpan." };
 }
 
-export async function applyJabatanGofitkuExclusions(tx, syncedIds) {
+export async function applyJabatanGofitkuExclusions(tx, syncedIds, activeAssignments = null) {
   if (!syncedIds.length) return 0;
+  let candidateIds = [...new Set(syncedIds)];
+  if (activeAssignments !== null) {
+    const selected = await tx.tbl_pengecualian_jabatan.findMany({
+      where: { deleted_at: null, jabatan_master: { deleted_at: null } }, select: { uuid_jabatan_master: true },
+    });
+    const selectedIds = new Set(selected.map((item) => item.uuid_jabatan_master));
+    const matchingPeople = new Set(activeAssignments.filter((item) => selectedIds.has(item.uuid_jabatan_master)).map((item) => item.uuid_insanku));
+    candidateIds = candidateIds.filter((uuid) => matchingPeople.has(uuid));
+    if (!candidateIds.length) return 0;
+  }
   const people = await tx.tbl_insanku.findMany({
     where: {
-      uuid: { in: [...new Set(syncedIds)] }, deleted_at: null, is_active: true, is_slip_gaji_account: true,
-      outlet_insanku: { some: {
+      uuid: { in: candidateIds }, deleted_at: null, is_active: true, is_slip_gaji_account: true,
+      ...(activeAssignments === null ? { outlet_insanku: { some: {
         deleted_at: null, is_active: true,
         jabatan_insanku: { some: { deleted_at: null, is_active: true,
           jabatan_master: { deleted_at: null, pengecualian_jabatan: { some: { deleted_at: null } } },
         } },
-      } },
+      } } } : {}),
     },
     select: { uuid: true }, orderBy: { uuid: "asc" },
   });

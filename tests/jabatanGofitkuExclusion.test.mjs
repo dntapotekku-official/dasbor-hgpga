@@ -1,3 +1,4 @@
+import { jabatanPlacementStatuses, activeJabatanAssignments } from "../src/lib/outletInsanKuStatus.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
@@ -33,6 +34,7 @@ function fixture() {
       })),
     },
     tbl_pengecualian_jabatan: {
+      findMany: async ({ where }) => state.settings.map((row) => ({ ...row, jabatan_master: state.positions.find((position) => position.uuid === row.uuid_jabatan_master) })).filter((row) => matches(row, where)),
       async updateMany({ where, data }) { state.settings.filter((row) => matches(row, where)).forEach((row) => Object.assign(row, data)); },
       async createMany({ data }) { state.settings.push(...data.map((row) => ({ ...row, deleted_at: null }))); },
     },
@@ -93,11 +95,11 @@ test("sync excludes matching active employees once, with permanent exclusion", a
   f.state.people.find((row) => row.uuid === "inactive-position").outlet_insanku[0].jabatan_insanku[0].is_active = false;
   f.state.people.find((row) => row.uuid === "inactive-placement").outlet_insanku[0].is_active = false;
   const ids = f.state.people.filter((row) => row.uuid !== "not-synced").map((row) => row.uuid);
-  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ids, now), 2);
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ids), 2);
   assert.deepEqual(f.state.exclusions.map((row) => row.uuid_insanku), ["new", "existing"]);
   assert.ok(f.state.exclusions.every((row) => row.start_date.toISOString() === "1970-01-01T00:00:00.000Z" && row.end_date === null));
   assert.equal(f.state.people[0].is_gofitku_setup_pending, false);
-  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ids, now), 0);
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ids), 0);
   assert.equal(f.state.exclusions.length, 2);
 });
 
@@ -111,12 +113,12 @@ test("sync preserves retained date columns while all existing exclusions apply p
     { uuid: "old", uuid_insanku: "expired", start_date: new Date("2026-09-01"), end_date: new Date("2026-09-30"), deleted_at: null },
   );
   const before = structuredClone(f.state.exclusions);
-  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["current", "scheduled", "expired"], now), 0);
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["current", "scheduled", "expired"]), 0);
   assert.deepEqual(f.state.exclusions.slice(0, 3), before);
   assert.equal(f.state.exclusions.length, 3);
   await saveJabatanGofitkuExclusions(f.database, []);
   const all = structuredClone(f.state.exclusions);
-  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["current", "scheduled", "expired"], now), 0);
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["current", "scheduled", "expired"]), 0);
   assert.deepEqual(f.state.exclusions, all);
 });
 
@@ -128,12 +130,36 @@ test("placement sync applies position exclusions after updating placements in th
     tbl_jabatan_master: { upsert: async () => events.push("master") },
     tbl_outlet_insanku: { upsert: async () => { events.push("placement"); return { uuid: "placement" }; }, findMany: async () => [] },
   };
-  const sync = new Function("prisma", "fetchInsanKuPayload", "fetchOutletInsanKuPayload", "fetchJabatanPayload", "fetchJabatanInsanKuPayload", "normalizeJabatanRows", "buildJabatanRelationMap", "normalizeInsanKuRows", "normalizeOutletInsanKuRows", "randomUUID", "buildDefaultPlacementTarget", "closeOutletInsanKuInactivePeriod", "upsertJabatanInsanKu", "buildRelationKey", "applyJabatanGofitkuExclusions", syncSource.replace("export ", "") + "\nreturn syncOutletInsanKu;")(
+  const sync = new Function("prisma", "fetchInsanKuPayload", "fetchOutletInsanKuPayload", "fetchJabatanPayload", "fetchJabatanInsanKuPayload", "normalizeJabatanRows", "buildJabatanRelationMap", "normalizeInsanKuRows", "normalizeOutletInsanKuRows", "randomUUID", "buildDefaultPlacementTarget", "closeOutletInsanKuInactivePeriod", "upsertJabatanInsanKu", "buildRelationKey", "applyJabatanGofitkuExclusions", "currentPlacementMonth", "buildPreActivePeriodData", "currentPlacementDay", "jabatanPlacementStatuses", "activeJabatanAssignments", syncSource.replace("export ", "") + "\nreturn syncOutletInsanKu;")(
     { tbl_outlet: { findMany: async () => [{ uuid: "outlet" }] }, tbl_insanku: { findMany: async () => [{ uuid: "employee" }] }, tbl_outlet_insanku: { findMany: async () => [] }, $transaction: (callback) => callback(tx) },
     async () => [], async () => [], async () => [], async () => [], () => [{ uuid: "position", name: "Position" }], () => new Map([["key", { uuid_jabatan_master: "position" }]]), () => [{ uuid: "employee" }],
     () => ({ placement_rows: [], valid_rows: [], unique_rows: [{ uuid_outlet: "outlet", uuid_insanku: "employee" }] }), () => "id", () => ({}), async () => {}, async () => { events.push("position"); return true; }, () => "key",
-    async (transaction, ids) => { assert.equal(transaction, tx); assert.deepEqual(ids, ["employee"]); events.push("exclude"); return 1; },
+    async (transaction, ids) => { assert.equal(transaction, tx); assert.deepEqual(ids, ["employee"]); events.push("exclude"); return 1; }, () => new Date("2026-10-01"), () => ({}), () => new Date("2026-10-29"), jabatanPlacementStatuses, activeJabatanAssignments,
   );
   assert.equal((await sync()).summary.auto_excluded_insanku, 1);
   assert.deepEqual(events, ["master", "placement", "position", "exclude"]);
+});
+
+
+test("any selected active source position triggers exclusion even when another position is stored for display", async () => {
+  const f = fixture(); await saveJabatanGofitkuExclusions(f.database, ["selected"]);
+  f.state.people.push(person("multiple", "other"));
+  const assignments = activeJabatanAssignments([
+    { cabangs_id: "outlet", karyawans_id: "multiple", jabatans_id: "selected", active: 1 },
+    { cabangs_id: "outlet", karyawans_id: "multiple", jabatans_id: "other", active: 1 },
+  ]);
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["multiple"], assignments), 1);
+  assert.equal(f.state.exclusions[0].uuid_insanku, "multiple");
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["multiple"], assignments), 0);
+});
+
+test("an inactive source position cannot trigger automatic exclusion", async () => {
+  const f = fixture(); await saveJabatanGofitkuExclusions(f.database, ["selected"]);
+  f.state.people.push(person("person", "selected"));
+  const assignments = activeJabatanAssignments([
+    { cabangs_id: "outlet", karyawans_id: "person", jabatans_id: "selected", active: 0 },
+    { cabangs_id: "outlet", karyawans_id: "person", jabatans_id: "other", active: 1 },
+  ]);
+  assert.equal(await applyJabatanGofitkuExclusions(f.tx, ["person"], assignments), 0);
+  assert.equal(f.state.exclusions.length, 0);
 });

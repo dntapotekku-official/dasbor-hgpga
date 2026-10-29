@@ -15,9 +15,13 @@ export function parsePlacementMonth(value, label = "Bulan penempatan") {
   return date;
 }
 
-export function currentPlacementMonth(now = new Date()) {
+export function currentPlacementDay(now = new Date()) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Makassar", year: "numeric", month: "2-digit",
+    timeZone: "Asia/Makassar", year: "numeric", month: "2-digit", day: "2-digit",
   }).formatToParts(now).map((part) => [part.type, part.value]));
-  return parsePlacementMonth(`${parts.year}-${parts.month}`);
+  return new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00.000Z`);
+}
+
+export function currentPlacementMonth(now = new Date()) {
+  return parsePlacementMonth(currentPlacementDay(now).toISOString().slice(0, 7));
 }

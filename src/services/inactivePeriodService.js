@@ -39,34 +39,17 @@ async function openInactivePeriod({
   const model = transaction[model_name];
   const normalized_start_date = getStartOfUtcDay(start_date);
 
-  await model.updateMany({
-    where: {
-      [foreign_key]: foreign_uuid,
-      deleted_at: null,
-      start_date: {
-        gte: normalized_start_date,
-      },
-    },
-    data: {
-      deleted_at: new Date(),
-    },
-  });
-
   const active_period = await model.findFirst({
-    where: {
-      [foreign_key]: foreign_uuid,
-      deleted_at: null,
-      end_date: null,
-    },
-    select: {
-      uuid: true,
-      start_date: true,
-    },
+    where: { [foreign_key]: foreign_uuid, deleted_at: null, end_date: null },
+    select: { uuid: true, start_date: true },
   });
+  // Repeating an inactive state must keep its existing beginning and history row.
+  if (active_period && active_period.start_date <= normalized_start_date) return active_period;
 
-  if (active_period) {
-    return active_period;
-  }
+  await model.updateMany({
+    where: { [foreign_key]: foreign_uuid, deleted_at: null, start_date: { gte: normalized_start_date } },
+    data: { deleted_at: new Date() },
+  });
 
   return model.create({
     data: {
@@ -125,30 +108,24 @@ async function closeInactivePeriod({
   });
 }
 
-export async function createOutletInsanKuPreActivePeriod(
-  transaction,
-  uuid_outlet_insanku,
-  active_date,
-) {
-  if (!active_date) {
-    return null;
-  }
-
+export function buildPreActivePeriodData(active_date) {
+  if (!active_date) return null;
   const start_date = new Date(Date.UTC(1970, 0, 1));
   const end_date = getPreviousUtcDay(active_date);
+  if (end_date < start_date) return null;
+  return { uuid: randomUUID(), start_date, end_date };
+}
 
-  if (end_date < start_date) {
-    return null;
-  }
+export async function createInsanKuPreActivePeriod(transaction, uuid_insanku, active_date) {
+  const period = buildPreActivePeriodData(active_date);
+  if (!period) return null;
+  return transaction.tbl_insanku_inactive_period.create({ data: { ...period, uuid_insanku } });
+}
 
-  return transaction.tbl_outlet_insanku_inactive_period.create({
-    data: {
-      uuid: randomUUID(),
-      uuid_outlet_insanku,
-      start_date,
-      end_date,
-    },
-  });
+export async function createOutletInsanKuPreActivePeriod(transaction, uuid_outlet_insanku, active_date) {
+  const period = buildPreActivePeriodData(active_date);
+  if (!period) return null;
+  return transaction.tbl_outlet_insanku_inactive_period.create({ data: { ...period, uuid_outlet_insanku } });
 }
 
 export function openInsanKuInactivePeriod(transaction, uuid_insanku, start_date) {

@@ -1,5 +1,5 @@
 import { permanentGofitkuExclusionDates } from "../lib/gofitkuExclusion.js";
-import { parsePlacementMonth, currentPlacementMonth } from "../lib/placementMonth.js";
+import { parsePlacementMonth, currentPlacementMonth, currentPlacementDay } from "../lib/placementMonth.js";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { randomUUID } from "node:crypto";
@@ -11,6 +11,7 @@ import {
   closeInsanKuInactivePeriod,
   closeOutletInsanKuInactivePeriod,
   createOutletInsanKuPreActivePeriod,
+  createInsanKuPreActivePeriod,
   openInsanKuInactivePeriod,
   openOutletInsanKuInactivePeriod,
 } from "@/services/inactivePeriodService";
@@ -439,6 +440,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
         select: {
           uuid: true,
           is_active: true,
+          status: true,
           is_skip_sync: true,
           outlet: {
             select: { uuid: true, name: true },
@@ -509,9 +511,10 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
                 outlet_uuid: outlet_insanku.outlet.uuid,
                 outlet_name: outlet_insanku.outlet.name,
                 is_active: Boolean(outlet_insanku.is_active),
+                status: outlet_insanku.status ?? null,
                 uuid_jabatan_master: jabatan_insanku?.jabatan_master?.uuid ?? "",
                 jabatan_name: jabatan_insanku?.jabatan_master?.name ?? "",
-                jabatan_is_active: Boolean(jabatan_insanku?.is_active),
+                jabatan_is_active: Boolean(jabatan_insanku?.is_active ?? true),
               };
             })
           : [],
@@ -520,6 +523,8 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
 }
 
 export async function syncInsanKu() {
+  const sync_day = currentPlacementDay();
+  const sync_month = currentPlacementMonth(sync_day);
   const [insanku_payload, outlet_insanku_payload] = await Promise.all([
     fetchInsanKuPayload(),
     fetchOutletInsanKuPayload(),
@@ -551,6 +556,9 @@ export async function syncInsanKu() {
       },
     }),
   ]);
+  if (!unique_insanku.length && existing_insanku.some((item) => item.is_active && item.deleted_at === null)) {
+    throw new Error("API karyawan tidak mengembalikan data valid. Sinkronisasi dibatalkan agar data lama tetap aman.");
+  }
   const existing_insanku_map = new Map(
     existing_insanku.map((item) => [item.uuid, item]),
   );
@@ -651,12 +659,11 @@ export async function syncInsanKu() {
   const inserted_insanku = await prisma.$transaction(async (tx) => {
     let inserted_count = 0;
 
-    if (new_insanku.length > 0) {
-      const result = await tx.tbl_insanku.createMany({
-        data: new_insanku,
-        skipDuplicates: true,
-      });
-      inserted_count = result.count;
+    for (const item of new_insanku) {
+      const result = await tx.tbl_insanku.createMany({ data: [item], skipDuplicates: true });
+      inserted_count += result.count;
+      // Only the request that actually inserts this person owns its initial effective month.
+      if (result.count) await createInsanKuPreActivePeriod(tx, item.uuid, sync_month);
     }
 
     await Promise.all(
@@ -682,7 +689,7 @@ export async function syncInsanKu() {
             deleted_at: null,
           },
         });
-        await closeInsanKuInactivePeriod(tx, item.uuid);
+        await closeInsanKuInactivePeriod(tx, item.uuid, sync_day);
       }),
     );
 
@@ -704,7 +711,7 @@ export async function syncInsanKu() {
       });
       await Promise.all(
         skipped_active_insanku_uuids.map((uuid_insanku) =>
-          closeInsanKuInactivePeriod(tx, uuid_insanku),
+          closeInsanKuInactivePeriod(tx, uuid_insanku, sync_day),
         ),
       );
     }
@@ -731,7 +738,7 @@ export async function syncInsanKu() {
     }
 
     return inserted_count;
-  });
+  }, { maxWait: 10_000, timeout: 120_000 });
 
   return {
     success: true,
@@ -787,10 +794,6 @@ export async function updateInsanKu({
   const trimmed_nik = normalizeNik(nik);
   const trimmed_username = String(username ?? "").trim();
   const trimmed_password = String(password ?? "").trim();
-  const normalized_is_active =
-    typeof is_active === "string"
-      ? is_active.toLowerCase() !== "false"
-      : Boolean(is_active ?? true);
   const normalized_placements = normalizeOutletPlacements(
     outlet_placements,
     outlet_uuids,
@@ -836,6 +839,7 @@ export async function updateInsanKu({
     select: {
       uuid: true,
       is_slip_gaji_account: true,
+      is_active: true,
       deleted_at: true,
     },
   });
@@ -847,6 +851,10 @@ export async function updateInsanKu({
   ) {
     throw new Error("Data InsanKU tidak ditemukan.");
   }
+
+  const previous_is_active = Boolean(existing_insanku.is_active ?? true);
+  const normalized_is_active = is_active === undefined ? previous_is_active
+    : typeof is_active === "string" ? is_active.toLowerCase() !== "false" : Boolean(is_active);
 
   await validateOutlets(prisma, unique_outlet_uuids);
   await validateJabatanMaster(
@@ -878,10 +886,9 @@ export async function updateInsanKu({
         is_gofitku_setup_pending: false,
       },
     });
-    if (normalized_is_active) {
-      await closeInsanKuInactivePeriod(tx, uuid_insanku);
-    } else {
-      await openInsanKuInactivePeriod(tx, uuid_insanku);
+    if (normalized_is_active !== previous_is_active) {
+      if (normalized_is_active) await closeInsanKuInactivePeriod(tx, uuid_insanku, currentPlacementDay());
+      else await openInsanKuInactivePeriod(tx, uuid_insanku, currentPlacementDay());
     }
 
     if (!should_exclude_penjualan_gofitku) {
@@ -1004,10 +1011,8 @@ export async function updateInsanKu({
               is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
-          await closeOutletInsanKuInactivePeriod(
-            tx,
-            placement.uuid,
-            placement_active_start_date,
+          if (placement.active_start_date) await closeOutletInsanKuInactivePeriod(
+            tx, placement.uuid, placement_active_start_date,
           );
           await savePlacementJabatan(tx, placement, placement.uuid);
           continue;
@@ -1028,11 +1033,9 @@ export async function updateInsanKu({
               is_skip_sync: should_skip_sync_outlet_insanku,
             },
           });
-          await closeOutletInsanKuInactivePeriod(
-            tx,
-            existing_target_relation.uuid,
-            placement_active_start_date,
-          );
+          if (placement.active_start_date || !existing_target_relation.is_active || existing_target_relation.deleted_at) {
+            await closeOutletInsanKuInactivePeriod(tx, existing_target_relation.uuid, placement_active_start_date);
+          }
           await savePlacementJabatan(
             tx,
             placement,
@@ -1137,11 +1140,9 @@ export async function updateInsanKu({
             is_skip_sync: should_skip_sync_outlet_insanku,
           },
         });
-        await closeOutletInsanKuInactivePeriod(
-          tx,
-          existing_target_relation.uuid,
-          placement_active_start_date,
-        );
+        if (placement.active_start_date || !existing_target_relation.is_active || existing_target_relation.deleted_at) {
+          await closeOutletInsanKuInactivePeriod(tx, existing_target_relation.uuid, placement_active_start_date);
+        }
         await savePlacementJabatan(
           tx,
           placement,
