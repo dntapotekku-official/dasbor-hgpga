@@ -36,6 +36,13 @@ const export_columns = [
   { key: "number", width: 5 },
   { key: "outlet", width: 28 },
   { key: "category", width: 14 },
+  { key: "bs_target", width: 12 },
+  { key: "bs_last_month", width: 14 },
+  { key: "bs_current_month", width: 14 },
+  { key: "bs_growth", width: 14 },
+  { key: "bs_gap_growth", width: 12 },
+  { key: "bs_target_compare", width: 14 },
+  { key: "bs_gap_target", width: 12 },
   { key: "nt_target", width: 14 },
   { key: "nt_daily", width: 15 },
   { key: "nt_last_month", width: 15 },
@@ -44,13 +51,6 @@ const export_columns = [
   { key: "nt_gap_growth", width: 12 },
   { key: "nt_target_compare", width: 14 },
   { key: "nt_gap_target", width: 12 },
-  { key: "bs_target", width: 12 },
-  { key: "bs_last_month", width: 14 },
-  { key: "bs_current_month", width: 14 },
-  { key: "bs_growth", width: 14 },
-  { key: "bs_gap_growth", width: 12 },
-  { key: "bs_target_compare", width: 14 },
-  { key: "bs_gap_target", width: 12 },
 ];
 
 // ============================================================================
@@ -1051,8 +1051,10 @@ export async function getNilaiTransaksiBasketSize({
         deleted_at: null,
         ...outlet_scope,
         OR: [current_day_start, previous_month_end_start].map((date) => ({
-          start_date: { lte: date },
-          end_date: { gte: date },
+          AND: [
+            { OR: [{ start_date: null }, { start_date: { lte: date } }] },
+            { OR: [{ end_date: null }, { end_date: { gte: date } }] },
+          ],
         })),
       },
       select: { uuid_outlet: true, start_date: true, end_date: true, metric: true },
@@ -1182,47 +1184,47 @@ function write_export_metric_formulas(row, metrics) {
   const row_number = row.number;
 
   set_export_formula(
-    row.getCell("H"),
-    `IF(F${row_number}=0,0,G${row_number}/F${row_number}*100)`,
-    metrics.nt_growth,
-  );
-  set_export_formula(
-    row.getCell("I"),
-    `H${row_number}-100`,
-    metrics.nt_gap_growth,
-  );
-  set_export_formula(
-    row.getCell("J"),
-    `IF(D${row_number}=0,0,G${row_number}/D${row_number}*100)`,
-    metrics.nt_target_compare,
-  );
-  set_export_formula(
-    row.getCell("K"),
-    `J${row_number}-100`,
-    metrics.nt_gap_target,
-  );
-  set_export_formula(
     row.getCell("O"),
     `IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)`,
-    metrics.bs_growth,
+    metrics.nt_growth,
   );
   set_export_formula(
     row.getCell("P"),
     `O${row_number}-100`,
-    metrics.bs_gap_growth,
+    metrics.nt_gap_growth,
   );
   set_export_formula(
     row.getCell("Q"),
-    `IF(L${row_number}=0,0,N${row_number}/L${row_number}*100)`,
-    metrics.bs_target_compare,
+    `IF(K${row_number}=0,0,N${row_number}/K${row_number}*100)`,
+    metrics.nt_target_compare,
   );
   set_export_formula(
     row.getCell("R"),
     `Q${row_number}-100`,
+    metrics.nt_gap_target,
+  );
+  set_export_formula(
+    row.getCell("G"),
+    `IF(E${row_number}=0,0,F${row_number}/E${row_number}*100)`,
+    metrics.bs_growth,
+  );
+  set_export_formula(
+    row.getCell("H"),
+    `G${row_number}-100`,
+    metrics.bs_gap_growth,
+  );
+  set_export_formula(
+    row.getCell("I"),
+    `IF(D${row_number}=0,0,F${row_number}/D${row_number}*100)`,
+    metrics.bs_target_compare,
+  );
+  set_export_formula(
+    row.getCell("J"),
+    `I${row_number}-100`,
     metrics.bs_gap_target,
   );
 
-  ["I", "K", "P", "R"].forEach((column) => {
+  ["P", "R", "H", "J"].forEach((column) => {
     apply_export_gap_fill(row.getCell(column), to_number(row.getCell(column).result));
   });
 }
@@ -1236,26 +1238,12 @@ function add_export_data_row(
   is_highest_bs = false,
   highlight_outlet = false,
 ) {
-  const row = sheet.addRow([
+  const row = sheet.addRow({
+    ...item,
     number,
-    item.outlet_name,
-    category_label,
-    item.nt_target,
-    item.nt_daily,
-    item.nt_last_month,
-    item.nt_current_month,
-    null,
-    null,
-    null,
-    null,
-    item.bs_target,
-    item.bs_last_month,
-    item.bs_current_month,
-    null,
-    null,
-    null,
-    null,
-  ]);
+    outlet: item.outlet_name,
+    category: category_label,
+  });
 
   write_export_metric_formulas(row, item);
   const exclusion_notes = ["nilai_transaksi", "basket_size"].map((metric) => {
@@ -1273,7 +1261,7 @@ function add_export_data_row(
   }
 
   if (is_highest_daily) {
-    row.getCell("E").fill = {
+    row.getCell("L").fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFC6E0B4" },
@@ -1281,7 +1269,7 @@ function add_export_data_row(
   }
 
   if (is_highest_bs) {
-    row.getCell("N").fill = {
+    row.getCell("F").fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFC6E0B4" },
@@ -1302,16 +1290,16 @@ function add_export_average_row({
   const row_number = row.number;
 
   sheet.mergeCells(`A${row_number}:C${row_number}`);
-  row.getCell("D").value = metrics.nt_target;
-  row.getCell("L").value = metrics.bs_target;
+  row.getCell("K").value = metrics.nt_target;
+  row.getCell("D").value = metrics.bs_target;
 
-  ["E", "F", "G", "M", "N"].forEach((column) => {
+  ["L", "M", "N", "E", "F"].forEach((column) => {
     const metric_key = {
-      E: "nt_daily",
-      F: "nt_last_month",
-      G: "nt_current_month",
-      M: "bs_last_month",
-      N: "bs_current_month",
+      L: "nt_daily",
+      M: "nt_last_month",
+      N: "nt_current_month",
+      E: "bs_last_month",
+      F: "bs_current_month",
     }[column];
 
     row.getCell(column).value = metrics[metric_key];
@@ -1335,16 +1323,16 @@ function add_export_total_row(sheet, metrics) {
   const row_number = row.number;
 
   sheet.mergeCells(`A${row_number}:C${row_number}`);
-  row.getCell("D").value = metrics.nt_target;
-  row.getCell("L").value = metrics.bs_target;
+  row.getCell("K").value = metrics.nt_target;
+  row.getCell("D").value = metrics.bs_target;
 
-  ["E", "F", "G", "M", "N"].forEach((column) => {
+  ["L", "M", "N", "E", "F"].forEach((column) => {
     const metric_key = {
-      E: "nt_daily",
-      F: "nt_last_month",
-      G: "nt_current_month",
-      M: "bs_last_month",
-      N: "bs_current_month",
+      L: "nt_daily",
+      M: "nt_last_month",
+      N: "nt_current_month",
+      E: "bs_last_month",
+      F: "bs_current_month",
     }[column];
 
     row.getCell(column).value = metrics[metric_key];
@@ -1359,12 +1347,12 @@ function add_export_total_row(sheet, metrics) {
     cell.font = { name: export_font_name, bold: true, size: 11 };
   });
 
-  ["I", "K", "P", "R"].forEach((column) => {
+  ["P", "R", "H", "J"].forEach((column) => {
     apply_export_gap_fill(row.getCell(column), metrics[{
-      I: "nt_gap_growth",
-      K: "nt_gap_target",
-      P: "bs_gap_growth",
-      R: "bs_gap_target",
+      P: "nt_gap_growth",
+      R: "nt_gap_target",
+      H: "bs_gap_growth",
+      J: "bs_gap_target",
     }[column]]);
   });
 }
@@ -1432,7 +1420,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
       ? { ...column, width: Math.min(40, outlet_column_width) }
       : column
   ));
-  sheet.mergeCells("A1:R1");
+  sheet.mergeCells("A1:J1");
   sheet.getCell("A1").value =
     `PEMANTAUAN NILAI TRANSAKSI DAN BASKET SIZE APOTEKKU ${data.selected_month_label.toUpperCase()}`;
   sheet.getCell("A1").font = {
@@ -1444,31 +1432,31 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
   sheet.getRow(1).height = 38;
 
   ["A", "B", "C"].forEach((column) => sheet.mergeCells(`${column}2:${column}4`));
-  sheet.mergeCells("D2:K2");
-  sheet.mergeCells("L2:R2");
-  ["D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R"]
+  sheet.mergeCells("K2:R2");
+  sheet.mergeCells("D2:J2");
+  ["K", "L", "M", "N", "O", "P", "Q", "R", "D", "E", "F", "G", "H", "I", "J"]
     .forEach((column) => sheet.mergeCells(`${column}3:${column}4`));
 
   sheet.getCell("A2").value = "No";
   sheet.getCell("B2").value = "Outlet";
   sheet.getCell("C2").value = "Jenis";
-  sheet.getCell("D2").value = "NILAI TRANSAKSI";
-  sheet.getCell("L2").value = "BASKET SIZE";
-  sheet.getCell("D3").value = "Target";
-  sheet.getCell("E3").value = `Harian\n(${data.selected_date_label})`;
-  sheet.getCell("F3").value = resolve_export_period_label(data.previous_period_label);
-  sheet.getCell("G3").value = resolve_export_period_label(data.selected_period_label);
-  sheet.getCell("H3").value = `% GROWTH\n(DIBANDING ${data.previous_month_label.toUpperCase()})`;
-  sheet.getCell("I3").value = "GAP GROWTH";
-  sheet.getCell("J3").value = "% DIBANDING TARGET";
-  sheet.getCell("K3").value = "GAP TARGET";
-  sheet.getCell("L3").value = "TARGET";
+  sheet.getCell("K2").value = "NILAI TRANSAKSI";
+  sheet.getCell("D2").value = "BASKET SIZE";
+  sheet.getCell("K3").value = "Target";
+  sheet.getCell("L3").value = `Harian\n(${data.selected_date_label})`;
   sheet.getCell("M3").value = resolve_export_period_label(data.previous_period_label);
-  sheet.getCell("N3").value = `CAPAIAN\n${resolve_export_period_range(data.selected_period_label)}`;
+  sheet.getCell("N3").value = resolve_export_period_label(data.selected_period_label);
   sheet.getCell("O3").value = `% GROWTH\n(DIBANDING ${data.previous_month_label.toUpperCase()})`;
   sheet.getCell("P3").value = "GAP GROWTH";
   sheet.getCell("Q3").value = "% DIBANDING TARGET";
   sheet.getCell("R3").value = "GAP TARGET";
+  sheet.getCell("D3").value = "TARGET";
+  sheet.getCell("E3").value = resolve_export_period_label(data.previous_period_label);
+  sheet.getCell("F3").value = `CAPAIAN\n${resolve_export_period_range(data.selected_period_label)}`;
+  sheet.getCell("G3").value = `% GROWTH\n(DIBANDING ${data.previous_month_label.toUpperCase()})`;
+  sheet.getCell("H3").value = "GAP GROWTH";
+  sheet.getCell("I3").value = "% DIBANDING TARGET";
+  sheet.getCell("J3").value = "GAP TARGET";
 
   for (let row_number = 2; row_number <= 4; row_number += 1) {
     for (let column_number = 1; column_number <= 18; column_number += 1) {
@@ -1496,7 +1484,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
     const category_rows = data.rows
       .filter((row) => row.category_key === category_key)
       .sort((first, second) =>
-        second.nt_gap_growth - first.nt_gap_growth ||
+        Number(second.bs_gap_growth ?? 0) - Number(first.bs_gap_growth ?? 0) ||
         first.outlet_name.localeCompare(second.outlet_name, "id-ID"),
       );
 
@@ -1557,17 +1545,17 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
     }
   }
 
-  sheet.getColumn("D").numFmt = '"Rp"* #,##0';
-  sheet.getColumn("E").numFmt = '"Rp"* #,##0';
-  sheet.getColumn("F").numFmt = '"Rp"* #,##0';
-  sheet.getColumn("G").numFmt = '"Rp"* #,##0';
-  ["H", "I", "J", "K"].forEach((column) => {
-    sheet.getColumn(column).numFmt = '0.00"%"';
-  });
+  sheet.getColumn("K").numFmt = '"Rp"* #,##0';
+  sheet.getColumn("L").numFmt = '"Rp"* #,##0';
+  sheet.getColumn("M").numFmt = '"Rp"* #,##0';
+  sheet.getColumn("N").numFmt = '"Rp"* #,##0';
   ["O", "P", "Q", "R"].forEach((column) => {
     sheet.getColumn(column).numFmt = '0.00"%"';
   });
-  ["L", "M", "N"].forEach((column) => {
+  ["G", "H", "I", "J"].forEach((column) => {
+    sheet.getColumn(column).numFmt = '0.00"%"';
+  });
+  ["D", "E", "F"].forEach((column) => {
     sheet.getColumn(column).numFmt = "0.00";
   });
   sheet.pageSetup.printArea = `A1:R${sheet.rowCount}`;

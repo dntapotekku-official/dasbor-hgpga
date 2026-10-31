@@ -76,8 +76,8 @@ model tbl_nt_bs_summary_exclusion {
   id          Int             @id @default(autoincrement())
   uuid        String          @unique @db.Char(36)
   uuid_outlet String          @db.Char(36)
-  start_date  DateTime        @db.Date
-  end_date    DateTime        @db.Date
+  start_date  DateTime?       @db.Date
+  end_date    DateTime?       @db.Date
   metric      KunjunganMetric
   created_at  DateTime        @default(now())
   updated_at  DateTime        @updatedAt
@@ -97,6 +97,7 @@ model tbl_insanku {
   password                  String?   @db.Text
   is_username_change        Boolean   @default(false)
   avatar                    String?   @db.Text
+
   join_date                 DateTime?
   is_password_change        Boolean   @default(false)
   is_active                 Boolean   @default(true)

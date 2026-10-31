@@ -4,14 +4,15 @@ export function exclusionDateKey(value) {
 
 export function parseExclusionRange(start_date, end_date) {
   const parse = (value) => {
-    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("Rentang tanggal wajib diisi dengan format YYYY-MM-DD.");
+    if (value == null || value === "") return null;
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("Tanggal harus diisi dengan format YYYY-MM-DD.");
     const date = new Date(`${value}T00:00:00.000Z`);
     if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new Error("Tanggal pengecualian tidak valid.");
     return date;
   };
   const start = parse(start_date);
   const end = parse(end_date);
-  if (start > end) throw new Error("Tanggal selesai tidak boleh lebih awal dari tanggal mulai.");
+  if (start && end && start > end) throw new Error("Tanggal selesai tidak boleh lebih awal dari tanggal mulai.");
   return { start_date: start, end_date: end };
 }
 
@@ -20,7 +21,8 @@ export function findExclusionConflict(exclusions, { outlet_uuids, start_date, en
   const end = exclusionDateKey(end_date);
   return exclusions.find((item) => !item.deleted_at
     && outlet_uuids.includes(item.uuid_outlet)
-    && exclusionDateKey(item.start_date) <= end && exclusionDateKey(item.end_date) >= start);
+    && (!end || !item.start_date || exclusionDateKey(item.start_date) <= end)
+    && (!start || !item.end_date || exclusionDateKey(item.end_date) >= start));
 }
 
 // Each column follows the cutoff date of its own reporting period.
@@ -38,8 +40,8 @@ export function applySummaryExclusions(rows, exclusions, currentDate, previousDa
   return rows.map((row) => ({
     ...row,
     summary_exclusions: Object.fromEntries(["nilai_transaksi", "basket_size"].map((metric) => [metric, {
-      current: (byOutlet.get(row.uuid) ?? []).some((range) => range.start <= current && range.end >= current),
-      previous: (byOutlet.get(row.uuid) ?? []).some((range) => range.start <= previous && range.end >= previous),
+      current: (byOutlet.get(row.uuid) ?? []).some((range) => (!range.start || range.start <= current) && (!range.end || range.end >= current)),
+      previous: (byOutlet.get(row.uuid) ?? []).some((range) => (!range.start || range.start <= previous) && (!range.end || range.end >= previous)),
     }])),
   }));
 }

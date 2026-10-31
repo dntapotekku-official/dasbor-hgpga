@@ -17,8 +17,8 @@ export async function getNtBsSummaryExclusions() {
   const ranges = new Map();
   for (const item of exclusions) {
     const { metric: _metric, ...row } = item;
-    row.start_date = item.start_date.toISOString().slice(0, 10);
-    row.end_date = item.end_date.toISOString().slice(0, 10);
+    row.start_date = item.start_date?.toISOString().slice(0, 10) ?? null;
+    row.end_date = item.end_date?.toISOString().slice(0, 10) ?? null;
     const key = `${row.uuid_outlet}:${row.start_date}:${row.end_date}`;
     if (!ranges.has(key)) ranges.set(key, row);
   }
@@ -55,13 +55,15 @@ async function writeNtBsSummaryExclusions({ outlet_uuids, start_date, end_date }
       where: {
         deleted_at: null,
         uuid_outlet: { in: uuids },
-        start_date: { lte: range.end_date },
-        end_date: { gte: range.start_date },
+        AND: [
+          ...(range.end_date ? [{ OR: [{ start_date: null }, { start_date: { lte: range.end_date } }] }] : []),
+          ...(range.start_date ? [{ OR: [{ end_date: null }, { end_date: { gte: range.start_date } }] }] : []),
+        ],
       },
       include: { outlet: { select: { name: true } } },
     });
     if (conflict) {
-      const error = new Error(`Rentang bertabrakan dengan pengecualian ${conflict.outlet.name} pada ${conflict.start_date.toISOString().slice(0, 10)} sampai ${conflict.end_date.toISOString().slice(0, 10)}.`);
+      const error = new Error(`Rentang bertabrakan dengan pengecualian ${conflict.outlet.name} pada ${conflict.start_date?.toISOString().slice(0, 10) ?? "tanpa batas awal"} sampai ${conflict.end_date?.toISOString().slice(0, 10) ?? "tanpa batas akhir"}.`);
       error.status = 409;
       throw error;
     }

@@ -292,7 +292,7 @@ function summarizeVisibleRows(rows) {
 
 export default function NilaiTransaksiPage() {
   const { role } = useAuth();
-  const [activeMetric, setActiveMetric] = useState("nilai-transaksi");
+  const [activeMetric, setActiveMetric] = useState("basket-size");
   const [selectedDate, setSelectedDate] = useState(get_current_date_value);
   const [selectedOutlet, setSelectedOutlet] = useState("all");
   const [outletStatus, setOutletStatus] = useState("all");
@@ -374,17 +374,13 @@ export default function NilaiTransaksiPage() {
       rows
         .filter((row) => row.category_key === selectedCategory)
         .sort((first, second) => {
-          const first_value = activeMetric === "nilai-transaksi"
-            ? Number(first.nt_gap_growth ?? 0)
-            : Number(first.bs_gap_growth ?? 0);
-          const second_value = activeMetric === "nilai-transaksi"
-            ? Number(second.nt_gap_growth ?? 0)
-            : Number(second.bs_gap_growth ?? 0);
+          const first_value = Number(first.bs_gap_growth ?? 0);
+          const second_value = Number(second.bs_gap_growth ?? 0);
 
           return second_value - first_value
             || first.outlet_name.localeCompare(second.outlet_name, "id-ID");
         }),
-    [activeMetric, rows, selectedCategory],
+    [rows, selectedCategory],
   );
   const outlet_filter_options = useMemo(
     () => [
@@ -1136,11 +1132,11 @@ export default function NilaiTransaksiPage() {
             </div>
 
             <TabsList className="w-full">
-              <TabsTrigger value="nilai-transaksi" className="flex-1 px-4">
-                Nilai Transaksi
-              </TabsTrigger>
               <TabsTrigger value="basket-size" className="flex-1 px-4">
                 Basket Size
+              </TabsTrigger>
+              <TabsTrigger value="nilai-transaksi" className="flex-1 px-4">
+                Nilai Transaksi
               </TabsTrigger>
             </TabsList>
 

@@ -30,6 +30,9 @@ function formatDate(value) {
 }
 
 function formatRange(item) {
+  if (!item.start_date && !item.end_date) return "Semua tanggal";
+  if (!item.start_date) return `Sampai ${formatDate(item.end_date)}`;
+  if (!item.end_date) return `Sejak ${formatDate(item.start_date)}`;
   return `${formatDate(item.start_date)} - ${formatDate(item.end_date)}`;
 }
 
@@ -81,8 +84,8 @@ export default function PengecualianPage() {
   const invalidRange = fromDate && toDate && fromDate > toDate;
   const filtered = data.exclusions.filter((item) =>
     !invalidRange && (outlet === "all" || item.uuid_outlet === outlet)
-    && (!fromDate || item.end_date >= fromDate)
-    && (!toDate || item.start_date <= toDate));
+    && (!fromDate || !item.end_date || item.end_date >= fromDate)
+    && (!toDate || !item.start_date || item.start_date <= toDate));
   const pagination = usePagination(filtered, PAGE_SIZE);
   const fields = [
     {
@@ -90,10 +93,12 @@ export default function PengecualianPage() {
       required: true, searchable: true, search_placeholder: "Cari outlet...",
       empty_search_message: "Outlet tidak ditemukan.", disabled: busy,
     },
-    { key: "start_date", label: "Tanggal Mulai", type: "date", required: true, disabled: busy },
+    { key: "start_date", label: "Tanggal Mulai", type: "date", disabled: busy,
+      helper: "Opsional. Kosongkan jika berlaku tanpa batas tanggal mulai.",
+    },
     {
-      key: "end_date", label: "Tanggal Selesai", type: "date", required: true, disabled: busy,
-      helper: "Berlaku untuk total Nilai Transaksi dan Basket Size berdasarkan tanggal laporan yang dipilih. Setelah rentang berakhir, outlet kembali dihitung termasuk angka bulan pembanding. Rentang outlet yang sama tidak boleh bertabrakan.",
+      key: "end_date", label: "Tanggal Selesai", type: "date", disabled: busy,
+      helper: "Opsional. Kosongkan jika berlaku seterusnya. Kedua tanggal kosong berarti berlaku untuk semua tanggal. Pengecualian berlaku untuk total Nilai Transaksi dan Basket Size. Rentang outlet yang sama tidak boleh bertabrakan.",
     },
   ];
 

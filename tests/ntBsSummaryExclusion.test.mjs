@@ -95,7 +95,7 @@ test("client totals and server/export/API summaries agree, including single-outl
 
 test("range validation rejects invalid dates and reversed periods", () => {
   assert.equal(parseExclusionRange("2026-09-01", "2026-09-30").end_date.toISOString().slice(0, 10), "2026-09-30");
-  for (const pair of [["", "2026-09-30"], ["2026-02-30", "2026-03-01"], ["2026-09-30", "2026-09-01"], ["2026-9-01", "2026-09-30"]]) {
+  for (const pair of [["2026-02-30", "2026-03-01"], ["2026-09-30", "2026-09-01"], ["2026-9-01", "2026-09-30"]]) {
     assert.throws(() => parseExclusionRange(...pair));
   }
 });
@@ -122,5 +122,51 @@ test("custom date ranges follow the reporting cutoff inclusively and leave other
     assert.equal(flagged[1].summary_exclusions.nilai_transaksi.current, excluded);
     assert.equal(flagged[1].summary_exclusions.basket_size.current, excluded);
     assert.equal(flagged[1].summary_exclusions.nilai_transaksi.previous, false);
+  }
+});
+
+
+test("optional bounds parse as null while supplied dates remain strictly validated", () => {
+  for (const empty of ["", null, undefined]) {
+    assert.deepEqual(parseExclusionRange(empty, empty), { start_date: null, end_date: null });
+    assert.equal(parseExclusionRange(empty, "2026-09-30").start_date, null);
+    assert.equal(parseExclusionRange("2026-09-01", empty).end_date, null);
+  }
+  for (const invalid of ["2026-02-30", "2026-9-01", " ", 123, false]) {
+    assert.throws(() => parseExclusionRange(invalid, null));
+    assert.throws(() => parseExclusionRange(null, invalid));
+  }
+});
+
+test("unbounded exclusions apply independently to current and comparison totals", () => {
+  for (const [start_date, end_date, current, previous] of [
+    [null, null, true, true],
+    ["2026-09-01", null, true, false],
+    [null, "2026-08-31", false, true],
+    [null, "2026-09-30", true, true],
+    ["2026-09-30", null, true, false],
+  ]) {
+    const flagged = applySummaryExclusions(rows, [{ uuid_outlet: "amed", start_date, end_date }], "2026-09-30", "2026-08-31");
+    for (const metric of ["nilai_transaksi", "basket_size"]) {
+      assert.deepEqual(flagged[1].summary_exclusions[metric], { current, previous });
+    }
+    assert.equal(flagged[1].nt_current_month_total_revenue, 2000);
+    const server = summarizeServer(flagged);
+    const client = summarizeClient(flagged);
+    assert.equal(server.nt_current_month_total_revenue, current ? 5000 : 7000);
+    assert.equal(server.nt_last_month_total_revenue, previous ? 5000 : 7000);
+    assert.equal(client.nt_current_month, server.nt_current_month);
+    assert.equal(client.bs_last_month, server.bs_last_month);
+  }
+});
+
+test("open intervals conflict only when they overlap, including inclusive boundaries", () => {
+  for (const [start, end, conflicts] of [
+    [null, null, true], [null, "2026-08-31", false], [null, "2026-09-01", true],
+    ["2026-09-30", null, true], ["2026-10-01", null, false],
+  ]) {
+    assert.equal(!!findExclusionConflict(exclusions, candidate(start, end)), conflicts);
+    const open = [{ uuid_outlet: "amed", start_date: start, end_date: end }];
+    assert.equal(!!findExclusionConflict(open, candidate("2026-09-01", "2026-09-30")), conflicts);
   }
 });
