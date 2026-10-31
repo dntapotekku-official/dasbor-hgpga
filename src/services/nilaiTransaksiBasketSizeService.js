@@ -1420,7 +1420,7 @@ export async function exportNilaiTransaksiBasketSizeWorkbook({
       ? { ...column, width: Math.min(40, outlet_column_width) }
       : column
   ));
-  sheet.mergeCells("A1:J1");
+  sheet.mergeCells("A1:R1");
   sheet.getCell("A1").value =
     `PEMANTAUAN NILAI TRANSAKSI DAN BASKET SIZE APOTEKKU ${data.selected_month_label.toUpperCase()}`;
   sheet.getCell("A1").font = {
