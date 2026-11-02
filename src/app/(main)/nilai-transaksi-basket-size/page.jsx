@@ -268,16 +268,16 @@ function summarizeVisibleRows(rows) {
     nt_last_month,
     nt_current_month,
     nt_growth: Math.min(nt_growth, 100),
-    nt_gap_growth: nt_growth - 100,
+    nt_gap_growth: Math.min(nt_growth - 100, 100),
     nt_target_compare: Math.min(nt_target_compare, 100),
-    nt_gap_target: nt_target_compare - 100,
+    nt_gap_target: Math.min(nt_target_compare - 100, 100),
     bs_target,
     bs_last_month,
     bs_current_month,
     bs_growth: Math.min(bs_growth, 100),
-    bs_gap_growth: bs_growth - 100,
+    bs_gap_growth: Math.min(bs_growth - 100, 100),
     bs_target_compare: Math.min(bs_target_compare, 100),
-    bs_gap_target: bs_target_compare - 100,
+    bs_gap_target: Math.min(bs_target_compare - 100, 100),
   };
 }
 

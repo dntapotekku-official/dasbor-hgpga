@@ -115,7 +115,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
         "bulan_sebelumnya": 76262,
         "bulan_berjalan": 154738,
         "persen_growth": 100,
-        "gap_growth": 102.9,
+        "gap_growth": 100,
         "persen_dari_target": 100,
         "gap_target": 98.45
       },
@@ -157,7 +157,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
 
 ## Batas Persentase
 
-Kolom perbandingan terhadap bulan sebelumnya dan target dibatasi maksimal 100%, baik pada baris outlet maupun ringkasan. Nilai aktual tetap utuh. `gap_growth` dan `gap_target` dihitung dari persentase asli sebelum pembatasan, sehingga kelebihan capaian tetap terlihat dan gap dapat melebihi 100%. Aturan yang sama berlaku pada dashboard dan ekspor Excel.
+Kolom perbandingan terhadap bulan sebelumnya dan target dibatasi maksimal 100%, baik pada baris outlet maupun ringkasan. Nilai aktual tetap utuh. `gap_growth` dan `gap_target` dihitung dari persentase asli sebelum pembatasan, lalu hasil gap juga dibatasi maksimal 100%. Nilai gap negatif tetap mengikuti perhitungan asli. Aturan yang sama berlaku pada dashboard dan ekspor Excel.
 
 ## Status Outlet Ditandai
 
