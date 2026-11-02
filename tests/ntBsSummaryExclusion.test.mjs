@@ -61,8 +61,8 @@ test("October: September exclusion still applies to September comparison only", 
   assert.equal(result.bs_last_month, 2);
   assert.equal(result.nt_current_month, 175);
   assert.equal(result.bs_current_month, 3.5);
-  assert.equal(result.nt_growth, 175);
-  assert.equal(result.bs_growth, 175);
+  assert.equal(result.nt_growth, 100);
+  assert.equal(result.bs_growth, 100);
   assert.equal(result.nt_target, 175);
   assert.equal(result.nt_gap_growth, 75);
 });
@@ -168,5 +168,28 @@ test("open intervals conflict only when they overlap, including inclusive bounda
     assert.equal(!!findExclusionConflict(exclusions, candidate(start, end)), conflicts);
     const open = [{ uuid_outlet: "amed", start_date: start, end_date: end }];
     assert.equal(!!findExclusionConflict(open, candidate("2026-09-01", "2026-09-30")), conflicts);
+  }
+});
+
+
+test("NT/BS percentages cap at 100 while actuals and gaps retain overachievement", () => {
+  const buildMetrics = new Function("comparePercentage", "to_number",
+    source.slice(source.indexOf("function build_nilai_transaksi_metrics("), source.indexOf("/**\n * Membentuk row rata-rata kategori."))
+      + "\nreturn [build_nilai_transaksi_metrics, build_basket_size_metrics];",
+  )(comparePercentage, (value) => Number(value ?? 0));
+  for (const [index, build] of buildMetrics.entries()) {
+    const prefix = index === 0 ? "nt" : "bs";
+    for (const [current, expected, gap] of [[0, 0, -100], [75, 75, -25], [100, 100, 0], [120, 100, 20], [300, 100, 200]]) {
+      const result = build({ target: 100, daily: current, last_month: 100, current_month: current });
+      assert.equal(result[`${prefix}_current_month`], current);
+      assert.equal(result[`${prefix}_growth`], expected);
+      assert.equal(result[`${prefix}_target_compare`], expected);
+      assert.equal(result[`${prefix}_gap_growth`], gap);
+      assert.equal(result[`${prefix}_gap_target`], gap);
+    }
+    const missing = build({ target: null, daily: 120, last_month: 0, current_month: 120 });
+    assert.equal(missing[`${prefix}_growth`], 0);
+    assert.equal(missing[`${prefix}_target_compare`], null);
+    assert.equal(missing[`${prefix}_gap_target`], null);
   }
 });

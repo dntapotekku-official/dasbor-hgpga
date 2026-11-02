@@ -117,7 +117,7 @@ export default function NilaiTransaksiTab({
               )}
             </TableCell>
             <TableCell>
-              <CurrencyValue value={row.nt_target} align="split" />
+              <CurrencyValue value={row.nt_target} align="split" fractionDigits={0} />
             </TableCell>
             <TableCell className="text-right">
               <CurrencyValue value={row.nt_daily_total_revenue} align="right" />
@@ -191,7 +191,7 @@ export default function NilaiTransaksiTab({
             {rows.length} outlet
           </TableCell>
           <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
-            <CurrencyValue value={category_metrics.nt_target} align="split" />
+            <CurrencyValue value={category_metrics.nt_target} align="split" fractionDigits={0} />
           </TableCell>
           <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             <CurrencyValue

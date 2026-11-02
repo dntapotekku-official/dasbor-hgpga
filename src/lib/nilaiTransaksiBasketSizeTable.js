@@ -3,17 +3,18 @@ import {
   formatPercentage,
 } from "@/lib/number";
 
-export function formatCurrency(value) {
+export function formatCurrency(value, fractionDigits = 2) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
-    maximumFractionDigits: 2,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(Number(value || 0));
 }
 
-export function formatCurrencyNumber(value) {
+export function formatCurrencyNumber(value, fractionDigits = 2) {
   return new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 2,
+    maximumFractionDigits: fractionDigits,
   }).format(Number(value || 0));
 }
 

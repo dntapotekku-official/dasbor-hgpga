@@ -299,9 +299,9 @@ function build_nilai_transaksi_metrics({
     nt_daily,
     nt_last_month,
     nt_current_month,
-    nt_growth,
+    nt_growth: Math.min(nt_growth, 100),
     nt_gap_growth,
-    nt_target_compare,
+    nt_target_compare: nt_target_compare === null ? null : Math.min(nt_target_compare, 100),
     nt_gap_target,
   };
 }
@@ -338,9 +338,9 @@ function build_basket_size_metrics({
     bs_target,
     bs_last_month,
     bs_current_month,
-    bs_growth,
+    bs_growth: Math.min(bs_growth, 100),
     bs_gap_growth,
-    bs_target_compare,
+    bs_target_compare: bs_target_compare === null ? null : Math.min(bs_target_compare, 100),
     bs_gap_target,
   };
 }
@@ -1185,42 +1185,42 @@ function write_export_metric_formulas(row, metrics) {
 
   set_export_formula(
     row.getCell("O"),
-    `IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)`,
+    `MIN(100,IF(M${row_number}=0,0,N${row_number}/M${row_number}*100))`,
     metrics.nt_growth,
   );
   set_export_formula(
     row.getCell("P"),
-    `O${row_number}-100`,
+    `IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)-100`,
     metrics.nt_gap_growth,
   );
   set_export_formula(
     row.getCell("Q"),
-    `IF(K${row_number}=0,0,N${row_number}/K${row_number}*100)`,
+    `MIN(100,IF(K${row_number}=0,0,N${row_number}/K${row_number}*100))`,
     metrics.nt_target_compare,
   );
   set_export_formula(
     row.getCell("R"),
-    `Q${row_number}-100`,
+    `IF(K${row_number}=0,0,N${row_number}/K${row_number}*100)-100`,
     metrics.nt_gap_target,
   );
   set_export_formula(
     row.getCell("G"),
-    `IF(E${row_number}=0,0,F${row_number}/E${row_number}*100)`,
+    `MIN(100,IF(E${row_number}=0,0,F${row_number}/E${row_number}*100))`,
     metrics.bs_growth,
   );
   set_export_formula(
     row.getCell("H"),
-    `G${row_number}-100`,
+    `IF(E${row_number}=0,0,F${row_number}/E${row_number}*100)-100`,
     metrics.bs_gap_growth,
   );
   set_export_formula(
     row.getCell("I"),
-    `IF(D${row_number}=0,0,F${row_number}/D${row_number}*100)`,
+    `MIN(100,IF(D${row_number}=0,0,F${row_number}/D${row_number}*100))`,
     metrics.bs_target_compare,
   );
   set_export_formula(
     row.getCell("J"),
-    `I${row_number}-100`,
+    `IF(D${row_number}=0,0,F${row_number}/D${row_number}*100)-100`,
     metrics.bs_gap_target,
   );
 

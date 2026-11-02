@@ -41,6 +41,7 @@ import {
 import {
   comparePercentage,
 } from "@/lib/number";
+import { getDashboardPeriods } from "@/lib/dashboardPeriods";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { hasRoleAccess } from "@/lib/role";
 import { prepareMetricSummaryRows, summaryTargetCount } from "@/lib/ntBsSummaryExclusion";
@@ -106,18 +107,8 @@ function formatBsPercentage(value) {
   })}%`;
 }
 
-function get_current_date_value() {
-  const date_parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Makassar",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const part_values = Object.fromEntries(
-    date_parts.map((part) => [part.type, part.value]),
-  );
-
-  return `${part_values.year}-${part_values.month}-${part_values.day}`;
+function get_default_date_value() {
+  return getDashboardPeriods().ntbs_date;
 }
 
 function resolveMetricEndpoint(metric) {
@@ -276,16 +267,16 @@ function summarizeVisibleRows(rows) {
     nt_daily,
     nt_last_month,
     nt_current_month,
-    nt_growth,
+    nt_growth: Math.min(nt_growth, 100),
     nt_gap_growth: nt_growth - 100,
-    nt_target_compare,
+    nt_target_compare: Math.min(nt_target_compare, 100),
     nt_gap_target: nt_target_compare - 100,
     bs_target,
     bs_last_month,
     bs_current_month,
-    bs_growth,
+    bs_growth: Math.min(bs_growth, 100),
     bs_gap_growth: bs_growth - 100,
-    bs_target_compare,
+    bs_target_compare: Math.min(bs_target_compare, 100),
     bs_gap_target: bs_target_compare - 100,
   };
 }
@@ -293,7 +284,7 @@ function summarizeVisibleRows(rows) {
 export default function NilaiTransaksiPage() {
   const { role } = useAuth();
   const [activeMetric, setActiveMetric] = useState("basket-size");
-  const [selectedDate, setSelectedDate] = useState(get_current_date_value);
+  const [selectedDate, setSelectedDate] = useState(get_default_date_value);
   const [selectedOutlet, setSelectedOutlet] = useState("all");
   const [outletStatus, setOutletStatus] = useState("all");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -893,7 +884,7 @@ export default function NilaiTransaksiPage() {
                   <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
                     <SummaryMetric
                       label="Target"
-                      value={formatCurrency(overallMetrics.nt_target)}
+                      value={formatCurrency(overallMetrics.nt_target, 0)}
                     />
                     <SummaryMetric
                       label="Total Penerimaan Pendapatan (Harian)"

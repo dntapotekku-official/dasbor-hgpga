@@ -109,7 +109,7 @@ export default function NilaiTransaksiBasketSizeDashboardCard({
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 xl:grid-cols-3">
             <SummaryValue
               label="Target"
-              value={<CurrencyValue value={metrics.nt_target} align="left" />}
+              value={<CurrencyValue value={metrics.nt_target} align="left" fractionDigits={0} />}
             />
             <SummaryValue
               label="Total Penerimaan Pendapatan Bulan Ini"
