@@ -24,6 +24,7 @@ import usePagination from "@/hooks/usePagination";
 import useSearch from "@/hooks/useSearch";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
 import JabatanGofitkuExclusionModal from "./jabatan-gofitku-exclusion-modal";
+import InsanKuOutletPlacements from "./insanku-outlet-placements";
 import BulkGofitkuExclusionModal from "./bulk-gofitku-exclusion-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -192,19 +193,25 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     .filter((item) => item.is_active && item.is_gofitku_setup_pending)
     .sort((a, b) => a.name.localeCompare(b.name, "id-ID")), [insanku]);
 
+  const excluded_gofitku_rows = useMemo(() => insanku
+    .filter((item) => item.is_exclude_penjualan_gofitku)
+    .sort((a, b) => a.name.localeCompare(b.name, "id-ID")), [insanku]);
+
   const handle_bulk_gofitku_save = async (settings) => {
     setIsBulkSaving(true);
     try {
       const response = await fetch("/api/insanku", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "bulk_gofitku_exclusion", ...settings }),
+        body: JSON.stringify(settings),
       });
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.message || "Gagal menyimpan pengaturan GoFitKu.");
       const selected = new Set(settings.uuid_insanku);
       setInsanKu((current) => current.map((item) => selected.has(item.uuid) ? {
         ...item, is_gofitku_setup_pending: false,
-        is_exclude_penjualan_gofitku: settings.is_exclude_penjualan_gofitku,
+        is_exclude_penjualan_gofitku: settings.action === "bulk_unset_gofitku_exclusion"
+          ? payload.retained_ids.includes(item.uuid)
+          : settings.is_exclude_penjualan_gofitku,
       } : item));
       setIsBulkOpen(false);
       toast.success(payload.message);
@@ -629,29 +636,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                         </TableCell>
                         <TableCell>{row.username}</TableCell>
                         <TableCell>
-                          {Array.isArray(row.outlet_placements) &&
-                          row.outlet_placements.length > 0 ? (
-                            <ul className="list-disc space-y-1 pl-4">
-                              {row.outlet_placements.map((placement) => (
-                                <li
-                                  key={`${row.uuid}-${placement.uuid || placement.outlet_uuid}`}
-                                >
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="font-medium">
-                                      {placement.outlet_name || "-"}
-                                    </span>
-                                    <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-950 dark:text-sky-300">
-                                      {placement.jabatan_name ||
-                                        placement.uuid_jabatan_master ||
-                                        "-"}
-                                    </span>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            "-"
-                          )}
+                          <InsanKuOutletPlacements placements={row.outlet_placements} insanku_uuid={row.uuid} />
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {row.join_date
@@ -827,7 +812,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               <JabatanGofitkuExclusionModal on_open_change={setIsJabatanExclusionOpen} />
             )}
             {!is_non_slip_gaji && is_bulk_open && (
-              <BulkGofitkuExclusionModal rows={pending_gofitku_rows} is_saving={is_bulk_saving} on_open_change={setIsBulkOpen} on_save={handle_bulk_gofitku_save} />
+              <BulkGofitkuExclusionModal rows={pending_gofitku_rows} excluded_rows={excluded_gofitku_rows} is_saving={is_bulk_saving} on_open_change={setIsBulkOpen} on_save={handle_bulk_gofitku_save} />
             )}
             {!is_non_slip_gaji ? (
               <DialogPrimitive.Root

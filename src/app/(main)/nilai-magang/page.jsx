@@ -430,7 +430,6 @@ export default function NilaiMagangPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-14 text-center">No.</TableHead>
-                      <TableHead className="w-24 text-center">Peringkat</TableHead>
                       <TableHead>
                         <SortableTableHead
                           label="Nama Mentee"
@@ -456,7 +455,7 @@ export default function NilaiMagangPage() {
                   <TableBody>
                     {is_loading ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-28 text-center text-muted-foreground">
+                        <TableCell colSpan={4} className="h-28 text-center text-muted-foreground">
                           Memuat data nilai magang...
                         </TableCell>
                       </TableRow>
@@ -465,9 +464,6 @@ export default function NilaiMagangPage() {
                         <TableRow key={row.uuid}>
                           <TableCell className="text-center">
                             {(current_page - 1) * PAGE_SIZE + index + 1}
-                          </TableCell>
-                          <TableCell className="text-center font-semibold">
-                            #{row.rank}
                           </TableCell>
                           <TableCell className="font-medium">
                             {row.employee_name}
@@ -484,7 +480,7 @@ export default function NilaiMagangPage() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-28 text-center text-muted-foreground">
+                        <TableCell colSpan={4} className="h-28 text-center text-muted-foreground">
                           {error_message || "Belum ada data nilai magang untuk filter yang dipilih."}
                         </TableCell>
                       </TableRow>

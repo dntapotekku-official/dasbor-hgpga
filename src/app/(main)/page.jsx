@@ -34,6 +34,7 @@ import getCurrentUser from "@/lib/auth";
 import { canAccessMenu } from "@/lib/menu-access";
 import { outlet_category_slug_options } from "@/lib/outletCategories";
 import { normalizeRole } from "@/lib/role";
+import { getGofitkuChartPeriod } from "@/lib/gofitkuChartPeriod";
 import { getDashboardPeriods } from "@/lib/dashboardPeriods";
 import { getDashboardOverview } from "@/services/dashboardService";
 import { getKepuasanInternalChart } from "@/services/kepuasanInternalService";
@@ -159,6 +160,7 @@ export default async function Page() {
   const RoleIcon = role_meta.icon;
   const today = new Date();
   const dashboard_periods = getDashboardPeriods(today);
+  const gofitku_period = getGofitkuChartPeriod(undefined, today);
   const can_view_kepuasan = canAccessMenu(user, "kepuasan-internal");
   const can_view_cctv = canAccessMenu(
     user,
@@ -197,7 +199,7 @@ export default async function Page() {
       : null,
     can_view_gofitku
       ? safely(
-          () => getPenjualanGofitkuTopOutletChart(),
+          () => getPenjualanGofitkuTopOutletChart({ month: gofitku_period.month }),
           { chart_data: [] },
         )
       : null,
@@ -205,6 +207,7 @@ export default async function Page() {
       ? safely(
           () =>
             getPenjualanGofitkuTopProdukChart({
+              month: gofitku_period.month,
               account_uuid: user?.uuid,
               role,
             }),
@@ -419,7 +422,7 @@ export default async function Page() {
                 <ChartBarLabel
                   renderCard={false}
                   title="Top 5 Outlet"
-                  description="Akumulasi penjualan tertinggi per outlet."
+                  description={`Penjualan tertinggi per outlet · ${gofitku_period.label}`}
                   data={outlet_chart_data}
                   showLegend={false}
                   icon={
@@ -435,8 +438,8 @@ export default async function Page() {
                   title="Top 5 Produk GoFitKu"
                   description={
                     role === "member"
-                      ? "Produk dengan total penjualan tertinggi di outlet Anda."
-                      : "Produk dengan total penjualan tertinggi."
+                      ? `Penjualan produk tertinggi di outlet Anda · ${gofitku_period.label}`
+                      : `Penjualan produk tertinggi · ${gofitku_period.label}`
                   }
                   data={product_chart_data}
                   showLegend={false}

@@ -17,6 +17,7 @@ import FilterField from "@/components/filter-field";
 import OptionDropdown from "@/components/option-dropdown";
 import PengaturanRowSheet from "../pengaturan/component/pengaturan-row-sheet";
 import PageHeading from "@/components/page-heading";
+import { getGofitkuChartPeriod } from "@/lib/gofitkuChartPeriod";
 import { hasRoleAccess } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,36 @@ function get_month_input_value(date_value) {
 
 function get_first_date_from_month(month_value) {
   return `${month_value}-01`;
+}
+
+async function fetch_sales_charts(month) {
+  const [outlet_chart_result, product_chart_result] = await Promise.all([
+    fetch(`/api/penjualan-gofitku?outlet_chart=true&month=${month}`),
+    fetch(`/api/penjualan-gofitku?product_chart=true&month=${month}`),
+  ]);
+  const [outlet_chart_payload, product_chart_payload] = await Promise.all([
+    outlet_chart_result.json(),
+    product_chart_result.json(),
+  ]);
+
+  if (!outlet_chart_result.ok || !outlet_chart_payload.success) {
+    throw new Error(
+      outlet_chart_payload.message ||
+        "Gagal mengambil statistik outlet GoFitKu.",
+    );
+  }
+
+  if (!product_chart_result.ok || !product_chart_payload.success) {
+    throw new Error(
+      product_chart_payload.message ||
+        "Gagal mengambil statistik produk GoFitKu.",
+    );
+  }
+
+  return {
+    outlet_chart_data: outlet_chart_payload.data?.chart_data ?? [],
+    product_chart_data: product_chart_payload.data?.chart_data ?? [],
+  };
 }
 
 export default function PenjualanGoFitKuPage() {
@@ -79,6 +110,8 @@ export default function PenjualanGoFitKuPage() {
     outlet_chart_data: [],
     product_chart_data: [],
   });
+  const [chart_month, setChartMonth] = useState(() => getGofitkuChartPeriod().month);
+  const [is_loading_charts, setIsLoadingCharts] = useState(false);
   const [active_tab, setActiveTab] = useState("ringkasan");
   const [selected_date, setSelectedDate] = useState(default_date);
   const [selected_detail_outlet, setSelectedDetailOutlet] = useState("");
@@ -114,34 +147,35 @@ export default function PenjualanGoFitKuPage() {
     chart_data.outlet_chart_data.length * 42,
   );
 
-  const load_sales_charts = async () => {
-    const [outlet_chart_result, product_chart_result] = await Promise.all([
-      fetch("/api/penjualan-gofitku?outlet_chart=true"),
-      fetch("/api/penjualan-gofitku?product_chart=true"),
-    ]);
-    const [outlet_chart_payload, product_chart_payload] = await Promise.all([
-      outlet_chart_result.json(),
-      product_chart_result.json(),
-    ]);
+  const chart_period = getGofitkuChartPeriod(chart_month);
+  const current_year = Number(getGofitkuChartPeriod().month.slice(0, 4));
+  const chart_year_options = Array.from(
+    { length: current_year - 2018 + 1 },
+    (_, index) => ({ value: String(current_year - index), label: String(current_year - index) }),
+  );
+  const chart_month_options = Array.from({ length: 12 }, (_, index) => {
+    const value = String(index + 1).padStart(2, "0");
+    return {
+      value,
+      label: new Intl.DateTimeFormat("id-ID", { month: "long", timeZone: "UTC" })
+        .format(new Date(Date.UTC(2026, index, 1))),
+    };
+  });
 
-    if (!outlet_chart_result.ok || !outlet_chart_payload.success) {
-      throw new Error(
-        outlet_chart_payload.message ||
-          "Gagal mengambil statistik outlet GoFitKu.",
-      );
+  const load_sales_charts = async (month = chart_month) => {
+    setChartData(await fetch_sales_charts(month));
+  };
+
+  const handle_chart_month_change = async (month) => {
+    setIsLoadingCharts(true);
+    try {
+      await load_sales_charts(month);
+      setChartMonth(month);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengambil statistik GoFitKu.");
+    } finally {
+      setIsLoadingCharts(false);
     }
-
-    if (!product_chart_result.ok || !product_chart_payload.success) {
-      throw new Error(
-        product_chart_payload.message ||
-          "Gagal mengambil statistik produk GoFitKu.",
-      );
-    }
-
-    setChartData({
-      outlet_chart_data: outlet_chart_payload.data?.chart_data ?? [],
-      product_chart_data: product_chart_payload.data?.chart_data ?? [],
-    });
   };
 
   useEffect(() => {
@@ -184,7 +218,7 @@ export default function PenjualanGoFitKuPage() {
 
         setProdukOptions(next_produk_options);
         setOutletGroups(next_outlet_groups);
-        await load_sales_charts();
+        setChartData(await fetch_sales_charts(getGofitkuChartPeriod().month));
       } catch (error) {
         if (!should_ignore) {
           toast.error(
@@ -718,11 +752,34 @@ export default function PenjualanGoFitKuPage() {
         ) : (
           <div className="flex flex-col gap-6">
             <Card>
+              <CardHeader className="border-b">
+                <div className="flex flex-wrap items-end gap-3" aria-busy={is_loading_charts}>
+                  <FilterField label="Bulan" className="w-full sm:w-44">
+                    <OptionDropdown
+                      value={chart_month.slice(5, 7)}
+                      options={chart_month_options}
+                      ariaLabel="Bulan statistik GoFitKu"
+                      disabled={is_loading_charts}
+                      onValueChange={(month) => handle_chart_month_change(`${chart_month.slice(0, 4)}-${month}`)}
+                    />
+                  </FilterField>
+                  <FilterField label="Tahun" className="w-full sm:w-32">
+                    <OptionDropdown
+                      value={chart_month.slice(0, 4)}
+                      options={chart_year_options}
+                      ariaLabel="Tahun statistik GoFitKu"
+                      disabled={is_loading_charts}
+                      onValueChange={(year) => handle_chart_month_change(`${year}-${chart_month.slice(5, 7)}`)}
+                    />
+                  </FilterField>
+                  {is_loading_charts ? <LoaderCircleIcon className="mb-2 size-5 animate-spin" aria-label="Memuat statistik" /> : null}
+                </div>
+              </CardHeader>
               <div className="grid divide-y xl:grid-cols-2 xl:divide-x xl:divide-y-0">
                 <ChartBarLabel
                   renderCard={false}
                   title="Top 5 Outlet"
-                  description="Akumulasi penjualan tertinggi per outlet."
+                  description={`Penjualan tertinggi per outlet · ${chart_period.label}`}
                   data={chart_data.outlet_chart_data}
                   showLegend={false}
                   icon={
@@ -738,8 +795,8 @@ export default function PenjualanGoFitKuPage() {
                   title="Top 5 Produk GoFitKu"
                   description={
                     is_admin
-                      ? "Produk dengan total penjualan tertinggi."
-                      : "Produk dengan total penjualan tertinggi di outlet Anda."
+                      ? `Penjualan produk tertinggi · ${chart_period.label}`
+                      : `Penjualan produk tertinggi di outlet Anda · ${chart_period.label}`
                   }
                   data={chart_data.product_chart_data}
                   showLegend={false}

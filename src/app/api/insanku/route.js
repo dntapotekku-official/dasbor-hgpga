@@ -9,7 +9,7 @@ import {
 import { requireMenuAccess } from "@/lib/auth";
 import { buildApiErrorResponse } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
-import { bulkSetGofitkuExclusion } from "@/services/bulkGofitkuExclusionService";
+import { bulkSetGofitkuExclusion, bulkUnsetGofitkuExclusion } from "@/services/bulkGofitkuExclusionService";
 
 export const GET = async () => {
   try {
@@ -65,6 +65,9 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
+    if (body?.action === "bulk_unset_gofitku_exclusion") {
+      return NextResponse.json(await bulkUnsetGofitkuExclusion(prisma, body));
+    }
     if (body?.action === "bulk_gofitku_exclusion") {
       return NextResponse.json(await bulkSetGofitkuExclusion(prisma, body));
     }

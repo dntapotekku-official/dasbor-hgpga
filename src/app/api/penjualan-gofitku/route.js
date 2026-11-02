@@ -63,9 +63,9 @@ export const GET = async (request) => {
         insanku_name: searchParams.get("insanku_name"),
       });
     } else if (is_outlet_chart) {
-      data = await getPenjualanGofitkuTopOutletChart();
+      data = await getPenjualanGofitkuTopOutletChart({ month: searchParams.get("month") });
     } else if (is_product_chart) {
-      data = await getPenjualanGofitkuTopProdukChart(user_context);
+      data = await getPenjualanGofitkuTopProdukChart({ ...user_context, month: searchParams.get("month") });
     } else {
       data = await getPenjualanGofitku({
         ...user_context,

@@ -1,3 +1,4 @@
+import { getGofitkuChartPeriod } from "../lib/gofitkuChartPeriod.js";
 import { isGofitkuExcluded } from "../lib/gofitkuExclusion.js";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -1224,12 +1225,13 @@ function build_top_product_chart(product_totals) {
   );
 }
 
-async function get_outlet_sales_totals(relation_uuid_set, relation_map) {
+async function get_outlet_sales_totals(relation_uuid_set, relation_map, date_range) {
   if (!relation_uuid_set.length) return [];
 
   const rows = await prisma.tbl_penjualan_gofitku.findMany({
     where: {
       deleted_at: null,
+      date: date_range,
       uuid_outlet_insanku: {
         in: relation_uuid_set,
       },
@@ -1258,12 +1260,13 @@ async function get_outlet_sales_totals(relation_uuid_set, relation_map) {
   }));
 }
 
-async function get_product_sales_totals(relation_uuid_set, relation_map) {
+async function get_product_sales_totals(relation_uuid_set, relation_map, date_range) {
   if (!relation_uuid_set.length) return [];
 
   const rows = await prisma.tbl_penjualan_gofitku.findMany({
     where: {
       deleted_at: null,
+      date: date_range,
       uuid_outlet_insanku: {
         in: relation_uuid_set,
       },
@@ -1290,7 +1293,8 @@ async function get_product_sales_totals(relation_uuid_set, relation_map) {
   }));
 }
 
-export async function getPenjualanGofitkuTopOutletChart() {
+export async function getPenjualanGofitkuTopOutletChart({ month } = {}) {
+  const period = getGofitkuChartPeriod(month);
   const outlet_insanku_rows = await get_gofitku_chart_scope({
     role: null,
   });
@@ -1298,6 +1302,7 @@ export async function getPenjualanGofitkuTopOutletChart() {
   const totals = await get_outlet_sales_totals(
     outlet_insanku_rows.map((item) => item.uuid),
     relation_map,
+    period.date_range,
   );
 
   return {
@@ -1305,7 +1310,8 @@ export async function getPenjualanGofitkuTopOutletChart() {
   };
 }
 
-export async function getPenjualanGofitkuTopProdukChart(context) {
+export async function getPenjualanGofitkuTopProdukChart(context = {}) {
+  const period = getGofitkuChartPeriod(context.month);
   const outlet_insanku_rows = await get_gofitku_chart_scope(context, {
     include_outlet: false,
   });
@@ -1313,6 +1319,7 @@ export async function getPenjualanGofitkuTopProdukChart(context) {
   const totals = await get_product_sales_totals(
     outlet_insanku_rows.map((item) => item.uuid),
     relation_map,
+    period.date_range,
   );
 
   return {
