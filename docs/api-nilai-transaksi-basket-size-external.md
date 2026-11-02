@@ -88,7 +88,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
     "harian": 102113,
     "bulan_sebelumnya": 104522,
     "bulan_berjalan": 102113,
-    "persen_growth": 100,
+    "persen_growth": 102.36,
     "gap_growth": 2.36,
     "persen_dari_target": 99.55,
     "gap_target": -0.45
@@ -97,7 +97,7 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
     "target": 2,
     "bulan_sebelumnya": 1.76,
     "capaian": 1.77,
-    "persen_dibanding_bulan_sebelumnya": 100,
+    "persen_dibanding_bulan_sebelumnya": 100.57,
     "gap_growth": 0.57,
     "persen_dibanding_target": 88.5,
     "gap_target": -11.5
@@ -114,16 +114,16 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
         "harian": 83180,
         "bulan_sebelumnya": 76262,
         "bulan_berjalan": 154738,
-        "persen_growth": 100,
-        "gap_growth": 100,
-        "persen_dari_target": 100,
+        "persen_growth": 202.9,
+        "gap_growth": 102.9,
+        "persen_dari_target": 198.45,
         "gap_target": 98.45
       },
       "basket_size": {
         "target": 2.08,
         "bulan_sebelumnya": 1.83,
         "capaian": 1.85,
-        "persen_dibanding_bulan_sebelumnya": 100,
+        "persen_dibanding_bulan_sebelumnya": 100.97,
         "gap_growth": 0.97,
         "persen_dibanding_target": 88.86,
         "gap_target": -11.14
@@ -154,10 +154,6 @@ curl -X GET "https://domain-anda.com/api/external/nilai-transaksi-basket-size?da
 | `status` | Boolean: `true` jika outlet ditandai orange pada tanggal laporan; `false` jika tidak ditandai. Berlaku untuk NT dan BS. |
 | `nilai_transaksi` | Data nilai transaksi outlet. |
 | `basket_size` | Data basket size outlet. |
-
-## Batas Persentase
-
-Kolom perbandingan terhadap bulan sebelumnya dan target dibatasi maksimal 100%, baik pada baris outlet maupun ringkasan. Nilai aktual tetap utuh. `gap_growth` dan `gap_target` dihitung dari persentase asli sebelum pembatasan, lalu hasil gap juga dibatasi maksimal 100%. Nilai gap negatif tetap mengikuti perhitungan asli. Aturan yang sama berlaku pada dashboard dan ekspor Excel.
 
 ## Status Outlet Ditandai
 

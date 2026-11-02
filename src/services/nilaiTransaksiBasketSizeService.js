@@ -287,11 +287,11 @@ function build_nilai_transaksi_metrics({
   const nt_last_month = to_number(last_month);
   const nt_current_month = to_number(current_month);
   const nt_growth = comparePercentage(nt_current_month, nt_last_month);
-  const nt_gap_growth = Math.min(nt_growth - 100, 100);
+  const nt_gap_growth = nt_growth - 100;
   const nt_target_compare = nt_has_target
     ? comparePercentage(nt_current_month, nt_target)
     : null;
-  const nt_gap_target = nt_target_compare === null ? null : Math.min(nt_target_compare - 100, 100);
+  const nt_gap_target = nt_target_compare === null ? null : nt_target_compare - 100;
 
   return {
     nt_has_target,
@@ -299,9 +299,9 @@ function build_nilai_transaksi_metrics({
     nt_daily,
     nt_last_month,
     nt_current_month,
-    nt_growth: Math.min(nt_growth, 100),
+    nt_growth,
     nt_gap_growth,
-    nt_target_compare: nt_target_compare === null ? null : Math.min(nt_target_compare, 100),
+    nt_target_compare,
     nt_gap_target,
   };
 }
@@ -327,20 +327,20 @@ function build_basket_size_metrics({
   const bs_last_month = to_number(last_month);
   const bs_current_month = to_number(current_month);
   const bs_growth = comparePercentage(bs_current_month, bs_last_month);
-  const bs_gap_growth = Math.min(bs_growth - 100, 100);
+  const bs_gap_growth = bs_growth - 100;
   const bs_target_compare = bs_has_target
     ? comparePercentage(bs_current_month, bs_target)
     : null;
-  const bs_gap_target = bs_target_compare === null ? null : Math.min(bs_target_compare - 100, 100);
+  const bs_gap_target = bs_target_compare === null ? null : bs_target_compare - 100;
 
   return {
     bs_has_target,
     bs_target,
     bs_last_month,
     bs_current_month,
-    bs_growth: Math.min(bs_growth, 100),
+    bs_growth,
     bs_gap_growth,
-    bs_target_compare: bs_target_compare === null ? null : Math.min(bs_target_compare, 100),
+    bs_target_compare,
     bs_gap_target,
   };
 }
@@ -1185,42 +1185,42 @@ function write_export_metric_formulas(row, metrics) {
 
   set_export_formula(
     row.getCell("O"),
-    `MIN(100,IF(M${row_number}=0,0,N${row_number}/M${row_number}*100))`,
+    `IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)`,
     metrics.nt_growth,
   );
   set_export_formula(
     row.getCell("P"),
-    `MIN(100,IF(M${row_number}=0,0,N${row_number}/M${row_number}*100)-100)`,
+    `O${row_number}-100`,
     metrics.nt_gap_growth,
   );
   set_export_formula(
     row.getCell("Q"),
-    `MIN(100,IF(K${row_number}=0,0,N${row_number}/K${row_number}*100))`,
+    `IF(K${row_number}=0,0,N${row_number}/K${row_number}*100)`,
     metrics.nt_target_compare,
   );
   set_export_formula(
     row.getCell("R"),
-    `MIN(100,IF(K${row_number}=0,0,N${row_number}/K${row_number}*100)-100)`,
+    `Q${row_number}-100`,
     metrics.nt_gap_target,
   );
   set_export_formula(
     row.getCell("G"),
-    `MIN(100,IF(E${row_number}=0,0,F${row_number}/E${row_number}*100))`,
+    `IF(E${row_number}=0,0,F${row_number}/E${row_number}*100)`,
     metrics.bs_growth,
   );
   set_export_formula(
     row.getCell("H"),
-    `MIN(100,IF(E${row_number}=0,0,F${row_number}/E${row_number}*100)-100)`,
+    `G${row_number}-100`,
     metrics.bs_gap_growth,
   );
   set_export_formula(
     row.getCell("I"),
-    `MIN(100,IF(D${row_number}=0,0,F${row_number}/D${row_number}*100))`,
+    `IF(D${row_number}=0,0,F${row_number}/D${row_number}*100)`,
     metrics.bs_target_compare,
   );
   set_export_formula(
     row.getCell("J"),
-    `MIN(100,IF(D${row_number}=0,0,F${row_number}/D${row_number}*100)-100)`,
+    `I${row_number}-100`,
     metrics.bs_gap_target,
   );
 

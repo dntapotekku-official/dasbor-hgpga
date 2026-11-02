@@ -61,8 +61,8 @@ test("October: September exclusion still applies to September comparison only", 
   assert.equal(result.bs_last_month, 2);
   assert.equal(result.nt_current_month, 175);
   assert.equal(result.bs_current_month, 3.5);
-  assert.equal(result.nt_growth, 100);
-  assert.equal(result.bs_growth, 100);
+  assert.equal(result.nt_growth, 175);
+  assert.equal(result.bs_growth, 175);
   assert.equal(result.nt_target, 175);
   assert.equal(result.nt_gap_growth, 75);
 });
@@ -172,14 +172,14 @@ test("open intervals conflict only when they overlap, including inclusive bounda
 });
 
 
-test("NT/BS percentages and gaps cap at 100 while actuals remain unchanged", () => {
+test("NT/BS percentages and gaps preserve values above 100", () => {
   const buildMetrics = new Function("comparePercentage", "to_number",
     source.slice(source.indexOf("function build_nilai_transaksi_metrics("), source.indexOf("/**\n * Membentuk row rata-rata kategori."))
       + "\nreturn [build_nilai_transaksi_metrics, build_basket_size_metrics];",
   )(comparePercentage, (value) => Number(value ?? 0));
   for (const [index, build] of buildMetrics.entries()) {
     const prefix = index === 0 ? "nt" : "bs";
-    for (const [current, expected, gap] of [[0, 0, -100], [75, 75, -25], [100, 100, 0], [120, 100, 20], [200, 100, 100], [300, 100, 100]]) {
+    for (const [current, expected, gap] of [[0, 0, -100], [75, 75, -25], [100, 100, 0], [120, 120, 20], [200, 200, 100], [300, 300, 200]]) {
       const result = build({ target: 100, daily: current, last_month: 100, current_month: current });
       assert.equal(result[`${prefix}_current_month`], current);
       assert.equal(result[`${prefix}_growth`], expected);
@@ -195,7 +195,7 @@ test("NT/BS percentages and gaps cap at 100 while actuals remain unchanged", () 
 });
 
 
-test("client and server summaries cap both gaps while preserving totals", () => {
+test("client and server summaries preserve percentages and gaps above 100", () => {
   const row = outlet("over-target", 4000, 10, 100, 100);
   row.nt_last_month_total_revenue = 1000;
   row.bs_last_month_sku_qty = 20;
@@ -203,8 +203,13 @@ test("client and server summaries cap both gaps while preserving totals", () => 
     const result = summarize([row]);
     assert.equal(result.nt_current_month, 400);
     assert.equal(result.bs_current_month, 10);
-    for (const key of ["nt_gap_growth", "bs_gap_growth", "nt_gap_target", "bs_gap_target"]) {
-      assert.equal(result[key], 100, key);
+    for (const key of ["nt_gap_growth", "nt_gap_target"]) {
+      assert.equal(result[key], 300, key);
     }
+    for (const key of ["bs_gap_growth", "bs_gap_target"]) {
+      assert.equal(result[key], 400, key);
+    }
+    assert.equal(result.nt_growth, 400);
+    assert.equal(result.bs_growth, 500);
   }
 });
