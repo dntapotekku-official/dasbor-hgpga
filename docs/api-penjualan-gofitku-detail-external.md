@@ -125,7 +125,7 @@ Jika `date=2026-10-09` dikirim, response hanya berisi tanggal tersebut:
 - Penjualan pada tanggal ketika penempatan atau InsanKU sedang nonaktif tidak dihitung.
 - Penjualan InsanKU dengan pengecualian GoFitKu aktif tidak dihitung untuk semua periode laporan. Kolom rentang tanggal tetap disimpan, tetapi tidak membatasi pengecualian.
 - Data penjualan yang `deleted_at` terisi tidak dihitung.
-- Outlet, penempatan, atau InsanKU yang tidak aktif, deleted, atau outlet `is_excluded` tidak dihitung.
+- Outlet yang tidak aktif atau `is_excluded`, serta InsanKU yang deleted, tidak dihitung. Status nonaktif penempatan atau InsanKU saat ini tidak menghapus transaksi historis ketika masih aktif.
 
 ## Response Error
 

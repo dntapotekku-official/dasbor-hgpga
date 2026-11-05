@@ -152,7 +152,7 @@ Jika `date` tidak dikirim, field `tanggal` tidak muncul dan `total` dihitung dar
 
 ## Aturan Perhitungan
 
-- Data InsanKU diambil dari penempatan aktif di `tbl_outlet_insanku`.
+- Data InsanKU diambil dari penempatan di `tbl_outlet_insanku` yang aktif dalam periode laporan, berdasarkan riwayat nonaktif. Status aktif saat ini tidak menghapus penjualan historis yang valid.
 - InsanKU yang belum memiliki penjualan tetap dikembalikan dengan `total: 0`.
 - `total` adalah akumulasi `qty` dari semua produk GoFitKu milik InsanKU tersebut.
 - Jika `date=YYYY-MM` dikirim, perhitungan hanya mencakup tanggal dari awal bulan sampai sebelum awal bulan berikutnya.
@@ -160,7 +160,7 @@ Jika `date` tidak dikirim, field `tanggal` tidak muncul dan `total` dihitung dar
 - Penjualan pada tanggal ketika penempatan atau InsanKU sedang nonaktif tidak dihitung.
 - Penjualan InsanKU dengan pengecualian GoFitKu aktif tidak dihitung untuk semua periode laporan. Kolom rentang tanggal tetap disimpan, tetapi tidak membatasi pengecualian.
 - Data yang `deleted_at` terisi tidak dihitung.
-- Outlet, penempatan, atau InsanKU yang tidak aktif, deleted, atau outlet `is_excluded` tidak dikembalikan.
+- Outlet yang tidak aktif atau `is_excluded`, serta penempatan atau InsanKU yang deleted, tidak dikembalikan. Penempatan dan InsanKU yang kini nonaktif tetap dihitung untuk transaksi ketika masih aktif.
 
 ## Response Error
 

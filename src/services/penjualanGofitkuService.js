@@ -517,7 +517,6 @@ export async function getExternalPenjualanGofitku({
           }
         : {}),
       deleted_at: null,
-      is_active: true,
       outlet: {
         deleted_at: null,
         is_active: true,
@@ -525,7 +524,6 @@ export async function getExternalPenjualanGofitku({
       },
       insanku: {
         deleted_at: null,
-        is_active: true,
       },
     },
     orderBy: [
@@ -747,7 +745,6 @@ export async function getExternalPenjualanGofitkuProduk({
         },
         insanku: {
           deleted_at: null,
-          is_active: true,
         },
       },
     },
@@ -858,7 +855,6 @@ export async function getExternalPenjualanGofitkuDetail({
         },
         insanku: {
           deleted_at: null,
-          is_active: true,
         },
       },
     },
