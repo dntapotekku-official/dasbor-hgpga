@@ -418,8 +418,6 @@ export async function syncOutletInsanKu() {
         .map((item) => buildRelationKey(item));
 
       if (removed_relation_keys.length > 0) {
-        const deleted_at = new Date();
-
         await Promise.all(
           removed_relation_keys.map((relation_key) => {
             const [uuid_outlet, uuid_insanku] = relation_key.split(":");
@@ -464,7 +462,7 @@ export async function syncOutletInsanKu() {
                     openOutletInsanKuInactivePeriod(
                       tx,
                       relation.uuid,
-                      deleted_at,
+                      sync_day,
                     ),
                   ),
                 );
@@ -566,6 +564,9 @@ export async function updateOutletInsanKu({
     throw new Error("Sebagian outlet yang dipilih tidak ditemukan.");
   }
 
+  const action_day = currentPlacementDay();
+  const action_month = currentPlacementMonth(action_day);
+
   await prisma.$transaction(async (tx) => {
     const current_relations = await tx.tbl_outlet_insanku.findMany({
       where: {
@@ -575,6 +576,7 @@ export async function updateOutletInsanKu({
       select: {
         uuid_outlet: true,
         uuid: true,
+        is_active: true,
       },
     });
     const current_outlet_uuid_set = new Set(
@@ -601,6 +603,7 @@ export async function updateOutletInsanKu({
           is_active: true,
           is_skip_sync: should_skip_sync,
           target_gofitku: buildDefaultPlacementTarget(),
+          inactive_periods: { create: buildPreActivePeriodData(action_month) },
         },
       });
       const active_relation = await tx.tbl_outlet_insanku.findUnique({
@@ -613,8 +616,9 @@ export async function updateOutletInsanKu({
         select: { uuid: true },
       });
 
-      if (active_relation) {
-        await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid);
+      const previous_relation = current_relations.find((item) => item.uuid_outlet === uuid_outlet);
+      if (active_relation && !previous_relation?.is_active) {
+        await closeOutletInsanKuInactivePeriod(tx, active_relation.uuid, action_month);
       }
     }
 
@@ -657,7 +661,7 @@ export async function updateOutletInsanKu({
 
       await Promise.all(
         removed_relations.map((relation) =>
-          openOutletInsanKuInactivePeriod(tx, relation.uuid),
+          openOutletInsanKuInactivePeriod(tx, relation.uuid, action_day),
         ),
       );
     }

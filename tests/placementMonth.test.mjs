@@ -10,7 +10,7 @@ const source = readFileSync(new URL("../src/services/insanKuService.js", import.
 const normalize = new Function(source.slice(source.indexOf("function normalizeOutletPlacements("), source.indexOf("function getInsanKuPayloadUuid(")) + "\nreturn { normalizeOutletPlacements, normalizeDeletedOutletPlacements };")();
 
 function fixture(storedActive = true) {
-  const exclusions = [], starts = [], removals = [], closedPlacements = [], closedEmployees = [], employeeWrites = [];
+  const exclusions = [], starts = [], removals = [], closedPlacements = [], closedEmployees = [], employeeWrites = [], placementWrites = [];
   const tx = {
     tbl_insanku: { update: async ({ data }) => employeeWrites.push(data) },
     tbl_insanku_gofitku_exclusion: {
@@ -20,7 +20,7 @@ function fixture(storedActive = true) {
     },
     tbl_outlet_insanku: {
       findMany: async () => [{ uuid: "old-placement", uuid_outlet: "old-outlet", is_active: true, deleted_at: null }],
-      updateMany: async () => {}, update: async () => {}, create: async () => {},
+      updateMany: async () => {}, update: async (args) => placementWrites.push(args), create: async (args) => placementWrites.push(args),
     },
     tbl_jabatan_insanku: { updateMany: async () => {} },
   };
@@ -38,7 +38,7 @@ function fixture(storedActive = true) {
   const update = new Function(...Object.keys(dependencies), source.slice(source.indexOf("export async function updateInsanKu("), source.indexOf("export async function getInsanKuNonSlipGaji("))
     .replace("export ", "") + "\nreturn updateInsanKu;")(...Object.values(dependencies));
   const payload = { uuid_insanku: "employee", name: "Employee", username: "employee", outlet_placements: [{ outlet_uuid: "new-outlet", active_start_date: "2026-11" }], deleted_outlet_placements: [{ uuid: "old-placement", inactive_start_date: "2026-10" }] };
-  return { update, payload, exclusions, starts, removals, closedPlacements, closedEmployees, employeeWrites };
+  return { update, payload, exclusions, starts, removals, closedPlacements, closedEmployees, employeeWrites, placementWrites };
 }
 
 test("placement month validation normalizes to the first day and accepts valid legacy dates", () => {
@@ -49,12 +49,12 @@ test("placement month validation normalizes to the first day and accepts valid l
   assert.equal(parsePlacementMonth(""), null);
 });
 
-test("editing an employee applies addition and deletion at the beginning of each selected month", async () => {
+test("editing an employee starts additions in the selected month and removals on the action day", async () => {
   const f = fixture();
   await f.update(f.payload);
   assert.equal(f.starts[0].toISOString(), "2026-11-01T00:00:00.000Z");
   assert.equal(f.removals[0].uuid, "old-placement");
-  assert.equal(f.removals[0].date.toISOString(), "2026-10-01T00:00:00.000Z");
+  assert.equal(f.removals[0].date.toISOString(), currentPlacementDay().toISOString());
 });
 
 test("placement history excludes the entire period before the chosen month", async () => {
@@ -130,4 +130,18 @@ test("a placement without a position defaults its next assigned position to acti
   const result = await getSettings();
   assert.equal(result[0].outlet_placements[0].jabatan_is_active, true);
   assert.equal(result[1].outlet_placements[0].jabatan_is_active, false);
+});
+
+
+test("changing the outlet preserves the old placement even without sales and starts the new one for the whole month", async () => {
+  const f = fixture();
+  await f.update({ ...f.payload, outlet_placements: [{ uuid: "old-placement", outlet_uuid: "new-outlet" }], deleted_outlet_placements: [] });
+  assert.equal(f.removals.length, 1);
+  assert.equal(f.removals[0].uuid, "old-placement");
+  assert.equal(f.removals[0].date.toISOString(), currentPlacementDay().toISOString());
+  assert.equal(f.starts[0].toISOString(), currentPlacementMonth().toISOString());
+  assert.equal(f.placementWrites[0].where.uuid, "old-placement");
+  assert.deepEqual(f.placementWrites[0].data, { is_active: false });
+  assert.equal(f.placementWrites[1].data.uuid_outlet, "new-outlet");
+  assert.notEqual(f.placementWrites[1].data.uuid, "old-placement");
 });

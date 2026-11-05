@@ -798,19 +798,8 @@ export async function updateInsanKu({
     outlet_placements,
     outlet_uuids,
   );
-  const normalized_deleted_placements = normalizeDeletedOutletPlacements(
-    deleted_outlet_placements,
-  );
   const resolved_outlet_placements = normalized_placements.placements;
-  const deleted_placement_date_map = new Map(
-    normalized_deleted_placements.map((placement) => [
-      placement.uuid,
-      parsePlacementMonth(
-        placement.inactive_start_date,
-        "Bulan efektif hapus penempatan",
-      ) ?? currentPlacementMonth(),
-    ]),
-  );
+  const action_day = currentPlacementDay();
   const placement_uuid_list = normalized_placements.placement_uuids;
   const unique_outlet_uuids = normalized_placements.outlet_uuids;
 
@@ -942,7 +931,7 @@ export async function updateInsanKu({
       .map((item) => item.uuid);
 
     if (relation_uuids_to_remove.length > 0) {
-      const inactive_start_date = currentPlacementMonth();
+      const inactive_start_date = action_day;
 
       await tx.tbl_outlet_insanku.updateMany({
         where: {
@@ -970,8 +959,7 @@ export async function updateInsanKu({
           openOutletInsanKuInactivePeriod(
             tx,
             uuid_outlet_insanku,
-            deleted_placement_date_map.get(uuid_outlet_insanku) ??
-              inactive_start_date,
+            inactive_start_date,
           ),
         ),
       );
@@ -1060,68 +1048,46 @@ export async function updateInsanKu({
           await openOutletInsanKuInactivePeriod(
             tx,
             placement.uuid,
-            placement_active_start_date,
+            action_day,
           );
 
           continue;
         }
 
-        const sale_count = await tx.tbl_penjualan_gofitku.count({
-          where: { uuid_outlet_insanku: placement.uuid },
+        await tx.tbl_outlet_insanku.update({
+          where: { uuid: placement.uuid },
+          data: { is_active: false },
         });
+        await tx.tbl_jabatan_insanku.updateMany({
+          where: {
+            uuid_outlet_insanku: placement.uuid,
+            deleted_at: null,
+          },
+          data: { is_active: false },
+        });
+        await openOutletInsanKuInactivePeriod(
+          tx,
+          placement.uuid,
+          action_day,
+        );
+        const created_relation_uuid = randomUUID();
 
-        if (sale_count > 0) {
-          await tx.tbl_outlet_insanku.update({
-            where: { uuid: placement.uuid },
-            data: { is_active: false },
-          });
-          await tx.tbl_jabatan_insanku.updateMany({
-            where: {
-              uuid_outlet_insanku: placement.uuid,
-              deleted_at: null,
-            },
-            data: { is_active: false },
-          });
-          await openOutletInsanKuInactivePeriod(
-            tx,
-            placement.uuid,
-            placement_active_start_date,
-          );
-          const created_relation_uuid = randomUUID();
-
-          await tx.tbl_outlet_insanku.create({
-            data: {
-              uuid: created_relation_uuid,
-              uuid_outlet: placement.outlet_uuid,
-              uuid_insanku,
-              is_active: true,
-              is_skip_sync: should_skip_sync_outlet_insanku,
-              target_gofitku: buildDefaultPlacementTarget(),
-            },
-          });
-          await createOutletInsanKuPreActivePeriod(
-            tx,
-            created_relation_uuid,
-            placement_active_start_date,
-          );
-          await savePlacementJabatan(tx, placement, created_relation_uuid);
-        } else {
-          await tx.tbl_outlet_insanku.update({
-            where: { uuid: placement.uuid },
-            data: {
-              uuid_outlet: placement.outlet_uuid,
-              deleted_at: null,
-              is_active: true,
-              is_skip_sync: should_skip_sync_outlet_insanku,
-            },
-          });
-          await closeOutletInsanKuInactivePeriod(
-            tx,
-            placement.uuid,
-            placement_active_start_date,
-          );
-          await savePlacementJabatan(tx, placement, placement.uuid);
-        }
+        await tx.tbl_outlet_insanku.create({
+          data: {
+            uuid: created_relation_uuid,
+            uuid_outlet: placement.outlet_uuid,
+            uuid_insanku,
+            is_active: true,
+            is_skip_sync: should_skip_sync_outlet_insanku,
+            target_gofitku: buildDefaultPlacementTarget(),
+          },
+        });
+        await createOutletInsanKuPreActivePeriod(
+          tx,
+          created_relation_uuid,
+          placement_active_start_date,
+        );
+        await savePlacementJabatan(tx, placement, created_relation_uuid);
         continue;
       }
 
