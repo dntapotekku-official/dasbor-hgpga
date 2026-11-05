@@ -34,7 +34,7 @@ function DetailRows({ rows, group, on_edit_row, on_delete_row }) {
       <TableCell className="whitespace-normal">
         <div className="font-medium">{row.name}</div>
       </TableCell>
-      <TableCell className="font-medium">{row.today_input}</TableCell>
+      <TableCell className="font-medium text-right tabular-nums">{row.today_input}</TableCell>
       <TableCell>{row.product_name ?? "-"}</TableCell>
       <TableCell className="whitespace-nowrap">
         <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
@@ -75,7 +75,7 @@ function DetailTable({
         <TableRow>
           <TableHead className="w-14 text-center">No.</TableHead>
           <TableHead className="w-[32%]">Nama</TableHead>
-          <TableHead>Jumlah</TableHead>
+          <TableHead className="text-right">Jumlah</TableHead>
           <TableHead>Produk</TableHead>
           <TableHead className="w-[20%]">Aksi</TableHead>
         </TableRow>

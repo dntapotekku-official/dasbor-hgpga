@@ -1,5 +1,7 @@
 "use client";
 
+import OutletList from "@/components/outlet-list";
+
 import { useMemo, useState } from "react";
 
 import FilterField from "@/components/filter-field";
@@ -159,7 +161,7 @@ function StatusBadge({ total, target, bordered = false }) {
   const status = get_status(total, target);
 
   return (
-    <span
+    <span data-slot="badge"
       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${status.class_name} ${bordered ? "border" : ""}`}
     >
       {status.label}
@@ -176,11 +178,11 @@ function PersonRows({ rows, start_index = 0 }) {
       <TableCell className="whitespace-normal">
         <div className="font-medium">{row.name}</div>
       </TableCell>
-      <TableCell className="font-medium">{row.today_input}</TableCell>
-      <TableCell className="font-medium">{row.weekly_total}</TableCell>
-      <TableCell className="font-medium">{row.monthly_total}</TableCell>
-      <TableCell>{row.target}</TableCell>
-      <TableCell>{format_percentage(row.monthly_total, row.target)}</TableCell>
+      <TableCell className="font-medium text-right tabular-nums">{row.today_input}</TableCell>
+      <TableCell className="font-medium text-right tabular-nums">{row.weekly_total}</TableCell>
+      <TableCell className="font-medium text-right tabular-nums">{row.monthly_total}</TableCell>
+      <TableCell className="text-right tabular-nums">{row.target}</TableCell>
+      <TableCell className="text-right tabular-nums">{format_percentage(row.monthly_total, row.target)}</TableCell>
       <TableCell className="whitespace-normal">
         <StatusBadge
           total={row.monthly_total}
@@ -200,11 +202,11 @@ function TotalRow({ totals, label = "TOTAL" }) {
       <TableCell className="whitespace-normal border-t bg-muted md:sticky md:bottom-0 md:z-10">
         -
       </TableCell>
-      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.today_input}</TableCell>
-      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.weekly_total}</TableCell>
-      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.monthly_total}</TableCell>
-      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">{totals.target}</TableCell>
-      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">{totals.today_input}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">{totals.weekly_total}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">{totals.monthly_total}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">{totals.target}</TableCell>
+      <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">
         {format_percentage(totals.monthly_total, totals.target)}
       </TableCell>
       <TableCell className="whitespace-normal border-t bg-muted text-muted-foreground md:sticky md:bottom-0 md:z-10">
@@ -231,7 +233,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Hari Ini"
           sortKey="today"
@@ -240,7 +242,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Minggu Ini"
           sortKey="weekly"
@@ -249,7 +251,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Bulan Ini"
           sortKey="monthly"
@@ -258,7 +260,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Target"
           sortKey="target"
@@ -267,7 +269,7 @@ function PersonTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Persentase"
           sortKey="percent"
@@ -294,7 +296,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Hari Ini"
           sortKey="today"
@@ -303,7 +305,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Minggu Ini"
           sortKey="weekly"
@@ -312,7 +314,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Bulan Ini"
           sortKey="monthly"
@@ -321,7 +323,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Target"
           sortKey="target"
@@ -330,7 +332,7 @@ function OutletTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Persentase"
           sortKey="percent"
@@ -366,7 +368,7 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Hari Ini"
           sortKey="today"
@@ -375,7 +377,7 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Minggu Ini"
           sortKey="weekly"
@@ -384,7 +386,7 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Total Bulan Ini"
           sortKey="monthly"
@@ -393,7 +395,7 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Target"
           sortKey="target"
@@ -402,7 +404,7 @@ function InsanKuTableHead({ sort_key, sort_direction, onSort }) {
           onSort={onSort}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="text-right">
         <SortableTableHead
           label="Persentase"
           sortKey="percent"
@@ -554,6 +556,7 @@ export default function RingkasanTabContent({
 
     return Array.from(aggregated.values()).map((item) => ({
       ...item,
+      outlet_list: Array.from(item.outlet_names).sort((a, b) => String(a).localeCompare(String(b), "id")),
       outlet_label: Array.from(item.outlet_names)
         .sort((a, b) => String(a).localeCompare(String(b), "id"))
         .join(", "),
@@ -906,17 +909,17 @@ export default function RingkasanTabContent({
                               {outlet.outlet_name}
                             </div>
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right tabular-nums">
                             {outlet.today_input}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right tabular-nums">
                             {outlet.weekly_total}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right tabular-nums">
                             {outlet.monthly_total}
                           </TableCell>
-                          <TableCell>{outlet.target}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-right tabular-nums">{outlet.target}</TableCell>
+                          <TableCell className="text-right tabular-nums">
                             {format_percentage(
                               outlet.monthly_total,
                               outlet.target,
@@ -982,19 +985,19 @@ export default function RingkasanTabContent({
                             <div className="font-medium">{row.name}</div>
                           </TableCell>
                           <TableCell className="whitespace-normal text-muted-foreground">
-                            {row.outlet_label}
+                            <OutletList names={row.outlet_list} />
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right tabular-nums">
                             {row.today_input}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right tabular-nums">
                             {row.weekly_total}
                           </TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-right tabular-nums">
                             {row.monthly_total}
                           </TableCell>
-                          <TableCell>{row.target}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-right tabular-nums">{row.target}</TableCell>
+                          <TableCell className="text-right tabular-nums">
                             {format_percentage(row.monthly_total, row.target)}
                           </TableCell>
                           <TableCell className="whitespace-normal">
@@ -1015,19 +1018,19 @@ export default function RingkasanTabContent({
                         >
                           -
                         </TableCell>
-                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">
                           {insanku_grand_totals.today_input}
                         </TableCell>
-                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">
                           {insanku_grand_totals.weekly_total}
                         </TableCell>
-                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">
                           {insanku_grand_totals.monthly_total}
                         </TableCell>
-                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">
                           {insanku_grand_totals.target}
                         </TableCell>
-                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10">
+                        <TableCell className="border-t bg-muted md:sticky md:bottom-0 md:z-10 text-right tabular-nums">
                           {format_percentage(
                             insanku_grand_totals.monthly_total,
                             insanku_grand_totals.target,

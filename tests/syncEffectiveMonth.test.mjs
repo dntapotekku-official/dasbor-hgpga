@@ -230,3 +230,33 @@ test("empty placement response aborts sync without removing existing assignments
   await assert.rejects(f.syncPlacements(), /dibatalkan agar data lama tetap aman/);
   assert.deepEqual([f.people, f.placements, f.employeePeriods, f.placementPeriods], before);
 });
+
+test("sync creates and updates PharmApp accounts, preserves missing fields, and respects skipped placements", async () => {
+  const f = fixture();
+  f.setPlacements([{ uuid_insanku: "new", uuid_outlet: "outlet-a", pharmapp_account: "account-a" }]);
+  await f.syncPeople(); await f.syncPlacements();
+  const placement = f.placements[0];
+  assert.equal(placement.pharmapp_account, "account-a");
+  f.setPlacements([{ uuid_insanku: "new", uuid_outlet: "outlet-a", pharmapp_account: "account-b" }]);
+  await f.syncPlacements();
+  assert.equal(placement.pharmapp_account, "account-b");
+  f.setPlacements([{ uuid_insanku: "new", uuid_outlet: "outlet-a" }]);
+  await f.syncPlacements();
+  assert.equal(placement.pharmapp_account, "account-b");
+  f.setPlacements([{ uuid_insanku: "new", uuid_outlet: "outlet-a", pharmapp_account: null }]);
+  await f.syncPlacements();
+  assert.equal(placement.pharmapp_account, null);
+  placement.pharmapp_account = "manual-account";
+  placement.is_skip_sync = true;
+  f.setPlacements([{ uuid_insanku: "new", uuid_outlet: "outlet-a", pharmapp_account: "account-c" }]);
+  await f.syncPlacements();
+  assert.equal(placement.pharmapp_account, "manual-account");
+});
+
+test("sync stores a shared PharmApp account on both placements without merging them", async () => {
+  const f = fixture();
+  f.setPlacements(["outlet-a", "outlet-b"].map((uuid_outlet) => ({ uuid_insanku: "new", uuid_outlet, pharmapp_account: "shared-account" })));
+  await f.syncPeople(); await f.syncPlacements();
+  assert.equal(f.placements.length, 2);
+  assert.deepEqual(f.placements.map((row) => row.pharmapp_account), ["shared-account", "shared-account"]);
+});

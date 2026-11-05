@@ -128,11 +128,10 @@ function buildJabatanRelationMap(jabatan_insanku_payload) {
       continue;
     }
 
-    relation_map.set(buildRelationKey({ uuid_outlet, uuid_insanku }), {
-      uuid_outlet,
-      uuid_insanku,
-      uuid_jabatan_master,
-    });
+    const key = buildRelationKey({ uuid_outlet, uuid_insanku });
+    const positions = relation_map.get(key) ?? [];
+    if (!positions.includes(uuid_jabatan_master)) positions.push(uuid_jabatan_master);
+    relation_map.set(key, positions);
   }
 
   return relation_map;
@@ -167,6 +166,9 @@ function normalizeOutletInsanKuRows({
           return {
             uuid_outlet,
             uuid_insanku,
+            ...(Object.hasOwn(item, "akun_pharmapp")
+              ? { pharmapp_account: String(item.akun_pharmapp ?? "").trim() || null }
+              : {}),
           };
         })
         .filter(Boolean);
@@ -190,42 +192,31 @@ function normalizeOutletInsanKuRows({
 
 async function upsertJabatanInsanKu(
   transaction,
-  { jabatan_master_map, uuid_outlet_insanku, uuid_jabatan_master },
+  { jabatan_master_map, uuid_outlet_insanku, uuid_jabatan_masters = [] },
 ) {
-  if (!uuid_outlet_insanku || !uuid_jabatan_master) {
-    return false;
+  if (!uuid_outlet_insanku) return false;
+  const selected = [...new Set(uuid_jabatan_masters)];
+  await transaction.tbl_jabatan_insanku.updateMany({
+    where: {
+      uuid_outlet_insanku, deleted_at: null,
+      ...(selected.length ? { OR: [{ uuid_jabatan_master: { notIn: selected } }, { uuid_jabatan_master: null }] } : {}),
+    },
+    data: { is_active: false, deleted_at: new Date() },
+  });
+  for (const uuid_jabatan_master of selected) {
+    const jabatan_master = jabatan_master_map.get(uuid_jabatan_master);
+    await transaction.tbl_jabatan_master.upsert({
+      where: { uuid: uuid_jabatan_master },
+      update: { ...(jabatan_master?.name ? { name: jabatan_master.name } : {}), deleted_at: null },
+      create: { uuid: uuid_jabatan_master, name: jabatan_master?.name || uuid_jabatan_master },
+    });
+    await transaction.tbl_jabatan_insanku.upsert({
+      where: { uuid_outlet_insanku_uuid_jabatan_master: { uuid_outlet_insanku, uuid_jabatan_master } },
+      update: { is_active: true, deleted_at: null },
+      create: { uuid: randomUUID(), uuid_outlet_insanku, uuid_jabatan_master, is_active: true },
+    });
   }
-
-  const jabatan_master = jabatan_master_map.get(uuid_jabatan_master);
-
-  await transaction.tbl_jabatan_master.upsert({
-    where: { uuid: uuid_jabatan_master },
-    update: {
-      ...(jabatan_master?.name ? { name: jabatan_master.name } : {}),
-      deleted_at: null,
-    },
-    create: {
-      uuid: uuid_jabatan_master,
-      name: jabatan_master?.name || uuid_jabatan_master,
-    },
-  });
-
-  await transaction.tbl_jabatan_insanku.upsert({
-    where: { uuid_outlet_insanku },
-    update: {
-      uuid_jabatan_master,
-      is_active: true,
-      deleted_at: null,
-    },
-    create: {
-      uuid: randomUUID(),
-      uuid_outlet_insanku,
-      uuid_jabatan_master,
-      is_active: true,
-    },
-  });
-
-  return true;
+  return selected.length > 0;
 }
 
 export async function syncOutletInsanKu() {
@@ -359,12 +350,14 @@ export async function syncOutletInsanKu() {
             deleted_at: null,
             is_active: true,
             is_skip_sync: false,
+            ...(Object.hasOwn(item, "pharmapp_account") ? { pharmapp_account: item.pharmapp_account } : {}),
             ...(Object.hasOwn(item, "status") ? { status: item.status } : {}),
           },
           create: {
             uuid: randomUUID(),
             uuid_outlet: item.uuid_outlet,
             uuid_insanku: item.uuid_insanku,
+            pharmapp_account: item.pharmapp_account ?? null,
             is_active: true,
             status: item.status ?? null,
             target_gofitku: buildDefaultPlacementTarget(),
@@ -380,9 +373,7 @@ export async function syncOutletInsanKu() {
           const is_jabatan_synced = await upsertJabatanInsanKu(tx, {
             jabatan_master_map,
             uuid_outlet_insanku: active_relation.uuid,
-            uuid_jabatan_master: jabatan_relation_map.get(
-              buildRelationKey(item),
-            )?.uuid_jabatan_master,
+            uuid_jabatan_masters: jabatan_relation_map.get(buildRelationKey(item)) ?? [],
           });
 
           if (is_jabatan_synced) {

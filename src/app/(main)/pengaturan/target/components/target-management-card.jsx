@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useId, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -824,7 +825,7 @@ export default function TargetManagementCard({
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead className="w-14">No.</TableHead>
+                    <TableHead className="w-14 text-center">No.</TableHead>
                     <TableHead>
                       <SortableTableHead
                         label={table_entity_label ?? entity_label}
@@ -854,7 +855,7 @@ export default function TargetManagementCard({
                         onSort={toggle_sort}
                       />
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="text-right">
                       <SortableTableHead
                         label="Target"
                         sortKey="target"
@@ -869,7 +870,7 @@ export default function TargetManagementCard({
                 <TableBody>
                   {paginated_rows.map((row, index) => (
                     <TableRow key={row.uuid}>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {(current_page - 1) * PAGE_SIZE + index + 1}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -886,7 +887,7 @@ export default function TargetManagementCard({
                         </TableCell>
                       ) : null}
                       <TableCell className="font-medium">{row.range_label}</TableCell>
-                      <TableCell>{format_target_value(row.target)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{format_target_value(row.target)}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
                           <Button

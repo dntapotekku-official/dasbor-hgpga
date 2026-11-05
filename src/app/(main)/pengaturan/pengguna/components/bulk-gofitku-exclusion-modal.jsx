@@ -10,11 +10,14 @@ import FilterField from "@/components/filter-field";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded_rows, is_saving, on_open_change, on_save }) {
+export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded_rows, identity_skip_rows, placement_skip_rows, is_saving, on_open_change, on_save }) {
   const id = useId();
   const [mode, setMode] = useState("setup");
   const [keep_jabatan, setKeepJabatan] = useState(true);
-  const rows = mode === "unset" ? excluded_rows : pending_rows;
+  const release_sync = mode === "release_identity" || mode === "release_placement";
+  const rows = mode === "release_identity" ? identity_skip_rows
+    : mode === "release_placement" ? placement_skip_rows
+    : mode === "unset" ? excluded_rows : pending_rows;
   const [selected, setSelected] = useState(() => pending_rows.map((row) => row.uuid));
   const [enabled, setEnabled] = useState(false);
   const selectedIds = rows.filter((row) => selected.includes(row.uuid)).map((row) => row.uuid);
@@ -26,7 +29,9 @@ export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded
     if (!selectedIds.length) { toast.error("Pilih minimal satu InsanKU."); return; }
     try {
       await on_save({
-        action: mode === "unset" ? "bulk_unset_gofitku_exclusion" : "bulk_gofitku_exclusion",
+        action: mode === "release_identity" ? "bulk_release_identity_sync"
+          : mode === "release_placement" ? "bulk_release_placement_sync"
+          : mode === "unset" ? "bulk_unset_gofitku_exclusion" : "bulk_gofitku_exclusion",
         uuid_insanku: selectedIds, is_exclude_penjualan_gofitku: enabled,
         keep_jabatan_exclusion: keep_jabatan,
       });
@@ -48,7 +53,12 @@ export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded
           <FilterField label="Pengaturan">
             <OptionDropdown
               value={mode}
-              options={[{ value: "setup", label: "Atur InsanKU Baru" }, { value: "unset", label: "Lepas Pengecualian" }]}
+              options={[
+                { value: "setup", label: "Atur InsanKU Baru" },
+                { value: "unset", label: "Lepas Pengecualian" },
+                { value: "release_identity", label: "Lepas lewati nama dan username" },
+                { value: "release_placement", label: "Lepas lewati penempatan" },
+              ]}
               ariaLabel="Pilih pengaturan banyak InsanKU"
               disabled={is_saving}
               onValueChange={(value) => {
@@ -58,7 +68,9 @@ export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded
             />
           </FilterField>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">{mode === "unset"
+            <p className="text-sm text-muted-foreground">{release_sync
+              ? `Pilih InsanKU untuk melepas pengaturan lewati ${mode === "release_identity" ? "nama dan username" : "penempatan"}. Data akan mengikuti Slip Gaji pada sinkronisasi berikutnya.`
+              : mode === "unset"
               ? "Pilih InsanKU yang ingin dilepas pengecualian penjualan GoFitKu-nya. Tidak dibatasi tanggal sinkronisasi."
               : "InsanKU baru dari sinkronisasi yang belum diatur dan dibuat dalam 7 hari terakhir. Semua nama terpilih secara default; hapus centang pada nama yang ingin diatur nanti sebelum batas waktu tersebut."}</p>
             <div className="max-h-72 overflow-auto rounded-lg border">
@@ -73,13 +85,13 @@ export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded
                     <TableCell className="sticky left-12 z-10 min-w-44 whitespace-nowrap bg-popover shadow-[1px_0_0_var(--border)]"><div className="font-medium">{row.name}</div>{row.nik && <div className="text-xs text-muted-foreground">{row.nik}</div>}</TableCell>
                     <TableCell className="whitespace-nowrap"><InsanKuOutletPlacements placements={row.outlet_placements} insanku_uuid={row.uuid} nowrap /></TableCell>
                   </TableRow>)}
-                  {!rows.length && <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">{mode === "unset" ? "Belum ada InsanKU yang dikecualikan dari GoFitKu." : "Belum ada InsanKU baru yang menunggu pengaturan GoFitKu."}</TableCell></TableRow>}
+                  {!rows.length && <TableRow><TableCell colSpan={3} className="py-8 text-center text-muted-foreground">{release_sync ? "Tidak ada InsanKU dengan pengaturan lewati ini." : mode === "unset" ? "Belum ada InsanKU yang dikecualikan dari GoFitKu." : "Belum ada InsanKU baru yang menunggu pengaturan GoFitKu."}</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </div>
             <p className="text-sm text-muted-foreground">{selectedIds.length} dari {rows.length} InsanKU dipilih.</p>
           </div>
-          <fieldset disabled={is_saving || !rows.length} className="space-y-5">
+          {!release_sync && <fieldset disabled={is_saving || !rows.length} className="space-y-5">
             {mode === "unset" ? <div className="space-y-2">
               <label className="flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={keep_jabatan} onChange={(event) => setKeepJabatan(event.target.checked)} className="size-4 accent-primary" />Tetap berlakukan pengecualian jabatan</label>
               <p className="text-xs text-muted-foreground">Jika dicentang, InsanKU dengan jabatan aktif yang dikecualikan tetap dikecualikan. Jika tidak, pengecualian seluruh nama terpilih akan dilepas. Aturan jabatan dapat diterapkan kembali saat sinkronisasi berikutnya.</p>
@@ -87,7 +99,7 @@ export default function BulkGofitkuExclusionModal({ rows: pending_rows, excluded
               <label className="flex items-center gap-3 text-sm font-medium"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="size-4 accent-primary" />Kecualikan dalam penjualan GoFitKu</label>
               <p className="text-xs text-muted-foreground">Pengecualian berlaku selamanya selama tetap diaktifkan.</p>
             </div>}
-          </fieldset>
+          </fieldset>}
         </form>
         <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t p-5">
           <Button type="button" variant="outline" disabled={is_saving} onClick={() => on_open_change(false)}>Batal</Button>

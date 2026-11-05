@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CircleOffIcon,
@@ -435,7 +436,7 @@ export default function OutletManagementCard() {
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead className="w-14">No.</TableHead>
+                    <TableHead className="w-14 text-center">No.</TableHead>
                     <TableHead>
                       <SortableTableHead
                         label="Nama Outlet"
@@ -478,12 +479,12 @@ export default function OutletManagementCard() {
                 <TableBody>
                   {paginated_rows.map((row, index) => (
                     <TableRow key={row.uuid}>
-                      <TableCell>{(current_page - 1) * PAGE_SIZE + index + 1}</TableCell>
+                      <TableCell className="text-center">{(current_page - 1) * PAGE_SIZE + index + 1}</TableCell>
                       <TableCell className="font-medium">{row.name}</TableCell>
                       <TableCell>{row.username}</TableCell>
                       <TableCell>{format_kategori_label(row.kategori)}</TableCell>
                       <TableCell>
-                        <span
+                        <span data-slot="badge"
                           className={
                             row.is_active
                               ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"

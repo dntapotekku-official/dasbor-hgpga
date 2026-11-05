@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
 
 import { cn } from "@/lib/utils"
 
@@ -40,6 +41,7 @@ function Table({
   ...props
 }) {
   const table_ref = React.useRef(null);
+  const pathname = usePathname();
 
   React.useLayoutEffect(() => {
     const table = table_ref.current;
@@ -206,6 +208,7 @@ function Table({
       <table
         ref={table_ref}
         data-slot="table"
+        data-body-text={pathname?.startsWith("/nilai-transaksi-basket-size") ? undefined : "black"}
         className={cn("w-full caption-bottom text-sm", className)}
         {...props} />
     </div>
@@ -272,6 +275,7 @@ function TableHead({
       data-slot="table-head"
       className={cn(
         "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        className?.split(/\s+/).includes("text-right") && "[&_button]:justify-end [&_button]:text-right",
         className
       )}
       {...props} />
@@ -286,7 +290,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "p-2 text-left align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props} />

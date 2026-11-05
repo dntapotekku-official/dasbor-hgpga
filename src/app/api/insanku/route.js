@@ -10,6 +10,7 @@ import { requireMenuAccess } from "@/lib/auth";
 import { buildApiErrorResponse } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { bulkSetGofitkuExclusion, bulkUnsetGofitkuExclusion } from "@/services/bulkGofitkuExclusionService";
+import { bulkReleaseInsanKuSyncSkip } from "@/services/bulkInsanKuSyncService";
 
 export const GET = async () => {
   try {
@@ -65,6 +66,9 @@ export const PATCH = async (request) => {
     }
 
     const body = await request.json().catch(() => ({}));
+    if (["bulk_release_identity_sync", "bulk_release_placement_sync"].includes(body?.action)) {
+      return NextResponse.json(await bulkReleaseInsanKuSyncSkip(prisma, body));
+    }
     if (body?.action === "bulk_unset_gofitku_exclusion") {
       return NextResponse.json(await bulkUnsetGofitkuExclusion(prisma, body));
     }

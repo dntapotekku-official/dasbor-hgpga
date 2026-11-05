@@ -10,6 +10,7 @@ const fallback_roles_by_menu = {
   "penjualan-gofitku": ["member"],
   "nilai-transaksi-basket-size": ["member"],
   "nilai-magang": [],
+  "jam-kerja-insanku": ["member"],
   "atribut-insanku": ["member"],
 };
 

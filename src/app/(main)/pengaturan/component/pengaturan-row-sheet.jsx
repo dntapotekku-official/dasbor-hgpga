@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 
 import OptionDropdown from "@/components/option-dropdown";
+import PlacementPositionsEditor from "./placement-positions-editor";
 import CurrencyInput from "@/components/currency-input";
 import FieldLabel from "@/components/field-label";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,17 @@ function normalize_placements(value, include_key = false, field_key = "") {
       uuid_jabatan_master: String(placement?.uuid_jabatan_master ?? "").trim(),
       jabatan_name: String(placement?.jabatan_name ?? "").trim(),
       jabatan_is_active: Boolean(placement?.jabatan_is_active ?? true),
+      jabatan_list: Array.isArray(placement?.jabatan_list)
+        ? placement.jabatan_list.map((jabatan) => ({
+            uuid_jabatan_master: String(jabatan?.uuid_jabatan_master ?? "").trim(),
+            jabatan_name: String(jabatan?.jabatan_name ?? "").trim(),
+            is_active: Boolean(jabatan?.is_active ?? true),
+          }))
+        : placement?.uuid_jabatan_master ? [{
+            uuid_jabatan_master: placement.uuid_jabatan_master,
+            jabatan_name: placement.jabatan_name ?? "",
+            is_active: Boolean(placement.jabatan_is_active ?? true),
+          }] : [],
       ...(include_key
         ? {
             key: String(
@@ -270,6 +282,7 @@ export default function PengaturanRowSheet({
           active_start_date,
           uuid_jabatan_master: "",
           jabatan_is_active: true,
+          jabatan_list: [],
           key: `${field.key}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         },
       ];
@@ -538,48 +551,17 @@ export default function PengaturanRowSheet({
                               searchPlaceholder="Cari outlet..."
                               emptyMessage="Outlet tidak ditemukan."
                             />
-                            <div className="grid gap-2">
-                              <div>
-                                <OptionDropdown
-                                  id={`${field.key}-${index}-jabatan`}
-                                  value={String(
-                                    placement.uuid_jabatan_master ?? "",
-                                  )}
-                                  options={[
-                                    { value: "", label: "Pilih jabatan" },
-                                    ...(field.jabatan_options ?? []),
-                                  ]}
-                                  onValueChange={(next_value) =>
-                                    setDraft((current) => {
-                                      const next_placements = (
-                                        current[field.key] ?? []
-                                      ).map((item, item_index) =>
-                                        item_index === index
-                                          ? {
-                                              ...item,
-                                              uuid_jabatan_master: next_value,
-                                              jabatan_name:
-                                                field.jabatan_options?.find(
-                                                  (option) =>
-                                                    option.value === next_value,
-                                                )?.label ?? "",
-                                            }
-                                          : item,
-                                      );
-
-                                      return {
-                                        ...current,
-                                        [field.key]: next_placements,
-                                      };
-                                    })
-                                  }
-                                  ariaLabel={`Pilih jabatan penempatan ${index + 1}`}
-                                  searchable
-                                  searchPlaceholder="Cari jabatan..."
-                                  emptyMessage="Jabatan tidak ditemukan."
-                                />
-                              </div>
-                            </div>
+                            <PlacementPositionsEditor
+                              value={placement.jabatan_list ?? []}
+                              options={field.jabatan_options ?? []}
+                              placementNumber={index + 1}
+                              onChange={(jabatan_list) => setDraft((current) => ({
+                                ...current,
+                                [field.key]: (current[field.key] ?? []).map((item, item_index) =>
+                                  item_index === index ? { ...item, jabatan_list } : item,
+                                ),
+                              }))}
+                            />
                           </div>
                           <Button
                             type="button"

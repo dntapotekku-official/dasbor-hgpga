@@ -186,16 +186,17 @@ enum StatusOutletInsanku {
 }
 
 model tbl_outlet_insanku {
-  id           Int       @id @default(autoincrement())
-  uuid         String    @unique @db.Char(36)
-  uuid_outlet  String?   @db.Char(36)
-  uuid_insanku String?   @db.Char(36)
-  is_active    Boolean   @default(true)
-  status       StatusOutletInsanku?
-  is_skip_sync Boolean   @default(false)
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-  deleted_at   DateTime?
+  id                Int       @id @default(autoincrement())
+  uuid              String    @unique @db.Char(36)
+  uuid_outlet       String?   @db.Char(36)
+  uuid_insanku      String?   @db.Char(36)
+  pharmapp_account  String?   @db.VarChar(100)
+  is_active         Boolean   @default(true)
+  status            StatusOutletInsanku?
+  is_skip_sync      Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
 
   outlet            tbl_outlet?                          @relation(fields: [uuid_outlet], references: [uuid], onDelete: SetNull, map: "fk_outlet_insanku_outlet")
   insanku           tbl_insanku?                         @relation(fields: [uuid_insanku], references: [uuid], onDelete: SetNull, map: "fk_outlet_insanku_insanku")
@@ -203,8 +204,11 @@ model tbl_outlet_insanku {
   target_gofitku    tbl_target_gofitku[]
   inactive_periods  tbl_outlet_insanku_inactive_period[]
   jabatan_insanku   tbl_jabatan_insanku[]
+  jam_kerja_insanku_bulanan tbl_jam_kerja_insanku_bulanan[]
+  jam_kerja_insanku_harian tbl_jam_kerja_insanku_harian[]
 
   @@unique([uuid_outlet, uuid_insanku])
+  @@index([pharmapp_account])
   @@index([uuid_outlet])
   @@index([uuid_insanku])
 }
@@ -579,7 +583,7 @@ model tbl_jabatan_insanku {
   outlet_insanku tbl_outlet_insanku? @relation(fields: [uuid_outlet_insanku], references: [uuid], onDelete: SetNull, map: "fk_jabatan_insanku_outlet_insanku")
   jabatan_master tbl_jabatan_master? @relation(fields: [uuid_jabatan_master], references: [uuid], onDelete: SetNull, map: "fk_jabatan_insanku_master")
 
-  @@unique([uuid_outlet_insanku])
+  @@unique([uuid_outlet_insanku, uuid_jabatan_master], map: "uq_placement_jabatan")
   @@index([uuid_jabatan_master])
 }
 
@@ -609,4 +613,41 @@ model tbl_pengecualian_jabatan {
   jabatan_master tbl_jabatan_master @relation(fields: [uuid_jabatan_master], references: [uuid], onDelete: Cascade)
 
   @@index([uuid_jabatan_master])
+}
+
+model tbl_jam_kerja_insanku_bulanan {
+  id                  Int       @id @default(autoincrement())
+  uuid                String    @unique @db.Char(36)
+  uuid_outlet_insanku String    @db.Char(36)
+  date                DateTime
+  excel_value         Float     @default(0)
+  pharmapp_value      Float     @default(0)
+  late_value          Float     @default(0)
+  final_value         Float     @default(0)
+  is_verfified        Boolean   @default(false)
+  is_validated        Boolean   @default(false)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+
+  outlet_insanku tbl_outlet_insanku @relation(fields: [uuid_outlet_insanku], references: [uuid], onDelete: Cascade)
+
+  @@index([uuid_outlet_insanku])
+}
+
+model tbl_jam_kerja_insanku_harian {
+  id                  Int       @id @default(autoincrement())
+  uuid                String    @unique @db.Char(36)
+  uuid_outlet_insanku String    @db.Char(36)
+  date                DateTime
+  description         String?   @db.Text
+  img_url             String?   @db.Text
+  hours_value         Float     @default(0)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  deleted_at          DateTime?
+
+  outlet_insanku tbl_outlet_insanku @relation(fields: [uuid_outlet_insanku], references: [uuid], onDelete: Cascade)
+
+  @@index([uuid_outlet_insanku])
 }

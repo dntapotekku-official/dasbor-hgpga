@@ -962,7 +962,7 @@ export default function AtributInsanKuPage() {
               previous_cell_values_ref.current[cell_key] ??
               String(current_value ?? ""),
           })}
-        className="h-9 min-w-[140px]"
+        className={`h-9 min-w-[140px] ${column.type === "number" ? "text-right tabular-nums" : "text-left"}`}
       />
     );
   };
@@ -1251,7 +1251,7 @@ export default function AtributInsanKuPage() {
                         {display_attribute_columns.map((column) => (
                           <TableHead
                             key={column.key}
-                            className={`sticky top-0 z-20 min-w-[160px] bg-card text-center ${
+                            className={`sticky top-0 z-20 min-w-[160px] bg-card ${column.type === "number" ? "text-right" : column.type === "checkbox" ? "text-center" : "text-left"} ${
                               column.range_column ? "h-auto py-2" : ""
                             }`}
                           >
@@ -1305,7 +1305,7 @@ export default function AtributInsanKuPage() {
                                 : "-"}
                             </TableCell>
                             {display_attribute_columns.map((column) => (
-                              <TableCell key={`${employee.uuid}-${column.key}`}>
+                              <TableCell key={`${employee.uuid}-${column.key}`} className={column.type === "number" ? "text-right tabular-nums" : column.type === "checkbox" ? "text-center" : "text-left"}>
                                 {render_attribute_input(employee, column)}
                               </TableCell>
                             ))}

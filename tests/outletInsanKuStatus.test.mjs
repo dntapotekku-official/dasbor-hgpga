@@ -46,5 +46,5 @@ test("inactive position history cannot overwrite the selected active position", 
     { cabangs_id: 'outlet', karyawans_id: 'person', jabatans_id: 'current', active: 1 },
     { cabangs_id: 'outlet', karyawans_id: 'person', jabatans_id: 'historical', active: 0 },
   ]);
-  assert.equal(result.get('outlet:person').uuid_jabatan_master, 'current');
+  assert.deepEqual(result.get('outlet:person'), ['current']);
 });

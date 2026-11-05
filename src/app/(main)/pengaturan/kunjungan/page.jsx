@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useMemo, useState } from "react";
 import {
   FileSpreadsheetIcon,
@@ -902,7 +903,7 @@ export default function KunjunganPage() {
                   <Table className="table-fixed" containerClassName="overflow-visible">
                     <TableHeader className="sticky top-0 z-10 bg-card">
                       <TableRow>
-                        <TableHead className="w-14">No.</TableHead>
+                        <TableHead className="w-14 text-center">No.</TableHead>
                         <TableHead>
                           <SortableTableHead
                             label="Outlet"
@@ -912,7 +913,7 @@ export default function KunjunganPage() {
                             onSort={toggle_sort}
                           />
                         </TableHead>
-                        <TableHead className="w-[180px]">
+                        <TableHead className="w-[180px] text-right">
                           <SortableTableHead
                             label="Kunjungan"
                             sortKey="value"
@@ -936,13 +937,13 @@ export default function KunjunganPage() {
                     <TableBody>
                       {paginated_rows.map((row, index) => (
                         <TableRow key={row.uuid}>
-                          <TableCell>
+                          <TableCell className="text-center">
                             {(current_page - 1) * PAGE_SIZE + index + 1}
                           </TableCell>
                           <TableCell className="font-medium">
                             {row.outlet_name}
                           </TableCell>
-                          <TableCell className="tabular-nums">
+                          <TableCell className="text-right tabular-nums">
                             {Number(row.value ?? 0).toLocaleString("id-ID")}
                           </TableCell>
                           <TableCell>{format_date_label(row.date)}</TableCell>
@@ -1059,7 +1060,7 @@ export default function KunjunganPage() {
                       <Table className="table-fixed" containerClassName="overflow-visible">
                         <TableHeader className="sticky top-0 z-10 bg-card">
                           <TableRow>
-                            <TableHead className="w-14">No.</TableHead>
+                            <TableHead className="w-14 text-center">No.</TableHead>
                             <TableHead>
                               <SortableTableHead
                                 label="Outlet"
@@ -1069,7 +1070,7 @@ export default function KunjunganPage() {
                                 onSort={toggle_bulanan_sort}
                               />
                             </TableHead>
-                            <TableHead className="w-[160px]">
+                            <TableHead className="w-[160px] text-right">
                               <SortableTableHead
                                 label="Kunjungan"
                                 sortKey="value"
@@ -1102,13 +1103,13 @@ export default function KunjunganPage() {
                         <TableBody>
                           {paginated_bulanan_rows.map((row, index) => (
                             <TableRow key={row.uuid}>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 {(current_bulanan_page - 1) * PAGE_SIZE + index + 1}
                               </TableCell>
                               <TableCell className="font-medium">
                                 {row.outlet_name}
                               </TableCell>
-                              <TableCell className="tabular-nums">
+                              <TableCell className="text-right tabular-nums">
                                 {Number(row.value ?? 0).toLocaleString("id-ID")}
                               </TableCell>
                               <TableCell>{format_date_label(row.from_date)}</TableCell>

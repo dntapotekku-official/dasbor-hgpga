@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useMemo, useState } from "react";
 import {
   ChevronsUpDownIcon,
@@ -533,10 +534,10 @@ export default function KepatuhanSopCctvPage() {
                           <TableCell className="font-medium">
                             {item.nama_outlet}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right tabular-nums">
                             {format_number(item.total)}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right tabular-nums">
                             {format_number(item.total_point)}
                           </TableCell>
                         </TableRow>

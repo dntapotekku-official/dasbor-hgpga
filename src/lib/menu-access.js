@@ -24,6 +24,11 @@ export const menu_access_options = [
   },
   { value: "nilai-magang", label: "Nilai Magang", path: "/nilai-magang" },
   {
+    value: "jam-kerja-insanku",
+    label: "Jam Kerja InsanKU",
+    path: "/jam-kerja-insanku",
+  },
+  {
     value: "atribut-insanku",
     label: "Atribut InsanKU",
     path: "/atribut-insanku",

@@ -21,7 +21,7 @@ import SortableTableHead from "@/components/sortable-table-head";
 import SyncActionButton from "@/components/sync-action-button";
 import ConfirmActionDialog from "@/components/confirm-action-dialog";
 import usePagination from "@/hooks/usePagination";
-import useSearch from "@/hooks/useSearch";
+import { matchesInsanKuFilters } from "@/lib/insanKuFilters";
 import PengaturanRowSheet from "../../component/pengaturan-row-sheet";
 import JabatanGofitkuExclusionModal from "./jabatan-gofitku-exclusion-modal";
 import InsanKuOutletPlacements from "./insanku-outlet-placements";
@@ -63,7 +63,7 @@ function build_insanku_sheet_key(item) {
     .map((placement) => [
       placement.uuid ?? "",
       placement.outlet_uuid ?? "",
-      placement.uuid_jabatan_master ?? "",
+      JSON.stringify(placement.jabatan_list ?? placement.uuid_jabatan_master ?? ""),
       Boolean(placement.jabatan_is_active),
     ].join(":"))
     .join("|");
@@ -82,7 +82,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
   const [outlet, setOutlet] = useState([]);
   const [jabatan, setJabatan] = useState([]);
   const [insanku, setInsanKu] = useState([]);
-  const { search, setSearch, filtered_items } = useSearch(insanku, ["name"]);
+  const [search, setSearch] = useState("");
+  const [selected_jabatan, setSelectedJabatan] = useState("all");
   const [selected_outlet, setSelectedOutlet] = useState("all");
   const [selected_insanku, setSelectedInsanKu] = useState(null);
   const [account_action_insanku, setAccountActionInsanKu] = useState(null);
@@ -109,8 +110,16 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     ],
     [outlet],
   );
+  const jabatan_options = useMemo(() => [
+    { value: "all", label: "Semua jabatan" },
+    ...jabatan.map((item) => ({ value: item.uuid, label: item.name })),
+  ], [jabatan]);
+  const filtered_items = useMemo(() => insanku.filter((item) => matchesInsanKuFilters(item, {
+    search, outlet: selected_outlet, jabatan: selected_jabatan,
+  })), [insanku, search, selected_outlet, selected_jabatan]);
   const advanced_filtered_items = useMemo(
     () => filtered_items.filter((item) => {
+      if (!item.is_active) return false;
       if (advanced_filters.skip_identity && !item.is_skip_sync_insanku) {
         return false;
       }
@@ -134,40 +143,27 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     }),
     [advanced_filters, filtered_items],
   );
-  const outlet_filtered_items = useMemo(
-    () =>
-      selected_outlet === "all"
-        ? advanced_filtered_items
-        : advanced_filtered_items.filter((item) =>
-            item.outlet_uuids?.includes(selected_outlet),
-          ),
-    [advanced_filtered_items, selected_outlet],
-  );
   const active_advanced_filter_count = [
     advanced_filters.skip_identity,
     advanced_filters.skip_placement,
     advanced_filters.exclude_gofitku,
   ].filter(Boolean).length;
   const sorted_items = useMemo(() => {
-    return [...outlet_filtered_items].sort((a, b) => {
+    return [...advanced_filtered_items].sort((a, b) => {
       const direction = sort_direction === "asc" ? 1 : -1;
       const first_value = sort_key === "outlet_names"
         ? (a.outlet_names ?? []).join(", ")
-        : sort_key === "is_active"
-          ? Number(Boolean(a.is_active))
-          : a[sort_key];
+        : a[sort_key];
       const second_value = sort_key === "outlet_names"
         ? (b.outlet_names ?? []).join(", ")
-        : sort_key === "is_active"
-          ? Number(Boolean(b.is_active))
-          : b[sort_key];
+        : b[sort_key];
 
       return String(first_value ?? "").localeCompare(
         String(second_value ?? ""),
         "id-ID",
       ) * direction;
     });
-  }, [outlet_filtered_items, sort_direction, sort_key]);
+  }, [advanced_filtered_items, sort_direction, sort_key]);
   const {
     current_page,
     setCurrentPage,
@@ -197,6 +193,11 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
     .filter((item) => item.is_exclude_penjualan_gofitku)
     .sort((a, b) => a.name.localeCompare(b.name, "id-ID")), [insanku]);
 
+  const identity_skip_rows = useMemo(() => insanku.filter((item) => item.is_active && item.is_skip_sync_insanku)
+    .sort((a, b) => a.name.localeCompare(b.name, "id-ID")), [insanku]);
+  const placement_skip_rows = useMemo(() => insanku.filter((item) => item.is_active && item.is_skip_sync_outlet_insanku)
+    .sort((a, b) => a.name.localeCompare(b.name, "id-ID")), [insanku]);
+
   const handle_bulk_gofitku_save = async (settings) => {
     setIsBulkSaving(true);
     try {
@@ -207,12 +208,17 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.message || "Gagal menyimpan pengaturan GoFitKu.");
       const selected = new Set(settings.uuid_insanku);
-      setInsanKu((current) => current.map((item) => selected.has(item.uuid) ? {
-        ...item, is_gofitku_setup_pending: false,
-        is_exclude_penjualan_gofitku: settings.action === "bulk_unset_gofitku_exclusion"
-          ? payload.retained_ids.includes(item.uuid)
-          : settings.is_exclude_penjualan_gofitku,
-      } : item));
+      setInsanKu((current) => current.map((item) => {
+        if (!selected.has(item.uuid)) return item;
+        if (settings.action === "bulk_release_identity_sync") return { ...item, is_skip_sync_insanku: false };
+        if (settings.action === "bulk_release_placement_sync") return { ...item, is_skip_sync_outlet_insanku: false };
+        return {
+          ...item, is_gofitku_setup_pending: false,
+          is_exclude_penjualan_gofitku: settings.action === "bulk_unset_gofitku_exclusion"
+            ? payload.retained_ids.includes(item.uuid)
+            : settings.is_exclude_penjualan_gofitku,
+        };
+      }));
       setIsBulkOpen(false);
       toast.success(payload.message);
     } finally { setIsBulkSaving(false); }
@@ -491,9 +497,9 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 <SearchInput
                   id="filter-pencarian-insanku"
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Cari nama InsanKU..."
-                  onClear={() => setSearch("")}
+                  onChange={(event) => { setSearch(event.target.value); setCurrentPage(1); }}
+                  placeholder="Cari nama atau akun PharmApp..."
+                  onClear={() => { setSearch(""); setCurrentPage(1); }}
                 />
               </FilterField>
               {!is_non_slip_gaji ? (
@@ -501,7 +507,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   <OptionDropdown
                     id="filter-outlet-insanku"
                     value={selected_outlet}
-                    onValueChange={setSelectedOutlet}
+                    onValueChange={(value) => { setSelectedOutlet(value); setCurrentPage(1); }}
                     options={outlet_options}
                     searchable
                     ariaLabel="Filter outlet InsanKU"
@@ -511,6 +517,19 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                   />
                 </FilterField>
               ) : null}
+              <FilterField label="Jabatan" htmlFor="filter-jabatan-insanku" className="w-full lg:w-56 lg:shrink-0">
+                <OptionDropdown
+                  id="filter-jabatan-insanku"
+                  value={selected_jabatan}
+                  onValueChange={(value) => { setSelectedJabatan(value); setCurrentPage(1); }}
+                  options={jabatan_options}
+                  searchable
+                  ariaLabel="Filter jabatan InsanKU"
+                  searchPlaceholder="Cari jabatan..."
+                  emptySearchMessage="Jabatan tidak ditemukan."
+                  triggerClassName="w-full"
+                />
+              </FilterField>
               {!is_non_slip_gaji ? (
                 <Button
                   type="button"
@@ -561,10 +580,10 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
 
             <div className="overflow-hidden rounded-lg border">
               <div className="max-h-[560px] overflow-auto">
-                <Table className="min-w-max" containerClassName="overflow-visible">
+                <Table className="min-w-max" containerClassName="overflow-visible" fixedColumns={["no", "nik", "nama"]}>
                   <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
-                      <TableHead className="w-14 min-w-14">No.</TableHead>
+                      <TableHead className="w-14 min-w-14 text-center">No.</TableHead>
                       <TableHead className="w-44 min-w-44">
                         <SortableTableHead
                           label="NIK"
@@ -578,15 +597,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                         <SortableTableHead
                           label="Nama"
                           sortKey="name"
-                          currentSortKey={sort_key}
-                          sortDirection={sort_direction}
-                          onSort={toggle_sort}
-                        />
-                      </TableHead>
-                      <TableHead>
-                        <SortableTableHead
-                          label="Username"
-                          sortKey="username"
                           currentSortKey={sort_key}
                           sortDirection={sort_direction}
                           onSort={toggle_sort}
@@ -610,22 +620,13 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                           onSort={toggle_sort}
                         />
                       </TableHead>
-                      <TableHead>
-                        <SortableTableHead
-                          label="Status"
-                          sortKey="is_active"
-                          currentSortKey={sort_key}
-                          sortDirection={sort_direction}
-                          onSort={toggle_sort}
-                        />
-                      </TableHead>
                       <TableHead>Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginated_rows.map((row, index) => (
                       <TableRow key={row.uuid}>
-                        <TableCell className="w-14 min-w-14">
+                        <TableCell className="w-14 min-w-14 text-center">
                           {(current_page - 1) * PAGE_SIZE + index + 1}
                         </TableCell>
                         <TableCell className="w-44 min-w-44">
@@ -634,9 +635,8 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                         <TableCell className="min-w-64 font-medium">
                           {row.name}
                         </TableCell>
-                        <TableCell>{row.username}</TableCell>
-                        <TableCell>
-                          <InsanKuOutletPlacements placements={row.outlet_placements} insanku_uuid={row.uuid} />
+                        <TableCell className="whitespace-nowrap">
+                          <InsanKuOutletPlacements placements={row.outlet_placements} insanku_uuid={row.uuid} nowrap />
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {row.join_date
@@ -647,17 +647,6 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                                 timeZone: "UTC",
                               })
                             : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={
-                              row.is_active
-                                ? "inline-flex rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                : "inline-flex rounded-full bg-rose-100 px-2 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                            }
-                          >
-                            {row.is_active ? "Aktif" : "Tidak Aktif"}
-                          </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-nowrap items-center gap-2 whitespace-nowrap">
@@ -695,7 +684,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 </Table>
               </div>
 
-              {outlet_filtered_items.length === 0 ? (
+              {advanced_filtered_items.length === 0 ? (
                 <div className="border-t px-4 py-8 text-center text-sm text-muted-foreground">
                   Tidak ada InsanKU yang cocok dengan pencarian.
                 </div>
@@ -703,7 +692,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
                 <Pagination
                   current_page={current_page}
                   page_size={PAGE_SIZE}
-                  total_items={outlet_filtered_items.length}
+                  total_items={advanced_filtered_items.length}
                   total_pages={total_pages}
                   item_label="InsanKU"
                   on_previous={previous_page}
@@ -812,7 +801,7 @@ export default function InsanKuTab({ is_non_slip_gaji = false }) {
               <JabatanGofitkuExclusionModal on_open_change={setIsJabatanExclusionOpen} />
             )}
             {!is_non_slip_gaji && is_bulk_open && (
-              <BulkGofitkuExclusionModal rows={pending_gofitku_rows} excluded_rows={excluded_gofitku_rows} is_saving={is_bulk_saving} on_open_change={setIsBulkOpen} on_save={handle_bulk_gofitku_save} />
+              <BulkGofitkuExclusionModal rows={pending_gofitku_rows} excluded_rows={excluded_gofitku_rows} identity_skip_rows={identity_skip_rows} placement_skip_rows={placement_skip_rows} is_saving={is_bulk_saving} on_open_change={setIsBulkOpen} on_save={handle_bulk_gofitku_save} />
             )}
             {!is_non_slip_gaji ? (
               <DialogPrimitive.Root

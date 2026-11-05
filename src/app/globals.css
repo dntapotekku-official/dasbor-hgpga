@@ -191,3 +191,18 @@
     white-space: nowrap;
   }
 }
+
+/* Teks isi tabel berwarna hitam; tabel pada menu NT/BS mempertahankan warna metrik. */
+[data-slot="table"][data-body-text="black"] :is(tbody, tfoot) :is(td, td *, th, th *):not([data-slot="badge"], [data-slot="badge"] *, [data-slot="button"][data-variant="delete"], [data-slot="button"][data-variant="delete"] *) {
+  color: #000 !important;
+}
+
+[data-slot="table"][data-body-text="black"] [data-slot="button"][data-variant="delete"],
+[data-slot="table"][data-body-text="black"] [data-slot="button"][data-variant="delete"] * {
+  color: #fff !important;
+}
+
+/* Warna checkbox konsisten di seluruh halaman, termasuk di dalam tabel. */
+input[type="checkbox"] {
+  accent-color: #2563eb !important;
+}

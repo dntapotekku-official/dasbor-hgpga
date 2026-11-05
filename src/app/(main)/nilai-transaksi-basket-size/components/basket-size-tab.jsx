@@ -46,7 +46,7 @@ function PeriodHeader({ label, prefix = null, prefix_as_title = false }) {
   }
 
   return (
-    <span className="flex flex-col items-center leading-snug">
+    <span className="flex flex-col items-end leading-snug">
       <span>
         {prefix_as_title
           ? prefix
@@ -113,13 +113,13 @@ export default function BasketSizeTab({
           ].map((header) => (
             <TableHead
               key={header.key}
-              className="sticky top-0 z-30 min-w-[120px] bg-blue-200 text-center text-blue-950"
+              className="sticky top-0 z-30 min-w-[120px] bg-blue-200 text-right text-blue-950"
             >
               {header.label}
             </TableHead>
           ))}
           {can_manage ? (
-            <TableHead className="sticky top-0 z-30 min-w-[180px] bg-blue-200 text-center text-blue-950">
+            <TableHead className="sticky top-0 z-30 min-w-[180px] bg-blue-200 text-left text-blue-950">
               Aksi
             </TableHead>
           ) : null}
@@ -145,10 +145,10 @@ export default function BasketSizeTab({
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">{summaryExclusionLabel(row, "basket_size")}</span>
               )}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell className="text-right">
               {formatBsDecimal(row.bs_target)}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell className="text-right">
               {formatDecimal(row.bs_current_month_sku_qty, 0)}
             </TableCell>
             <TableCell className="text-right">
@@ -157,30 +157,30 @@ export default function BasketSizeTab({
             <TableCell
               className={
                 Number(row.bs_current_month) === highest_achievement
-                  ? "bg-emerald-100 text-center font-semibold text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100"
-                  : "text-center"
+                  ? "bg-emerald-100 text-right font-semibold text-emerald-950 dark:bg-emerald-950/60 dark:text-emerald-100"
+                  : "text-right"
               }
             >
               {formatBsDecimal(row.bs_current_month)}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell className="text-right">
               {formatBsDecimal(row.bs_last_month)}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell className="text-right">
               {formatBsPercentage(row.bs_growth)}
             </TableCell>
-            <TableCell className={`text-center ${gapClassName(row.bs_gap_growth)}`}>
+            <TableCell className={`text-right ${gapClassName(row.bs_gap_growth)}`}>
               {formatBsPercentage(row.bs_gap_growth)}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell className="text-right">
               {formatBsPercentage(row.bs_target_compare)}
             </TableCell>
-            <TableCell className={`text-center ${gapClassName(row.bs_gap_target)}`}>
+            <TableCell className={`text-right ${gapClassName(row.bs_gap_target)}`}>
               {formatBsPercentage(row.bs_gap_target)}
             </TableCell>
             {can_manage ? (
               <TableCell className="whitespace-nowrap">
-                <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
+                <div className="flex flex-nowrap items-center justify-start gap-2 whitespace-nowrap">
                   <Button
                     type="button"
                     variant="outline"
@@ -212,34 +212,34 @@ export default function BasketSizeTab({
           <TableCell className="bg-muted md:sticky md:bottom-0 md:left-24 md:z-40">
             {rows.length} outlet
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatBsDecimal(category_metrics.bs_target)}
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatDecimal(category_metrics.bs_current_month_sku_qty, 0)}
           </TableCell>
           <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatDecimal(category_metrics.bs_current_month_kunjungan, 0)}
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatBsDecimal(category_metrics.bs_current_month)}
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatBsDecimal(category_metrics.bs_last_month)}
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatBsPercentage(category_metrics.bs_growth)}
           </TableCell>
           <TableCell
-            className={`text-center md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.bs_gap_growth)}`}
+            className={`text-right md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.bs_gap_growth)}`}
           >
             {formatBsPercentage(category_metrics.bs_gap_growth)}
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatBsPercentage(category_metrics.bs_target_compare)}
           </TableCell>
           <TableCell
-            className={`text-center md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.bs_gap_target)}`}
+            className={`text-right md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.bs_gap_target)}`}
           >
             {formatBsPercentage(category_metrics.bs_gap_target)}
           </TableCell>

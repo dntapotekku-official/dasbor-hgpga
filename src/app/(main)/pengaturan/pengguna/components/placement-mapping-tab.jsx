@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useId, useMemo, useState } from "react";
 import { LoaderCircleIcon } from "lucide-react";
 import FilterField from "@/components/filter-field";
@@ -109,7 +110,7 @@ export default function PlacementMappingTab() {
                   <p className="px-4 py-8 text-center text-sm text-muted-foreground">Tidak ada penempatan tercatat pada bulan ini untuk Outlet yang dipilih.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table aria-label={`Mapping harian per Outlet, ${month.name} ${year}`} className="w-full table-fixed border-separate border-spacing-0 text-xs" style={{ minWidth: 400 + month.total_days * 34 }}>
+                    <table data-slot="table" data-body-text="black" aria-label={`Mapping harian per Outlet, ${month.name} ${year}`} className="w-full table-fixed border-separate border-spacing-0 text-xs" style={{ minWidth: 400 + month.total_days * 34 }}>
                       <thead>
                         <tr>
                           <th scope="col" className="sticky left-0 z-20 w-[200px] border-b border-r bg-muted px-3 py-3 text-left">Outlet</th>

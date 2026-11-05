@@ -32,7 +32,7 @@ function PeriodHeader({ label }) {
   }
 
   return (
-    <span className="flex flex-col items-center leading-snug">
+    <span className="flex flex-col items-end leading-snug">
       <span>{label.slice(0, separator_index)}</span>
       <span>{label.slice(separator_index + 1)}</span>
     </span>
@@ -84,13 +84,13 @@ export default function NilaiTransaksiTab({
           ].map(([label, className]) => (
             <TableHead
               key={label}
-              className={`sticky top-0 z-30 bg-orange-100 text-orange-950 ${className}`}
+              className={`sticky top-0 z-30 bg-orange-100 text-orange-950 text-right ${className.replace("text-center", "text-right")}`}
             >
               <PeriodHeader label={label} />
             </TableHead>
           ))}
           {can_manage ? (
-            <TableHead className="sticky top-0 z-30 min-w-[180px] bg-orange-100 text-center text-orange-950">
+            <TableHead className="sticky top-0 z-30 min-w-[180px] bg-orange-100 text-left text-orange-950">
               Aksi
             </TableHead>
           ) : null}
@@ -116,7 +116,7 @@ export default function NilaiTransaksiTab({
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">{summaryExclusionLabel(row, "nilai_transaksi")}</span>
               )}
             </TableCell>
-            <TableCell>
+            <TableCell className="text-right tabular-nums">
               <CurrencyValue value={row.nt_target} align="split" fractionDigits={0} />
             </TableCell>
             <TableCell className="text-right">
@@ -140,25 +140,25 @@ export default function NilaiTransaksiTab({
             >
               <CurrencyValue value={row.nt_daily} align="split" />
             </TableCell>
-            <TableCell>
+            <TableCell className="text-right tabular-nums">
               <CurrencyValue value={row.nt_current_month} align="split" />
             </TableCell>
-            <TableCell>
+            <TableCell className="text-right tabular-nums">
               <CurrencyValue value={row.nt_last_month} align="split" />
             </TableCell>
-            <TableCell className="text-center">{formatPercentage(row.nt_growth)}</TableCell>
-            <TableCell className={`text-center ${gapClassName(row.nt_gap_growth)}`}>
+            <TableCell className="text-right">{formatPercentage(row.nt_growth)}</TableCell>
+            <TableCell className={`text-right ${gapClassName(row.nt_gap_growth)}`}>
               {formatPercentage(row.nt_gap_growth)}
             </TableCell>
-            <TableCell className="text-center">
+            <TableCell className="text-right">
               {formatPercentage(row.nt_target_compare)}
             </TableCell>
-            <TableCell className={`text-center ${gapClassName(row.nt_gap_target)}`}>
+            <TableCell className={`text-right ${gapClassName(row.nt_gap_target)}`}>
               {formatPercentage(row.nt_gap_target)}
             </TableCell>
             {can_manage ? (
               <TableCell className="whitespace-nowrap">
-                <div className="flex flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
+                <div className="flex flex-nowrap items-center justify-start gap-2 whitespace-nowrap">
                   <Button
                     type="button"
                     variant="outline"
@@ -190,7 +190,7 @@ export default function NilaiTransaksiTab({
           <TableCell className="bg-muted md:sticky md:bottom-0 md:left-24 md:z-40">
             {rows.length} outlet
           </TableCell>
-          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
+          <TableCell className="text-right tabular-nums bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_target} align="split" fractionDigits={0} />
           </TableCell>
           <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
@@ -211,28 +211,28 @@ export default function NilaiTransaksiTab({
           <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatDecimal(category_metrics.nt_current_month_kunjungan, 0)}
           </TableCell>
-          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
+          <TableCell className="text-right tabular-nums bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_daily} align="split" />
           </TableCell>
-          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
+          <TableCell className="text-right tabular-nums bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_current_month} align="split" />
           </TableCell>
-          <TableCell className="bg-muted md:sticky md:bottom-0 md:z-30">
+          <TableCell className="text-right tabular-nums bg-muted md:sticky md:bottom-0 md:z-30">
             <CurrencyValue value={category_metrics.nt_last_month} align="split" />
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatPercentage(category_metrics.nt_growth)}
           </TableCell>
           <TableCell
-            className={`text-center md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.nt_gap_growth)}`}
+            className={`text-right md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.nt_gap_growth)}`}
           >
             {formatPercentage(category_metrics.nt_gap_growth)}
           </TableCell>
-          <TableCell className="bg-muted text-center md:sticky md:bottom-0 md:z-30">
+          <TableCell className="bg-muted text-right md:sticky md:bottom-0 md:z-30">
             {formatPercentage(category_metrics.nt_target_compare)}
           </TableCell>
           <TableCell
-            className={`text-center md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.nt_gap_target)}`}
+            className={`text-right md:sticky md:bottom-0 md:z-30 ${gapClassName(category_metrics.nt_gap_target)}`}
           >
             {formatPercentage(category_metrics.nt_gap_target)}
           </TableCell>

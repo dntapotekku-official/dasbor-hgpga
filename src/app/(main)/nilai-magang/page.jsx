@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AwardIcon,
@@ -440,7 +441,7 @@ export default function NilaiMagangPage() {
                         />
                       </TableHead>
                       <TableHead>Outlet Magang</TableHead>
-                      <TableHead className="w-36 text-center">
+                      <TableHead className="w-36 text-right">
                         <SortableTableHead
                           label="Nilai Rapor"
                           sortKey="value"
@@ -469,8 +470,8 @@ export default function NilaiMagangPage() {
                             {row.employee_name}
                           </TableCell>
                           <TableCell>{row.outlet_name}</TableCell>
-                          <TableCell className="text-center">
-                            <span
+                          <TableCell className="text-right tabular-nums">
+                            <span data-slot="badge"
                               className={`inline-flex min-w-20 justify-center rounded-full border px-3 py-1 font-semibold ${score_class(row.value)}`}
                             >
                               {format_score(row.value)}

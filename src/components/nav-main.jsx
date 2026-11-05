@@ -52,7 +52,7 @@ export function NavMain({ items }) {
         {item.title}
       </span>
       {item.badge ? (
-        <span className="shrink-0 rounded-full border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] leading-none font-semibold text-white/90">
+        <span className="ml-auto shrink-0 rounded-full border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] leading-none font-semibold text-white/90">
           {item.badge}
         </span>
       ) : null}

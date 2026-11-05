@@ -288,7 +288,7 @@ export default function AdminTab() {
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead className="w-14">No.</TableHead>
+                    <TableHead className="w-14 text-center">No.</TableHead>
                     <TableHead>
                       <SortableTableHead
                         label="Nama"
@@ -323,7 +323,7 @@ export default function AdminTab() {
                 <TableBody>
                   {paginated_rows.map((row, index) => (
                     <TableRow key={row.uuid}>
-                      <TableCell>{(current_page - 1) * PAGE_SIZE + index + 1}</TableCell>
+                      <TableCell className="text-center">{(current_page - 1) * PAGE_SIZE + index + 1}</TableCell>
                       <TableCell className="font-medium">{row.name}</TableCell>
                       <TableCell>{row.username}</TableCell>
                       <TableCell>{format_role_label(row.role)}</TableCell>

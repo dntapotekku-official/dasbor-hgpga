@@ -12,11 +12,14 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@google-cloud/storage": "^8.4.0",
     "@prisma/adapter-mariadb": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
+    "firebase": "^13.2.0",
+    "google-auth-library": "^11.3.3",
     "jose": "^6.2.9",
     "lucide-react": "^1.31.0",
     "mariadb": "3.5.4",
@@ -44,7 +47,13 @@
       "uuid": "11.1.1"
     },
     "mariadb": "3.5.4",
-    "mysql2": "3.24.4"
+    "mysql2": "3.24.4",
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.14.7"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
   },
   "allowScripts": {
     "prisma@7.10.0": true,

@@ -57,6 +57,12 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
             placement?.uuid_jabatan_master ?? "",
           ).trim(),
           jabatan_is_active: Boolean(placement?.jabatan_is_active ?? true),
+          jabatan_list: Array.isArray(placement?.jabatan_list)
+            ? placement.jabatan_list.map((jabatan) => ({
+                uuid_jabatan_master: String(jabatan?.uuid_jabatan_master ?? "").trim(),
+                is_active: Boolean(jabatan?.is_active ?? true),
+              })).filter((jabatan) => jabatan.uuid_jabatan_master)
+            : undefined,
         }))
         .filter((placement) => placement.outlet_uuid)
     : [];
@@ -86,6 +92,13 @@ function normalizeOutletPlacements(outlet_placements, outlet_uuids) {
 
   if (unique_outlet_uuids.length !== resolved_placements.length) {
     throw new Error("Outlet yang sama tidak boleh dipilih lebih dari satu kali.");
+  }
+
+  for (const placement of resolved_placements) {
+    const positions = placement.jabatan_list?.map((jabatan) => jabatan.uuid_jabatan_master) ?? [];
+    if (positions.length !== new Set(positions).size) {
+      throw new Error("Jabatan yang sama tidak boleh dipilih lebih dari satu kali pada satu penempatan.");
+    }
   }
 
   return {
@@ -171,22 +184,31 @@ async function validateJabatanMaster(database, jabatan_uuids) {
 }
 
 async function savePlacementJabatan(database, placement, uuid_outlet_insanku) {
-  const uuid_jabatan_master = placement.uuid_jabatan_master || null;
-
-  await database.tbl_jabatan_insanku.upsert({
-    where: { uuid_outlet_insanku },
-    update: {
-      uuid_jabatan_master,
-      is_active: placement.jabatan_is_active,
-      deleted_at: null,
-    },
-    create: {
-      uuid: randomUUID(),
-      uuid_outlet_insanku,
-      uuid_jabatan_master,
-      is_active: placement.jabatan_is_active,
-    },
+  const selected = Array.isArray(placement.jabatan_list)
+    ? placement.jabatan_list
+    : [{ uuid_jabatan_master: placement.uuid_jabatan_master || null, is_active: placement.jabatan_is_active ?? true }];
+  const existing = await database.tbl_jabatan_insanku.findMany({ where: { uuid_outlet_insanku } });
+  const keep = new Set(selected.map((row) => row.uuid_jabatan_master || null));
+  const removed = existing.filter((row) => !keep.has(row.uuid_jabatan_master));
+  if (removed.length) await database.tbl_jabatan_insanku.updateMany({
+    where: { uuid: { in: removed.map((row) => row.uuid) } },
+    data: { is_active: false, deleted_at: new Date() },
   });
+  for (const jabatan of selected) {
+    const uuid_jabatan_master = jabatan.uuid_jabatan_master || null;
+    const data = { uuid_jabatan_master, is_active: jabatan.is_active, deleted_at: null };
+    if (uuid_jabatan_master) {
+      await database.tbl_jabatan_insanku.upsert({
+        where: { uuid_outlet_insanku_uuid_jabatan_master: { uuid_outlet_insanku, uuid_jabatan_master } },
+        update: data,
+        create: { uuid: randomUUID(), uuid_outlet_insanku, ...data },
+      });
+    } else {
+      const placeholder = existing.find((row) => !row.uuid_jabatan_master);
+      if (placeholder) await database.tbl_jabatan_insanku.update({ where: { uuid: placeholder.uuid }, data });
+      else await database.tbl_jabatan_insanku.create({ data: { uuid: randomUUID(), uuid_outlet_insanku, ...data } });
+    }
+  }
 }
 
 async function getJabatanMasterData() {
@@ -442,6 +464,7 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
           is_active: true,
           status: true,
           is_skip_sync: true,
+          pharmapp_account: true,
           outlet: {
             select: { uuid: true, name: true },
           },
@@ -452,7 +475,6 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
             orderBy: {
               updated_at: "desc",
             },
-            take: 1,
             select: {
               uuid: true,
               is_active: true,
@@ -510,8 +532,16 @@ export async function getInsanKuSettingsData(is_slip_gaji_account = true) {
                 uuid: outlet_insanku.uuid,
                 outlet_uuid: outlet_insanku.outlet.uuid,
                 outlet_name: outlet_insanku.outlet.name,
+                pharmapp_account: outlet_insanku.pharmapp_account ?? "",
                 is_active: Boolean(outlet_insanku.is_active),
                 status: outlet_insanku.status ?? null,
+                jabatan_list: outlet_insanku.jabatan_insanku
+                  .filter((jabatan) => jabatan.jabatan_master?.uuid)
+                  .map((jabatan) => ({
+                    uuid_jabatan_master: jabatan.jabatan_master.uuid,
+                    jabatan_name: jabatan.jabatan_master.name,
+                    is_active: Boolean(jabatan.is_active),
+                  })),
                 uuid_jabatan_master: jabatan_insanku?.jabatan_master?.uuid ?? "",
                 jabatan_name: jabatan_insanku?.jabatan_master?.name ?? "",
                 jabatan_is_active: Boolean(jabatan_insanku?.is_active ?? true),
@@ -849,8 +879,8 @@ export async function updateInsanKu({
   await validateOutlets(prisma, unique_outlet_uuids);
   await validateJabatanMaster(
     prisma,
-    resolved_outlet_placements.map(
-      (placement) => placement.uuid_jabatan_master,
+    resolved_outlet_placements.flatMap(
+      (placement) => placement.jabatan_list?.map((jabatan) => jabatan.uuid_jabatan_master) ?? [placement.uuid_jabatan_master],
     ),
   );
 
@@ -1187,8 +1217,8 @@ export async function createInsanKuNonSlipGaji({
   await validateOutlets(prisma, normalized_placements.outlet_uuids);
   await validateJabatanMaster(
     prisma,
-    normalized_placements.placements.map(
-      (placement) => placement.uuid_jabatan_master,
+    normalized_placements.placements.flatMap(
+      (placement) => placement.jabatan_list?.map((jabatan) => jabatan.uuid_jabatan_master) ?? [placement.uuid_jabatan_master],
     ),
   );
 

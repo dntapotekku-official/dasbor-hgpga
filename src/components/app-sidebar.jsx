@@ -24,6 +24,7 @@ import {
   ChartBarIcon,
   CctvIcon,
   ClipboardCheckIcon,
+  ClipboardClock,
   Columns3Icon,
   CrosshairIcon,
   CircleOffIcon,
@@ -91,6 +92,16 @@ const data = {
         <ClipboardCheckIcon />
       ),
       menuKey: "nilai-magang",
+    },
+    {
+      title: "Jam Kerja InsanKU",
+      url: "/jam-kerja-insanku",
+      icon: (
+        <ClipboardClock />
+      ),
+      badge: "Beta",
+      roles: ["member"],
+      menuKey: "jam-kerja-insanku",
     },
     {
       title: "Atribut InsanKU",
