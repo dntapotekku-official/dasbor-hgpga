@@ -27,7 +27,7 @@ function fixture(storedActive = true) {
   const dependencies = {
     prisma: { tbl_insanku: { findUnique: async () => ({ uuid: "employee", deleted_at: null, is_slip_gaji_account: true, is_active: storedActive }) }, $transaction: async (callback) => callback(tx) },
     ...normalize, randomUUID, normalizeNik: (value) => value,
-    parsePlacementMonth, currentPlacementMonth, currentPlacementDay, permanentGofitkuExclusionDates,
+    parsePlacementMonth, currentPlacementMonth, currentPlacementDay: () => new Date("2026-11-10T00:00:00.000Z"), permanentGofitkuExclusionDates,
     validateOutlets: async () => {}, validateJabatanMaster: async () => {}, closeInsanKuInactivePeriod: async (...args) => closedEmployees.push(args), openInsanKuInactivePeriod: async () => {},
     openOutletInsanKuInactivePeriod: async (_tx, uuid, date) => removals.push({ uuid, date }),
     closeOutletInsanKuInactivePeriod: async (...args) => closedPlacements.push(args),
@@ -49,12 +49,12 @@ test("placement month validation normalizes to the first day and accepts valid l
   assert.equal(parsePlacementMonth(""), null);
 });
 
-test("editing an employee starts additions in the selected month and removals on the action day", async () => {
+test("editing an employee starts additions in the selected month and removals on the day after the action", async () => {
   const f = fixture();
   await f.update(f.payload);
   assert.equal(f.starts[0].toISOString(), "2026-11-01T00:00:00.000Z");
   assert.equal(f.removals[0].uuid, "old-placement");
-  assert.equal(f.removals[0].date.toISOString(), currentPlacementDay().toISOString());
+  assert.equal(f.removals[0].date.toISOString(), "2026-11-11T00:00:00.000Z");
 });
 
 test("placement history excludes the entire period before the chosen month", async () => {
@@ -138,7 +138,7 @@ test("changing the outlet preserves the old placement even without sales and sta
   await f.update({ ...f.payload, outlet_placements: [{ uuid: "old-placement", outlet_uuid: "new-outlet" }], deleted_outlet_placements: [] });
   assert.equal(f.removals.length, 1);
   assert.equal(f.removals[0].uuid, "old-placement");
-  assert.equal(f.removals[0].date.toISOString(), currentPlacementDay().toISOString());
+  assert.equal(f.removals[0].date.toISOString(), "2026-11-11T00:00:00.000Z");
   assert.equal(f.starts[0].toISOString(), currentPlacementMonth().toISOString());
   assert.equal(f.placementWrites[0].where.uuid, "old-placement");
   assert.deepEqual(f.placementWrites[0].data, { is_active: false });

@@ -230,6 +230,7 @@ async function upsertJabatanInsanKu(
 
 export async function syncOutletInsanKu() {
   const sync_day = currentPlacementDay();
+  const placement_inactive_day = new Date(sync_day.getTime() + 24 * 60 * 60 * 1000);
   const sync_month = currentPlacementMonth(sync_day);
   const [
     insanku_payload,
@@ -462,7 +463,7 @@ export async function syncOutletInsanKu() {
                     openOutletInsanKuInactivePeriod(
                       tx,
                       relation.uuid,
-                      sync_day,
+                      placement_inactive_day,
                     ),
                   ),
                 );
@@ -565,6 +566,7 @@ export async function updateOutletInsanKu({
   }
 
   const action_day = currentPlacementDay();
+  const placement_inactive_day = new Date(action_day.getTime() + 24 * 60 * 60 * 1000);
   const action_month = currentPlacementMonth(action_day);
 
   await prisma.$transaction(async (tx) => {
@@ -661,7 +663,7 @@ export async function updateOutletInsanKu({
 
       await Promise.all(
         removed_relations.map((relation) =>
-          openOutletInsanKuInactivePeriod(tx, relation.uuid, action_day),
+          openOutletInsanKuInactivePeriod(tx, relation.uuid, placement_inactive_day),
         ),
       );
     }

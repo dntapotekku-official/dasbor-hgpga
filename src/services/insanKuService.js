@@ -800,6 +800,7 @@ export async function updateInsanKu({
   );
   const resolved_outlet_placements = normalized_placements.placements;
   const action_day = currentPlacementDay();
+  const placement_inactive_day = new Date(action_day.getTime() + 24 * 60 * 60 * 1000);
   const placement_uuid_list = normalized_placements.placement_uuids;
   const unique_outlet_uuids = normalized_placements.outlet_uuids;
 
@@ -931,7 +932,7 @@ export async function updateInsanKu({
       .map((item) => item.uuid);
 
     if (relation_uuids_to_remove.length > 0) {
-      const inactive_start_date = action_day;
+      const inactive_start_date = placement_inactive_day;
 
       await tx.tbl_outlet_insanku.updateMany({
         where: {
@@ -1048,7 +1049,7 @@ export async function updateInsanKu({
           await openOutletInsanKuInactivePeriod(
             tx,
             placement.uuid,
-            action_day,
+            placement_inactive_day,
           );
 
           continue;
@@ -1068,7 +1069,7 @@ export async function updateInsanKu({
         await openOutletInsanKuInactivePeriod(
           tx,
           placement.uuid,
-          action_day,
+          placement_inactive_day,
         );
         const created_relation_uuid = randomUUID();
 
